@@ -21,6 +21,205 @@ namespace OpenLiveWriter.HtmlParser.Parser
             return Regex.Replace(html, @"\s+", " ");
         }
 
+        /// <summary>
+        /// Normalizes HTML by ensuring elements with optional end tags have explicit closing tags.
+        /// This fixes issues where MSHTML serializes HTML without closing tags for elements like &lt;p&gt;.
+        /// </summary>
+        /// <param name="html">The HTML string to normalize.</param>
+        /// <returns>HTML with explicit closing tags added for elements with optional end tags.</returns>
+        public static string NormalizeHtmlClosingTags(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return html;
+
+            StringBuilder result = new StringBuilder(html.Length + 100);
+            ArrayList openTags = new ArrayList(); // Stack of tag names with optional end tags
+            SimpleHtmlParser parser = new SimpleHtmlParser(html);
+
+            Element el;
+            while ((el = parser.Next()) != null)
+            {
+                if (el is BeginTag)
+                {
+                    BeginTag beginTag = (BeginTag)el;
+                    string tagName = beginTag.Name;
+
+                    // Close any implicitly closed tags before adding this new tag
+                    CloseImplicitlyClosedTags(result, openTags, tagName);
+
+                    result.Append(el.RawText);
+
+                    // Track tags with optional end tags (but not self-closing)
+                    if (HasOptionalEndTag(tagName) && !beginTag.Complete)
+                    {
+                        openTags.Add(tagName);
+                    }
+                }
+                else if (el is EndTag)
+                {
+                    EndTag endTag = (EndTag)el;
+                    CloseTagsUntilMatch(result, openTags, endTag.Name);
+                    result.Append(el.RawText);
+                }
+                else
+                {
+                    result.Append(el.RawText);
+                }
+            }
+
+            // Close any remaining open tags at end of input
+            for (int i = openTags.Count - 1; i >= 0; i--)
+            {
+                result.Append("</").Append((string)openTags[i]).Append(">");
+            }
+
+            return result.ToString();
+        }
+
+        /// <summary>
+        /// Returns true if the element has an optional end tag per HTML spec.
+        /// </summary>
+        private static bool HasOptionalEndTag(string tagName)
+        {
+            switch (tagName.ToUpper(CultureInfo.InvariantCulture))
+            {
+                case "P":
+                case "LI":
+                case "DT":
+                case "DD":
+                case "TR":
+                case "TH":
+                case "TD":
+                case "THEAD":
+                case "TBODY":
+                case "TFOOT":
+                case "COLGROUP":
+                case "OPTION":
+                case "OPTGROUP":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the new tag implicitly closes the open tag.
+        /// Based on HTML5 optional tag omission rules.
+        /// </summary>
+        private static bool ImplicitlyCloses(string newTag, string openTag)
+        {
+            string newUpper = newTag.ToUpper(CultureInfo.InvariantCulture);
+            string openUpper = openTag.ToUpper(CultureInfo.InvariantCulture);
+
+            switch (newUpper)
+            {
+                case "P":
+                    return openUpper == "P";
+                case "LI":
+                    return openUpper == "LI";
+                case "DT":
+                case "DD":
+                    return openUpper == "DT" || openUpper == "DD";
+                case "TR":
+                    return openUpper == "TR" || openUpper == "TH" || openUpper == "TD";
+                case "TH":
+                case "TD":
+                    return openUpper == "TH" || openUpper == "TD";
+                case "THEAD":
+                case "TBODY":
+                case "TFOOT":
+                    return openUpper == "THEAD" || openUpper == "TBODY" || openUpper == "TFOOT";
+                case "OPTION":
+                    return openUpper == "OPTION";
+                case "OPTGROUP":
+                    return openUpper == "OPTGROUP" || openUpper == "OPTION";
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the element is a container that closes all inner optional-end-tag elements.
+        /// </summary>
+        private static bool IsContainerElement(string tagName)
+        {
+            switch (tagName.ToUpper(CultureInfo.InvariantCulture))
+            {
+                case "TABLE":
+                case "UL":
+                case "OL":
+                case "DL":
+                case "SELECT":
+                case "BODY":
+                case "HTML":
+                case "DIV":
+                case "FORM":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Closes tags that are implicitly closed when a new tag opens.
+        /// </summary>
+        private static void CloseImplicitlyClosedTags(StringBuilder result, ArrayList openTags, string newTagName)
+        {
+            // Close all matching tags from the top of the stack
+            while (openTags.Count > 0)
+            {
+                string openTag = (string)openTags[openTags.Count - 1];
+                if (ImplicitlyCloses(newTagName, openTag))
+                {
+                    openTags.RemoveAt(openTags.Count - 1);
+                    result.Append("</").Append(openTag).Append(">");
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Closes tags until we find a matching open tag for the given end tag.
+        /// </summary>
+        private static void CloseTagsUntilMatch(StringBuilder result, ArrayList openTags, string endTagName)
+        {
+            // Container elements close all their inner optional-end-tag elements
+            if (IsContainerElement(endTagName))
+            {
+                for (int i = openTags.Count - 1; i >= 0; i--)
+                {
+                    result.Append("</").Append((string)openTags[i]).Append(">");
+                }
+                openTags.Clear();
+                return;
+            }
+
+            // For optional end tag elements, close until we find a match
+            if (HasOptionalEndTag(endTagName))
+            {
+                string endUpper = endTagName.ToUpper(CultureInfo.InvariantCulture);
+                while (openTags.Count > 0)
+                {
+                    string openTag = (string)openTags[openTags.Count - 1];
+                    openTags.RemoveAt(openTags.Count - 1);
+
+                    if (openTag.ToUpper(CultureInfo.InvariantCulture) == endUpper)
+                    {
+                        // Found the match - the source end tag will close it
+                        break;
+                    }
+                    else
+                    {
+                        // Close this tag implicitly
+                        result.Append("</").Append(openTag).Append(">");
+                    }
+                }
+            }
+        }
+
         public static string HTMLToPlainText(string html)
         {
             return HTMLToPlainText(html, false);
