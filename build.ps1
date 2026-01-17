@@ -1,6 +1,9 @@
 # Cause powershell to fail on errors rather than keep going
 $ErrorActionPreference = "Stop";
 
+# Supported Visual Studio versions: VS2017, VS2019, VS2022, VS2026
+# To override the C++ platform toolset, pass: /p:PlatformToolset=v142 (or v141, v143, v144)
+
 @"
 
 =======================================================
@@ -33,7 +36,7 @@ if (Test-Path $vswherePath) {
     $visualStudioLocation = (Get-VSSetupInstance | Select-VSSetupInstance -Latest).InstallationPath
 }
 
-# Try "Current" path first (VS2019+), then fall back to versioned paths
+# Try "Current" path first (VS2019/VS2022/VS2026+), then fall back to versioned paths
 $msBuildExe = $visualStudioLocation + "\MSBuild\Current\Bin\msbuild.exe"
 IF (-Not (Test-Path -LiteralPath "$msBuildExe" -PathType Leaf))
 {
@@ -44,6 +47,7 @@ IF (-Not (Test-Path -LiteralPath "$msBuildExe" -PathType Leaf))
 {
 	"MSBuild not found at '$msBuildExe'"
 	"In order to build OpenLiveWriter, Visual Studio 2017 or later must be installed."
+	"Supported versions: VS2017, VS2019, VS2022, VS2026"
 	"These can be downloaded from https://visualstudio.microsoft.com/downloads/"
 	exit 101
 }
