@@ -23,20 +23,28 @@ if (-Not (Test-Path "$solutionFile" -PathType Leaf))
 =======================================================
 "@
 
-# Install module to allow us to find MSBuild
-# See https://github.com/Microsoft/vssetup.powershell
-Install-Module VSSetup -Scope CurrentUser
+# Use vswhere to find the latest Visual Studio installation
+$vswherePath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+if (Test-Path $vswherePath) {
+    $visualStudioLocation = & $vswherePath -latest -property installationPath
+} else {
+    # Fallback: try VSSetup module
+    Install-Module VSSetup -Scope CurrentUser -Force
+    $visualStudioLocation = (Get-VSSetupInstance | Select-VSSetupInstance -Latest).InstallationPath
+}
 
-$visualStudioLocation = (Get-VSSetupInstance `
-  | Select-VSSetupInstance -Version '[15.0,16.0)' -Latest).InstallationPath
-
-$msBuildExe = $visualStudioLocation + "\MSBuild\15.0\Bin\msbuild.exe"
+# Try "Current" path first (VS2019+), then fall back to versioned paths
+$msBuildExe = $visualStudioLocation + "\MSBuild\Current\Bin\msbuild.exe"
+IF (-Not (Test-Path -LiteralPath "$msBuildExe" -PathType Leaf))
+{
+    # Try VS2017 path
+    $msBuildExe = $visualStudioLocation + "\MSBuild\15.0\Bin\msbuild.exe"
+}
 IF (-Not (Test-Path -LiteralPath "$msBuildExe" -PathType Leaf))
 {
 	"MSBuild not found at '$msBuildExe'"
-	"In order to build OpenLiveWriter either Visual Studio 2017 (any edition) or Build "
-	"Tools for Visual Studio 2017 must be installed."
-	"These can be downloadd from https://visualstudio.microsoft.com/downloads/"
+	"In order to build OpenLiveWriter, Visual Studio 2017 or later must be installed."
+	"These can be downloaded from https://visualstudio.microsoft.com/downloads/"
 	exit 101
 }
 
