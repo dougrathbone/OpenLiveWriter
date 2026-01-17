@@ -33,7 +33,7 @@ namespace OpenLiveWriter.HtmlParser.Parser
                 return html;
 
             StringBuilder result = new StringBuilder(html.Length + 100);
-            ArrayList openTags = new ArrayList(); // Stack of tag names with optional end tags
+            ArrayList openTags = new ArrayList(); // Stack of tag names (optional end tags + containers)
             SimpleHtmlParser parser = new SimpleHtmlParser(html);
 
             Element el;
@@ -49,8 +49,8 @@ namespace OpenLiveWriter.HtmlParser.Parser
 
                     result.Append(el.RawText);
 
-                    // Track tags with optional end tags (but not self-closing)
-                    if (HasOptionalEndTag(tagName) && !beginTag.Complete)
+                    // Track tags with optional end tags and container elements (but not self-closing)
+                    if ((HasOptionalEndTag(tagName) || IsContainerElement(tagName)) && !beginTag.Complete)
                     {
                         openTags.Add(tagName);
                     }
@@ -67,10 +67,14 @@ namespace OpenLiveWriter.HtmlParser.Parser
                 }
             }
 
-            // Close any remaining open tags at end of input
+            // Close any remaining open tags at end of input (only optional-end-tag elements)
             for (int i = openTags.Count - 1; i >= 0; i--)
             {
-                result.Append("</").Append((string)openTags[i]).Append(">");
+                string tag = (string)openTags[i];
+                if (HasOptionalEndTag(tag))
+                {
+                    result.Append("</").Append(tag).Append(">");
+                }
             }
 
             return result.ToString();
@@ -111,6 +115,12 @@ namespace OpenLiveWriter.HtmlParser.Parser
             string newUpper = newTag.ToUpper(CultureInfo.InvariantCulture);
             string openUpper = openTag.ToUpper(CultureInfo.InvariantCulture);
 
+            // Block-level elements implicitly close an open P tag per HTML5 spec
+            if (openUpper == "P" && IsBlockElement(newUpper))
+            {
+                return true;
+            }
+
             switch (newUpper)
             {
                 case "P":
@@ -133,6 +143,47 @@ namespace OpenLiveWriter.HtmlParser.Parser
                     return openUpper == "OPTION";
                 case "OPTGROUP":
                     return openUpper == "OPTGROUP" || openUpper == "OPTION";
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the element is a block-level element that closes an open P tag.
+        /// Per HTML5, a P element's end tag can be omitted if immediately followed by these elements.
+        /// </summary>
+        private static bool IsBlockElement(string tagNameUpper)
+        {
+            switch (tagNameUpper)
+            {
+                case "ADDRESS":
+                case "ARTICLE":
+                case "ASIDE":
+                case "BLOCKQUOTE":
+                case "DIV":
+                case "DL":
+                case "FIELDSET":
+                case "FIGCAPTION":
+                case "FIGURE":
+                case "FOOTER":
+                case "FORM":
+                case "H1":
+                case "H2":
+                case "H3":
+                case "H4":
+                case "H5":
+                case "H6":
+                case "HEADER":
+                case "HR":
+                case "MAIN":
+                case "NAV":
+                case "OL":
+                case "P":
+                case "PRE":
+                case "SECTION":
+                case "TABLE":
+                case "UL":
+                    return true;
                 default:
                     return false;
             }
@@ -186,35 +237,61 @@ namespace OpenLiveWriter.HtmlParser.Parser
         /// </summary>
         private static void CloseTagsUntilMatch(StringBuilder result, ArrayList openTags, string endTagName)
         {
-            // Container elements close all their inner optional-end-tag elements
+            string endUpper = endTagName.ToUpper(CultureInfo.InvariantCulture);
+
+            // Container elements close their inner optional-end-tag elements until the matching container
             if (IsContainerElement(endTagName))
             {
-                for (int i = openTags.Count - 1; i >= 0; i--)
+                while (openTags.Count > 0)
                 {
-                    result.Append("</").Append((string)openTags[i]).Append(">");
+                    string openTag = (string)openTags[openTags.Count - 1];
+                    string openUpper = openTag.ToUpper(CultureInfo.InvariantCulture);
+
+                    if (openUpper == endUpper)
+                    {
+                        // Found the matching container - remove it from stack
+                        openTags.RemoveAt(openTags.Count - 1);
+                        break;
+                    }
+                    else if (HasOptionalEndTag(openTag))
+                    {
+                        // Close this optional-end-tag element
+                        openTags.RemoveAt(openTags.Count - 1);
+                        result.Append("</").Append(openTag).Append(">");
+                    }
+                    else
+                    {
+                        // Hit another container - stop here (malformed HTML)
+                        break;
+                    }
                 }
-                openTags.Clear();
                 return;
             }
 
             // For optional end tag elements, close until we find a match
             if (HasOptionalEndTag(endTagName))
             {
-                string endUpper = endTagName.ToUpper(CultureInfo.InvariantCulture);
                 while (openTags.Count > 0)
                 {
                     string openTag = (string)openTags[openTags.Count - 1];
-                    openTags.RemoveAt(openTags.Count - 1);
+                    string openUpper = openTag.ToUpper(CultureInfo.InvariantCulture);
 
-                    if (openTag.ToUpper(CultureInfo.InvariantCulture) == endUpper)
+                    if (openUpper == endUpper)
                     {
-                        // Found the match - the source end tag will close it
+                        // Found the match - remove from stack, source end tag will close it
+                        openTags.RemoveAt(openTags.Count - 1);
                         break;
+                    }
+                    else if (HasOptionalEndTag(openTag))
+                    {
+                        // Close this tag implicitly
+                        openTags.RemoveAt(openTags.Count - 1);
+                        result.Append("</").Append(openTag).Append(">");
                     }
                     else
                     {
-                        // Close this tag implicitly
-                        result.Append("</").Append(openTag).Append(">");
+                        // Hit a container element - stop here
+                        break;
                     }
                 }
             }

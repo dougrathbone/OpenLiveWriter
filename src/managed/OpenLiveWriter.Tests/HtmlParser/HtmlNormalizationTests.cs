@@ -127,6 +127,28 @@ namespace OpenLiveWriter.Tests.HtmlParser
         }
 
         [Test]
+        public void BlockElementClosesOpenParagraph()
+        {
+            // Per HTML5 spec, a P element's end tag can be omitted if immediately followed by block-level elements
+            Assert.AreEqual("<p>Text</p><div>Content</div>",
+                HtmlUtils.NormalizeHtmlClosingTags("<p>Text<div>Content</div>"));
+            Assert.AreEqual("<p>Text</p><table><tr><td>Cell</td></tr></table>",
+                HtmlUtils.NormalizeHtmlClosingTags("<p>Text<table><tr><td>Cell</td></tr></table>"));
+            Assert.AreEqual("<p>Before</p><ul><li>Item</li></ul>",
+                HtmlUtils.NormalizeHtmlClosingTags("<p>Before<ul><li>Item</ul>"));
+            Assert.AreEqual("<p>Before</p><h1>Heading</h1>",
+                HtmlUtils.NormalizeHtmlClosingTags("<p>Before<h1>Heading</h1>"));
+        }
+
+        [Test]
+        public void NestedTables()
+        {
+            // Nested tables should only close tags within their own scope
+            Assert.AreEqual("<table><tr><td><table><tr><td>Inner</td></tr></table></td></tr></table>",
+                HtmlUtils.NormalizeHtmlClosingTags("<table><tr><td><table><tr><td>Inner</table></td></tr></table>"));
+        }
+
+        [Test]
         public void ComplexTable()
         {
             string input = "<table><thead><tr><th>H</th></tr><tbody><tr><td>D</td></tr></table>";
