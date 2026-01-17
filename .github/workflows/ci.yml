@@ -23,6 +23,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup .NET Framework 4.6.1 Developer Pack
+        run: |
+          choco install netfx-4.6.1-devpack -y --no-progress
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -38,7 +42,8 @@ jobs:
             /nologo `
             /maxcpucount `
             /verbosity:minimal `
-            /p:Configuration=${{ env.OLW_CONFIG }}
+            /p:Configuration=${{ env.OLW_CONFIG }} `
+            /p:PlatformToolset=v143
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -62,6 +67,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup .NET Framework 4.6.1 Developer Pack
+        run: |
+          choco install netfx-4.6.1-devpack -y --no-progress
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -77,4 +86,5 @@ jobs:
             /nologo `
             /maxcpucount `
             /verbosity:minimal `
-            /p:Configuration=Debug
+            /p:Configuration=Debug `
+            /p:PlatformToolset=v143
