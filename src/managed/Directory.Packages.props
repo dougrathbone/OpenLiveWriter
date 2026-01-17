@@ -11,36 +11,37 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Google APIs for Blogger integration -->
-    <PackageVersion Include="Google.Apis" Version="1.39.0" />
-    <PackageVersion Include="Google.Apis.Auth" Version="1.39.0" />
-    <PackageVersion Include="Google.Apis.Blogger.v3" Version="1.21.0.111" />
-    <PackageVersion Include="Google.Apis.Core" Version="1.39.0" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.39.0.1566" />
+    <!-- Google APIs for Blogger integration - Updated for .NET 10 compatibility -->
+    <PackageVersion Include="Google.Apis" Version="1.68.0" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.68.0" />
+    <PackageVersion Include="Google.Apis.Blogger.v3" Version="1.68.0.3420" />
+    <PackageVersion Include="Google.Apis.Core" Version="1.68.0" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.68.0.3572" />
     
-    <!-- JSON serialization -->
-    <PackageVersion Include="Newtonsoft.Json" Version="10.0.2" />
+    <!-- JSON serialization - Latest stable for .NET 10 -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     
-    <!-- YAML parsing for static site generators -->
-    <PackageVersion Include="YamlDotNet" Version="6.1.1" />
+    <!-- YAML parsing for static site generators - Latest stable -->
+    <PackageVersion Include="YamlDotNet" Version="16.2.0" />
     
     <!-- Compression -->
     <PackageVersion Include="Zlib.Portable.Signed" Version="1.11.0" />
     <PackageVersion Include="DeltaCompressionDotNet" Version="1.1.0" />
     
-    <!-- Squirrel for Windows deployment -->
+    <!-- Deployment - Velopack is the successor to squirrel.windows for .NET Core+ -->
+    <!-- Note: squirrel.windows 1.x doesn't support .NET 10, consider migrating to Velopack -->
     <PackageVersion Include="squirrel.windows" Version="1.4.4" />
     <PackageVersion Include="Splat" Version="2.0.0" />
-    <PackageVersion Include="Mono.Cecil" Version="0.9.6.4" />
+    <PackageVersion Include="Mono.Cecil" Version="0.11.5" />
     
     <!-- Spell checking -->
     <PackageVersion Include="PlatformSpellCheck" Version="1.0.0" />
     
-    <!-- Testing -->
-    <PackageVersion Include="NUnit" Version="3.4.1" />
-    <PackageVersion Include="NUnit3TestAdapter" Version="3.4.1" />
-    <PackageVersion Include="ApprovalTests" Version="3.0.11" />
-    <PackageVersion Include="ApprovalUtilities" Version="3.0.11" />
+    <!-- Testing - Updated for .NET 10 -->
+    <PackageVersion Include="NUnit" Version="4.2.2" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageVersion Include="ApprovalTests" Version="6.0.0" />
+    <PackageVersion Include="ApprovalUtilities" Version="6.0.0" />
     
     <!-- 
       NOTE: The following packages are NOT included because they are built into .NET 10:
