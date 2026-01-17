@@ -45,13 +45,6 @@ jobs:
             /p:Configuration=${{ env.OLW_CONFIG }} `
             /p:PlatformToolset=v143
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenLiveWriter-${{ github.run_number }}
-          path: releases/*
-          if-no-files-found: warn
-
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
