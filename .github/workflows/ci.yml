@@ -33,6 +33,11 @@ jobs:
       - name: Setup NuGet
         uses: nuget/setup-nuget@v2
 
+      - name: Setup .NET SDK (for SignClient)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
       - name: Restore NuGet packages
         run: nuget restore ${{ env.SOLUTION_PATH }}
 
@@ -45,11 +50,87 @@ jobs:
             /p:Configuration=${{ env.OLW_CONFIG }} `
             /p:PlatformToolset=v143
 
+      - name: Get version
+        id: version
+        shell: cmd
+        run: |
+          set /P VERSION=<version.txt
+          echo VERSION=%VERSION%>> %GITHUB_OUTPUT%
+
+      - name: Create NuGet package for Squirrel
+        run: |
+          nuget pack OpenLiveWriter.nuspec `
+            -Version ${{ steps.version.outputs.VERSION }} `
+            -BasePath src/managed/bin/${{ env.OLW_CONFIG }}/i386/Writer
+
+      - name: Create installer with Squirrel
+        run: |
+          # Sync releases (creates Releases folder if needed)
+          & src/managed/packages/squirrel.windows.1.4.4/tools/SyncReleases.exe `
+            -url=https://olw.blob.core.windows.net/stable/Releases/ `
+            -r=Releases
+          
+          # Create installer using Squirrel
+          & src/managed/packages/squirrel.windows.1.4.4/tools/Squirrel.exe `
+            -i src/managed/OpenLiveWriter.PostEditor/Images/Writer.ico `
+            --no-msi `
+            --releasify OpenLiveWriter.${{ steps.version.outputs.VERSION }}.nupkg
+          
+          # Rename Setup.exe to OpenLiveWriterSetup.exe
+          Move-Item -Path Releases/Setup.exe -Destination Releases/OpenLiveWriterSetup.exe -Force
+
+      - name: Sign installer
+        if: ${{ github.event_name != 'pull_request' && secrets.SIGN_CLIENT_SECRET != '' }}
+        env:
+          SIGN_CLIENT_SECRET: ${{ secrets.SIGN_CLIENT_SECRET }}
+          SIGN_CLIENT_USER: ${{ secrets.SIGN_CLIENT_USER }}
+        run: |
+          # Install SignClient
+          dotnet tool install --global SignClient
+          
+          # Sign the installer
+          $releases = Get-ChildItem -Path Releases -Filter *.exe | Select-Object -ExpandProperty FullName
+          foreach ($release in $releases) {
+            Write-Host "Signing $release"
+            SignClient sign `
+              -c SignClient/appsettings.json `
+              -i $release `
+              -r $env:SIGN_CLIENT_USER `
+              -s $env:SIGN_CLIENT_SECRET `
+              -n "Open Live Writer" `
+              -d "Open Live Writer" `
+              -u "http://openlivewriter.com"
+          }
+
+      - name: Create Chocolatey package
+        run: |
+          nuget pack OpenLiveWriter.Install.nuspec `
+            -Version ${{ steps.version.outputs.VERSION }} `
+            -BasePath Releases `
+            -NoPackageAnalysis
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenLiveWriter-Installer-${{ github.run_number }}
+          path: |
+            Releases/OpenLiveWriterSetup.exe
+            Releases/RELEASES
+            Releases/*.nupkg
+          if-no-files-found: warn
+
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
           name: OpenLiveWriter-Binaries-${{ github.run_number }}
           path: src/managed/bin/${{ env.OLW_CONFIG }}/i386/Writer/
+          if-no-files-found: warn
+
+      - name: Upload Chocolatey package
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenLiveWriter-Chocolatey-${{ github.run_number }}
+          path: OpenLiveWriter.Install.*.nupkg
           if-no-files-found: warn
 
   build-debug:
