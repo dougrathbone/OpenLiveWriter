@@ -1,0 +1,83 @@
+name: CI Build
+
+on:
+  push:
+    branches:
+      - master
+      - develop/**
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  SOLUTION_PATH: src/managed/writer.sln
+  OLW_CONFIG: Release
+
+jobs:
+  build:
+    name: Build Open Live Writer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Framework 4.6.1 Developer Pack
+        run: |
+          choco install netfx-4.6.1-devpack -y --no-progress
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build solution
+        run: |
+          msbuild ${{ env.SOLUTION_PATH }} `
+            /nologo `
+            /maxcpucount `
+            /verbosity:minimal `
+            /p:Configuration=${{ env.OLW_CONFIG }} `
+            /p:PlatformToolset=v143
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenLiveWriter-Binaries-${{ github.run_number }}
+          path: src/managed/bin/${{ env.OLW_CONFIG }}/i386/Writer/
+          if-no-files-found: warn
+
+  build-debug:
+    name: Build Debug Configuration
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Framework 4.6.1 Developer Pack
+        run: |
+          choco install netfx-4.6.1-devpack -y --no-progress
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build solution (Debug)
+        run: |
+          msbuild ${{ env.SOLUTION_PATH }} `
+            /nologo `
+            /maxcpucount `
+            /verbosity:minimal `
+            /p:Configuration=Debug `
+            /p:PlatformToolset=v143
