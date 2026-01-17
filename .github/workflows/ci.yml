@@ -52,19 +52,46 @@ jobs:
 
       - name: Get version
         id: version
-        shell: cmd
+        shell: pwsh
         run: |
-          set /P VERSION=<version.txt
-          echo VERSION=%VERSION%>> %GITHUB_OUTPUT%
+          $version = Get-Content version.txt -Raw
+          $version = $version.Trim()
+          Write-Host "Raw version: $version"
+          
+          # NuGet normalizes versions by removing trailing .0
+          # e.g., 0.6.3.0 becomes 0.6.3
+          $parts = $version.Split('.')
+          if ($parts.Count -eq 4 -and $parts[3] -eq '0') {
+            $nugetVersion = "$($parts[0]).$($parts[1]).$($parts[2])"
+          } else {
+            $nugetVersion = $version
+          }
+          Write-Host "NuGet version: $nugetVersion"
+          
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "NUGET_VERSION=$nugetVersion" >> $env:GITHUB_OUTPUT
 
       - name: Create NuGet package for Squirrel
         run: |
           nuget pack OpenLiveWriter.nuspec `
-            -Version ${{ steps.version.outputs.VERSION }} `
+            -Version ${{ steps.version.outputs.NUGET_VERSION }} `
             -BasePath src/managed/bin/${{ env.OLW_CONFIG }}/i386/Writer
+          
+          # List created package
+          Get-ChildItem -Filter "OpenLiveWriter.*.nupkg" | ForEach-Object { Write-Host "Created: $($_.Name)" }
 
       - name: Create installer with Squirrel
         run: |
+          $nupkgFile = "OpenLiveWriter.${{ steps.version.outputs.NUGET_VERSION }}.nupkg"
+          Write-Host "Using package: $nupkgFile"
+          
+          # Verify package exists
+          if (-not (Test-Path $nupkgFile)) {
+            Write-Error "Package not found: $nupkgFile"
+            Get-ChildItem -Filter "*.nupkg"
+            exit 1
+          }
+          
           # Sync releases (creates Releases folder if needed)
           & src/managed/packages/squirrel.windows.1.4.4/tools/SyncReleases.exe `
             -url=https://olw.blob.core.windows.net/stable/Releases/ `
@@ -74,10 +101,18 @@ jobs:
           & src/managed/packages/squirrel.windows.1.4.4/tools/Squirrel.exe `
             -i src/managed/OpenLiveWriter.PostEditor/Images/Writer.ico `
             --no-msi `
-            --releasify OpenLiveWriter.${{ steps.version.outputs.VERSION }}.nupkg
+            --releasify $nupkgFile
+          
+          # Verify Setup.exe was created
+          if (-not (Test-Path "Releases/Setup.exe")) {
+            Write-Error "Setup.exe was not created"
+            Get-ChildItem -Path Releases -ErrorAction SilentlyContinue
+            exit 1
+          }
           
           # Rename Setup.exe to OpenLiveWriterSetup.exe
           Move-Item -Path Releases/Setup.exe -Destination Releases/OpenLiveWriterSetup.exe -Force
+          Write-Host "Installer created: Releases/OpenLiveWriterSetup.exe"
 
       - name: Sign installer
         if: github.event_name != 'pull_request'
@@ -111,7 +146,7 @@ jobs:
       - name: Create Chocolatey package
         run: |
           nuget pack OpenLiveWriter.Install.nuspec `
-            -Version ${{ steps.version.outputs.VERSION }} `
+            -Version ${{ steps.version.outputs.NUGET_VERSION }} `
             -BasePath Releases `
             -NoPackageAnalysis
 
