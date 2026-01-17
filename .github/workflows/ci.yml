@@ -80,11 +80,17 @@ jobs:
           Move-Item -Path Releases/Setup.exe -Destination Releases/OpenLiveWriterSetup.exe -Force
 
       - name: Sign installer
-        if: ${{ github.event_name != 'pull_request' && secrets.SIGN_CLIENT_SECRET != '' }}
+        if: github.event_name != 'pull_request'
         env:
           SIGN_CLIENT_SECRET: ${{ secrets.SIGN_CLIENT_SECRET }}
           SIGN_CLIENT_USER: ${{ secrets.SIGN_CLIENT_USER }}
         run: |
+          # Check if signing credentials are available
+          if ([string]::IsNullOrEmpty($env:SIGN_CLIENT_SECRET)) {
+            Write-Host "Signing credentials not available, skipping signing"
+            exit 0
+          }
+          
           # Install SignClient
           dotnet tool install --global SignClient
           
