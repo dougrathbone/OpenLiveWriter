@@ -1,0 +1,67 @@
+<Project>
+  <!-- 
+    Shared build properties for Open Live Writer .NET 10 migration
+    This file is automatically imported by all SDK-style projects in this directory tree
+  -->
+
+  <PropertyGroup>
+    <!-- Target .NET 10 for Windows (required for Windows Forms and COM interop) -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    
+    <!-- Enable Windows Forms -->
+    <UseWindowsForms>true</UseWindowsForms>
+    
+    <!-- x86 platform required for COM interop with MSHTML -->
+    <PlatformTarget>x86</PlatformTarget>
+    
+    <!-- Disable nullable reference types initially to avoid breaking changes -->
+    <Nullable>disable</Nullable>
+    
+    <!-- Disable implicit usings to maintain compatibility with existing code -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    
+    <!-- Maintain existing warning/error behavior -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn>$(NoWarn);SYSLIB0011</NoWarn> <!-- BinaryFormatter obsolete warning - will address in Phase 2 -->
+    
+    <!-- Generate binding redirects for compatibility -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    
+    <!-- Assembly signing configuration -->
+    <SignAssembly Condition="'$(SignAssembly)' == ''">false</SignAssembly>
+    <AssemblyOriginatorKeyFile Condition="'$(AssemblyOriginatorKeyFile)' == ''">$(MSBuildThisFileDirectory)..\..\key.snk</AssemblyOriginatorKeyFile>
+    
+    <!-- Product information -->
+    <Product>Open Live Writer</Product>
+    <Company>.NET Foundation</Company>
+    <Copyright>Copyright (c) .NET Foundation. All rights reserved.</Copyright>
+    
+    <!-- Suppress specific analyzers that may cause issues during migration -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+  </PropertyGroup>
+
+  <!-- Debug configuration -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <!-- Release configuration -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>pdbonly</DebugType>
+    <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <!-- Output paths to maintain compatibility with existing build structure -->
+  <PropertyGroup>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+</Project>
