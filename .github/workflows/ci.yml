@@ -121,8 +121,8 @@ jobs:
           SIGN_CLIENT_USER: ${{ secrets.SIGN_CLIENT_USER }}
         run: |
           # Check if signing credentials are available
-          if ([string]::IsNullOrEmpty($env:SIGN_CLIENT_SECRET)) {
-            Write-Host "Signing credentials not available, skipping signing"
+          if ([string]::IsNullOrEmpty($env:SIGN_CLIENT_SECRET) -or [string]::IsNullOrEmpty($env:SIGN_CLIENT_USER)) {
+            Write-Host "Signing credentials not available (SIGN_CLIENT_USER or SIGN_CLIENT_SECRET missing), skipping signing"
             exit 0
           }
           
@@ -140,7 +140,7 @@ jobs:
               -s $env:SIGN_CLIENT_SECRET `
               -n "Open Live Writer" `
               -d "Open Live Writer" `
-              -u "http://openlivewriter.com"
+              -u "https://openlivewriter.com"
           }
 
       - name: Create Chocolatey package
