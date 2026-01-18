@@ -109,46 +109,60 @@ namespace OpenLiveWriter.PostEditor
 
         private void Init(IMainFrameWindow mainFrameWindow, IBlogPostEditingContext editingContext)
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PostEditorMainControl.Init starting");
             // save reference to the frame window and workspace border manager
             _mainFrameWindow = mainFrameWindow;
 
             // This call is required by the Windows.Forms Form Designer.
             Font = Res.DefaultFont;
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeComponent");
             InitializeComponent();
 
             // initialize UI
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeUI");
             InitializeUI();
 
             // Initialize the editing manager
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeEditingManager");
             InitializeEditingManager();
 
             // initialize our commands
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeCommands");
             InitializeCommands();
 
             //subscribe to global events
             BlogSettings.BlogSettingsDeleted += new BlogSettings.BlogSettingsListener(HandleBlogDeleted);
 
             // edit the post
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} EditPost");
             _editingManager.EditPost(editingContext, false);
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon");
             InitializeRibbon();
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PostEditorMainControl.Init done");
         }
 
         private void InitializeUI()
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeUI starting");
             ColorizedResources.Instance.RegisterControlForBackColorUpdates(this);
 
             // initialize workspace
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeWorkspace");
             InitializeWorkspace();
 
             // initialize the post property editors
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializePostPropertyEditors");
             InitializePostPropertyEditors();
 
             // initialize the core editor
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeHtmlEditor");
             InitializeHtmlEditor();
 
             // initialize options editor
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeOptionsEditor");
             InitializeOptionsEditor();
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeUI done");
         }
 
         private GalleryCommand<string> commandPluginsGallery = null;

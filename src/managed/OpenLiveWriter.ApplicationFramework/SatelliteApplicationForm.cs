@@ -68,21 +68,29 @@ namespace OpenLiveWriter.ApplicationFramework
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} SatelliteApplicationForm.OnLoad starting");
                 base.OnLoad(e);
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} base.OnLoad done");
 
                 SuspendLayout();
 
                 // initialize the workspace
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Calling OnInitializeWorkspace");
                 OnInitializeWorkspace();
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnInitializeWorkspace done");
                 ribbonLoaded = true;
 
                 // restore window state
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} RestoreWindowState");
                 RestoreWindowState();
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnLoad complete");
 
                 ResumeLayout();
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} EXCEPTION in OnLoad: {ex.GetType().Name}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Stack: {ex.StackTrace}");
                 UnexpectedErrorMessage.Show(Win32WindowImpl.DesktopWin32Window, ex);
                 Close();
             }
@@ -130,7 +138,9 @@ namespace OpenLiveWriter.ApplicationFramework
         {
             // Hmm.  How to do this?
             //
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} SatelliteApplicationForm.OnInitializeWorkspace - calling CreateMainControl");
             _mainControl = CreateMainControl();
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} CreateMainControl done");
 
             //CommandBarLightweightControl commandBar = new ApplicationCommandBarLightweightControl();
             //commandBar.CommandManager = ApplicationManager.CommandManager;
@@ -141,10 +151,13 @@ namespace OpenLiveWriter.ApplicationFramework
 
             //_commandBarControl.Dock = DockStyle.Top;
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PositionMainControl");
             PositionMainControl();
 
             //Controls.Add(_commandBarControl);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Controls.Add");
             Controls.Add(_mainControl);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} SatelliteApplicationForm.OnInitializeWorkspace done");
         }
 
         protected void PositionMainControl()
@@ -411,11 +424,16 @@ namespace OpenLiveWriter.ApplicationFramework
                     UnexpectedErrorDelegate.RegisterWindowsHandler();
 
                     // Create and run the form
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Creating PostEditorForm via Activator");
                     SatelliteApplicationForm applicationForm = (SatelliteApplicationForm)Activator.CreateInstance(_formType, _parameters);
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PostEditorForm created, calling Application.Run");
                     Application.Run(applicationForm);
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Application.Run returned");
                 }
                 catch (Exception ex)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} EXCEPTION in ThreadMain: {ex.GetType().Name}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Stack: {ex.StackTrace}");
                     UnexpectedErrorMessage.Show(ex);
                 }
                 finally

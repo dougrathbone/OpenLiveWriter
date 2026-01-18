@@ -127,17 +127,23 @@ namespace OpenLiveWriter.PostEditor
 
         protected override void OnInitializeWorkspace()
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PostEditorForm.OnInitializeWorkspace starting");
             base.OnInitializeWorkspace();
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} base.OnInitializeWorkspace done");
 
             //CommandBarControl.AccessibleName = "Primary Toolbar";
             //init the focusable panes
             //_paneFocusManager.AddControl(new FocusableControl(CommandBarControl));
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Getting focus panes");
             foreach (IFocusableControl focusControl in _postEditorMainControl.GetFocusPanes())
                 _paneFocusManager.AddControl(focusControl);
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} DisplayHelper.Scale");
             //ApplyAutoScaling();
             DisplayHelper.Scale(this);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PositionMainControl");
             PositionMainControl();
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PostEditorForm.OnInitializeWorkspace done");
 
             //InitializeStatusBarControl();
         }
@@ -258,19 +264,24 @@ namespace OpenLiveWriter.PostEditor
 
         protected override Control CreateMainControl()
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PostEditorForm.CreateMainControl starting");
             // create post editor main control as appropriate
             if (_initialEditingContext != null)
             {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Creating PostEditorMainControl");
                 _postEditorMainControl = new PostEditorMainControl(this, _initialEditingContext);
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PostEditorMainControl created");
             }
             else
             {
                 throw new ArgumentException("PostEditorForm was not properly initialized with either a blog post or blog this item");
             }
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeCommands");
             InitializeCommands();
 
             // connect our provider command manager to the BlogPostEditingManager
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} _providerButtonManager.Initialize");
             _providerButtonManager.Initialize(this, _postEditorMainControl.BlogPostEditingManager);
 
             // update status bar then subscribe to weblog changed events for future updates
@@ -278,6 +289,7 @@ namespace OpenLiveWriter.PostEditor
             //_postEditorMainControl.BlogPostEditingManager.BlogChanged +=new EventHandler(BlogPostEditingManager_BlogChanged);
             //_postEditorMainControl.BlogPostEditingManager.BlogSettingsChanged +=new WeblogSettingsChangedHandler(BlogPostEditingManager_BlogSettingsChanged);
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} PostEditorForm.CreateMainControl done");
             // return the post editor main control
             return _postEditorMainControl;
         }

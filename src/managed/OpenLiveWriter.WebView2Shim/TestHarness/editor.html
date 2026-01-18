@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>WebView2 Editor Test</title>
+    <style>
+        body {
+            font-family: Segoe UI, Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+        }
+        #editor {
+            border: 1px solid #ccc;
+            min-height: 200px;
+            padding: 10px;
+            outline: none;
+        }
+        #editor:focus {
+            border-color: #0078d4;
+        }
+        .toolbar {
+            margin-bottom: 10px;
+            padding: 5px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+        }
+        .toolbar button {
+            padding: 5px 10px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="execCmd('bold')"><b>B</b></button>
+        <button onclick="execCmd('italic')"><i>I</i></button>
+        <button onclick="execCmd('underline')"><u>U</u></button>
+        <button onclick="execCmd('strikethrough')"><s>S</s></button>
+        |
+        <button onclick="execCmd('insertUnorderedList')">• List</button>
+        <button onclick="execCmd('insertOrderedList')">1. List</button>
+        |
+        <button onclick="execCmd('undo')">↶ Undo</button>
+        <button onclick="execCmd('redo')">↷ Redo</button>
+        |
+        <button onclick="testBridge()">Test Bridge</button>
+    </div>
+    
+    <div id="editor" contenteditable="true" data-olw-id="olw-editor">
+        <p data-olw-id="olw-p1">Hello <strong data-olw-id="olw-strong1">World</strong>! This is a test editor.</p>
+        <p data-olw-id="olw-p2">Type here to test the WebView2 DOM shim.</p>
+    </div>
+    
+    <div id="status">Status: Ready</div>
+
+    <script>
+        function execCmd(cmd, value) {
+            document.execCommand(cmd, false, value);
+            document.getElementById('editor').focus();
+            log('execCommand: ' + cmd);
+        }
+        
+        function log(msg) {
+            var status = document.getElementById('status');
+            status.textContent = new Date().toLocaleTimeString() + ' - ' + msg + '\n' + status.textContent;
+        }
+        
+        function testBridge() {
+            log('Testing bridge connectivity...');
+            if (typeof OLW !== 'undefined') {
+                log('OLW bridge is loaded!');
+                log('OLW.element exists: ' + (typeof OLW.element !== 'undefined'));
+                log('OLW.document exists: ' + (typeof OLW.document !== 'undefined'));
+                log('OLW.selection exists: ' + (typeof OLW.selection !== 'undefined'));
+            } else {
+                log('OLW bridge NOT loaded yet');
+            }
+        }
+        
+        // Log when page is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            log('DOM loaded');
+        });
+        
+        window.addEventListener('load', function() {
+            log('Page fully loaded');
+        });
+    </script>
+</body>
+</html>

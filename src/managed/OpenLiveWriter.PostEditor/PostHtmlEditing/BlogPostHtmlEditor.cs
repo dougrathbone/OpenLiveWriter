@@ -145,17 +145,23 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public void Initialize(IBlogPostEditingContext editingContext, IBlogClientOptions clientOptions)
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} BlogPostHtmlEditor.Initialize starting");
             // this needs to happen before an editor is loaded, it is needed to know if
             // if the blog this band should show or not.
             bool firstTimeInitialization = _currentEditor == null;
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitDefaultEditorForBlog");
             InitDefaultEditorForBlog();
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} base.Initialize (HTML content load)");
             base.Initialize(editingContext, clientOptions, GetStyledHtml(), GetPreviewHtml(), true);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} base.Initialize done");
 
             commandSemanticHtml.SetAccountId(_currentBlog.Id, IsRTLTemplate, false);
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} _postPropertyEditor.Initialize");
             _postPropertyEditor.Initialize(editingContext, clientOptions);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} BlogPostHtmlEditor.Initialize done");
         }
 
         public override void SaveChanges(BlogPost post, BlogPostSaveOptions options)

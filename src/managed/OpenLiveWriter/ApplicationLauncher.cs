@@ -29,19 +29,24 @@ namespace OpenLiveWriter
             {
                 using (ProcessKeepalive.Open())
                 {
+                    System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: CheckforUpdates");
                     UpdateManager.CheckforUpdates();
 
                     // If the COM registration is not set up correctly, we won't be able to launch.
+                    System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: EnsureComRegistration");
                     RunningObjectTable.EnsureComRegistration();
 
                     // make sure blogging is configured before we proceed
+                    System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: EnsureBloggingConfigured");
                     if (EnsureBloggingConfigured(splashScreen))
                     {
+                        System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: EnsureBloggingConfigured returned true");
                         WriterCommandLineOptions options = WriterCommandLineOptions.Create(args);
 
                         // check for a prefs request
                         if (options.IsShowPreferences)
                         {
+                            System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: ShowPreferences branch");
                             if (splashScreen != null)
                                 splashScreen.Dispose();
 
@@ -51,6 +56,7 @@ namespace OpenLiveWriter
                         // check for an open-post request
                         else if (options.IsOpenPost)
                         {
+                            System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: OpenPost branch");
                             if (splashScreen != null)
                                 splashScreen.Dispose();
 
@@ -60,20 +66,28 @@ namespace OpenLiveWriter
                         // check for opening an existing post via the shell file association
                         else if (options.IsPostEditorFile)
                         {
+                            System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: PostEditorFile branch");
                             ExecutePostEditorFile(options.PostEditorFileName, splashScreen);
                         }
 
                         // check for recovered posts
                         else if (isFirstInstance && RecoverPosts(splashScreen))
                         {
+                            System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: RecoverPosts branch");
                             return;
                         }
 
                         // launch with an new empty post
                         else
                         {
+                            System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: NewPost branch - calling ExecuteNewPost");
                             ExecuteNewPost(splashScreen, null);
+                            System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: ExecuteNewPost returned");
                         }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm: EnsureBloggingConfigured returned false");
                     }
                 }
             }

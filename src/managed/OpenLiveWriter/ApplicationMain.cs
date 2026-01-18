@@ -180,10 +180,11 @@ namespace OpenLiveWriter
                     }
                     // }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     // Most likely we failed to create WLSetupClass, installation corrupt or incomplete
                     // Redirect user to repair/reinstall.
+                    System.Windows.Forms.MessageBox.Show($"Startup error:\n{ex.GetType().Name}: {ex.Message}\n\n{ex.StackTrace}", "Debug Info");
                     DisplayMessage.Show(MessageId.WriterCannotStart);
                 }
 
@@ -301,12 +302,16 @@ namespace OpenLiveWriter
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchFirstInstance starting");
                 PostEditorFile.Initialize();
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] PostEditorFile.Initialize done");
 
                 MaybeMigrateSettings();
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] MaybeMigrateSettings done");
 
                 // Make sure editor options are available before we launch the first instance.
                 GlobalEditorOptions.Init(new OpenLiveWriterContentTarget(), new OpenLiveWriterSettingsProvider());
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] GlobalEditorOptions.Init done");
 
                 // register file associations
                 // Removing this call, as it causes exceptions in Vista
@@ -315,12 +320,20 @@ namespace OpenLiveWriter
                 Trace.WriteLine(String.Format(CultureInfo.InvariantCulture, ".NET version: {0}", Environment.Version));
                 // force initialization which may fail with error dialogs
                 // and/or cause the whole application to not load
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] Calling PostEditorLifetimeManager.Initialize");
                 if (PostEditorLifetimeManager.Initialize())
                 {
+                    System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] PostEditorLifetimeManager.Initialize returned true");
                     initComplete = true;
 
                     // launch blogging form
+                    System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] Calling LaunchBloggingForm");
                     ApplicationLauncher.LaunchBloggingForm(args, splashScreen, true);
+                    System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] LaunchBloggingForm returned");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] PostEditorLifetimeManager.Initialize returned false");
                 }
 
                 ManualKeepalive.Wait(true);

@@ -2,14 +2,15 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
+using mshtml;
 
 namespace OpenLiveWriter.WebView2Shim
 {
     /// <summary>
-    /// WebView2 element wrapper - standalone class for now.
-    /// TODO: Implement IHTMLElement interfaces once all members are added.
+    /// WebView2 element wrapper implementing IHTMLElement.
+    /// Translates MSHTML interface calls to JavaScript DOM operations via WebView2.
     /// </summary>
-    public class WebView2Element
+    public class WebView2Element : IHTMLElement
     {
         private readonly WebView2Bridge _bridge;
         private readonly string _elementId;
@@ -44,7 +45,23 @@ namespace OpenLiveWriter.WebView2Shim
             return el;
         }
 
-        // ===== Core Properties =====
+        // ===== IHTMLElement Implementation =====
+
+        public void setAttribute(string strAttributeName, object AttributeValue, int lFlags = 1)
+        {
+            _bridge.ElementSetAttribute(_elementId, strAttributeName, AttributeValue?.ToString());
+        }
+
+        public object getAttribute(string strAttributeName, int lFlags = 0)
+        {
+            return _bridge.ElementGetAttribute(_elementId, strAttributeName);
+        }
+
+        public bool removeAttribute(string strAttributeName, int lFlags = 1)
+        {
+            _bridge.ElementRemoveAttribute(_elementId, strAttributeName);
+            return true;
+        }
 
         public string className
         {
@@ -60,7 +77,37 @@ namespace OpenLiveWriter.WebView2Shim
 
         public string tagName => _bridge.ElementGetTagName(_elementId);
 
+        IHTMLElement IHTMLElement.parentElement => CreateElement(_bridge.ElementGetParentElement(_elementId));
+        
         public WebView2Element parentElement => CreateElement(_bridge.ElementGetParentElement(_elementId));
+
+        public IHTMLStyle style => new WebView2Style(_bridge, _elementId);
+
+        // Event handlers - stub implementations (not typically used in OLW)
+        public object onhelp { get; set; }
+        public object onclick { get; set; }
+        public object ondblclick { get; set; }
+        public object onkeydown { get; set; }
+        public object onkeyup { get; set; }
+        public object onkeypress { get; set; }
+        public object onmouseout { get; set; }
+        public object onmouseover { get; set; }
+        public object onmousemove { get; set; }
+        public object onmousedown { get; set; }
+        public object onmouseup { get; set; }
+        public object onselectstart { get; set; }
+        public object ondragstart { get; set; }
+        public object onbeforeupdate { get; set; }
+        public object onafterupdate { get; set; }
+        public object onerrorupdate { get; set; }
+        public object onrowexit { get; set; }
+        public object onrowenter { get; set; }
+        public object ondatasetchanged { get; set; }
+        public object ondataavailable { get; set; }
+        public object ondatasetcomplete { get; set; }
+        public object onfilterchange { get; set; }
+
+        public object document => _document;
 
         public string title
         {
@@ -68,10 +115,52 @@ namespace OpenLiveWriter.WebView2Shim
             set => _bridge.ElementSetTitle(_elementId, value);
         }
 
+        public string language
+        {
+            get => _bridge.ElementGetAttribute(_elementId, "language");
+            set => _bridge.ElementSetAttribute(_elementId, "language", value);
+        }
+
+        public void scrollIntoView(object varargStart = null)
+        {
+            bool alignTop = varargStart == null || (varargStart is bool b && b);
+            _bridge.ElementScrollIntoView(_elementId, alignTop);
+        }
+
+        public bool contains(IHTMLElement pChild)
+        {
+            if (pChild == null) return false;
+            if (pChild is WebView2Element wv2Child)
+                return _bridge.ElementContains(_elementId, wv2Child.ElementId);
+            return false;
+        }
+
+        public int sourceIndex => _bridge.ExecuteScript<int>($@"
+            (function() {{
+                var el = OLW.util.getById({WebView2Bridge.JsonEncode(_elementId)});
+                if (!el) return -1;
+                var all = document.getElementsByTagName('*');
+                for (var i = 0; i < all.length; i++) {{
+                    if (all[i] === el) return i;
+                }}
+                return -1;
+            }})()");
+
+        public object recordNumber => null;
+
+        public string lang
+        {
+            get => _bridge.ElementGetAttribute(_elementId, "lang");
+            set => _bridge.ElementSetAttribute(_elementId, "lang", value);
+        }
+
         public int offsetLeft => _bridge.ElementGetOffsetLeft(_elementId);
         public int offsetTop => _bridge.ElementGetOffsetTop(_elementId);
         public int offsetWidth => _bridge.ElementGetOffsetWidth(_elementId);
         public int offsetHeight => _bridge.ElementGetOffsetHeight(_elementId);
+        
+        IHTMLElement IHTMLElement.offsetParent => CreateElement(_bridge.ElementGetOffsetParent(_elementId));
+        
         public WebView2Element offsetParent => CreateElement(_bridge.ElementGetOffsetParent(_elementId));
 
         public string innerHTML
@@ -92,36 +181,10 @@ namespace OpenLiveWriter.WebView2Shim
             set => _bridge.ElementSetOuterHTML(_elementId, value);
         }
 
-        // ===== Attributes =====
-
-        public void SetAttribute(string name, object value)
+        public string outerText
         {
-            _bridge.ElementSetAttribute(_elementId, name, value?.ToString());
-        }
-
-        public object GetAttribute(string name)
-        {
-            return _bridge.ElementGetAttribute(_elementId, name);
-        }
-
-        public void RemoveAttribute(string name)
-        {
-            _bridge.ElementRemoveAttribute(_elementId, name);
-        }
-
-        // ===== Methods =====
-
-        public void click() => _bridge.ElementClick(_elementId);
-
-        public void scrollIntoView(bool alignTop = true)
-        {
-            _bridge.ElementScrollIntoView(_elementId, alignTop);
-        }
-
-        public bool contains(WebView2Element child)
-        {
-            if (child == null) return false;
-            return _bridge.ElementContains(_elementId, child.ElementId);
+            get => _bridge.ExecuteScript<string>($"OLW.util.getById({WebView2Bridge.JsonEncode(_elementId)})?.outerText ?? ''");
+            set => _bridge.ExecuteScript($"var el = OLW.util.getById({WebView2Bridge.JsonEncode(_elementId)}); if(el) el.outerText = {WebView2Bridge.JsonEncode(value)}");
         }
 
         public void insertAdjacentHTML(string where, string html)
@@ -129,9 +192,26 @@ namespace OpenLiveWriter.WebView2Shim
             _bridge.ElementInsertAdjacentHTML(_elementId, where, html);
         }
 
+        public void insertAdjacentText(string where, string text)
+        {
+            _bridge.ExecuteScript($@"
+                var el = OLW.util.getById({WebView2Bridge.JsonEncode(_elementId)});
+                if (el) el.insertAdjacentText({WebView2Bridge.JsonEncode(where)}, {WebView2Bridge.JsonEncode(text)})");
+        }
+
+        IHTMLElement IHTMLElement.parentTextEdit => null; // Not typically used
+        
+        public WebView2Element parentTextEdit => null;
+
         public bool isTextEdit => _bridge.ElementIsTextEdit(_elementId);
 
-        public WebView2ElementCollection children
+        public void click() => _bridge.ElementClick(_elementId);
+
+        public IHTMLFiltersCollection filters => null; // Deprecated IE feature
+
+        string IHTMLElement.toString() => ToString();
+
+        public object children
         {
             get
             {
@@ -140,13 +220,29 @@ namespace OpenLiveWriter.WebView2Shim
             }
         }
 
-        // ===== Style =====
-
-        public WebView2Style style => new WebView2Style(_bridge, _elementId);
-
-        public string GetStyleProperty(string property) => _bridge.ElementGetStyleProperty(_elementId, property);
-        public void SetStyleProperty(string property, string value) => _bridge.ElementSetStyleProperty(_elementId, property, value);
-        public string GetComputedStyle(string property) => _bridge.ElementGetComputedStyle(_elementId, property);
+        public object all
+        {
+            get
+            {
+                var ids = _bridge.ExecuteScript<string[]>($@"
+                    (function() {{
+                        var el = OLW.util.getById({WebView2Bridge.JsonEncode(_elementId)});
+                        if (!el) return [];
+                        var elems = el.getElementsByTagName('*');
+                        var result = [];
+                        for (var i = 0; i < elems.length; i++) {{
+                            var id = elems[i].getAttribute('data-olw-id');
+                            if (!id) {{
+                                id = 'olw-' + Date.now() + '-' + i;
+                                elems[i].setAttribute('data-olw-id', id);
+                            }}
+                            result.push(id);
+                        }}
+                        return result;
+                    }})()") ?? Array.Empty<string>();
+                return new WebView2ElementCollection(_bridge, ids, _document);
+            }
+        }
 
         // ===== IHTMLElement2-like members =====
 

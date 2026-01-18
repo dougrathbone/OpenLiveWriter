@@ -44,7 +44,7 @@ namespace OpenLiveWriter.WebView2Shim
                 foreach (var id in _elementIds)
                 {
                     var el = new WebView2Element(_bridge, id) { ParentDocument = _document };
-                    if (el.id == nameStr || el.GetAttribute("name")?.ToString() == nameStr)
+                    if (el.id == nameStr || el.getAttribute("name", 0)?.ToString() == nameStr)
                     {
                         if (matchCount == idx)
                             return el;
@@ -63,7 +63,7 @@ namespace OpenLiveWriter.WebView2Shim
                 foreach (var id in _elementIds)
                 {
                     var el = new WebView2Element(_bridge, id) { ParentDocument = _document };
-                    if (el.id == str || el.GetAttribute("name")?.ToString() == str)
+                    if (el.id == str || el.getAttribute("name", 0)?.ToString() == str)
                     {
                         if (firstMatch == null) firstMatch = el;
                         matchCount++;
@@ -78,7 +78,7 @@ namespace OpenLiveWriter.WebView2Shim
                 foreach (var id in _elementIds)
                 {
                     var el = new WebView2Element(_bridge, id) { ParentDocument = _document };
-                    if (el.id == str || el.GetAttribute("name")?.ToString() == str)
+                    if (el.id == str || el.getAttribute("name", 0)?.ToString() == str)
                     {
                         matchIds.Add(id);
                     }

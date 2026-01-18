@@ -4,11 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{8E5C2A3D-F9B4-4C1E-A7D5-6B3E9F8A2C1D}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OpenLiveWriter.WebView2Shim</RootNamespace>
-    <AssemblyName>OpenLiveWriter.WebView2Shim</AssemblyName>
+    <ProjectGuid>{9E5C2A3D-F9B4-4C1E-A7D5-6B3E9F8A2C1E}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>OpenLiveWriter.WebView2Shim.TestHarness</RootNamespace>
+    <AssemblyName>WebView2ShimTest</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -21,6 +20,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -32,38 +33,35 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Web.WebView2.Core">
-      <HintPath>..\packages\Microsoft.Web.WebView2.1.0.2903.40\lib\net462\Microsoft.Web.WebView2.Core.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Web.WebView2.1.0.2903.40\lib\net462\Microsoft.Web.WebView2.Core.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Web.WebView2.WinForms">
-      <HintPath>..\packages\Microsoft.Web.WebView2.1.0.2903.40\lib\net462\Microsoft.Web.WebView2.WinForms.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Web.WebView2.1.0.2903.40\lib\net462\Microsoft.Web.WebView2.WinForms.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="WebView2Bridge.cs" />
-    <Compile Include="WebView2Document.cs" />
-    <Compile Include="WebView2Element.cs" />
-    <Compile Include="WebView2ElementCollection.cs" />
-    <Compile Include="WebView2Selection.cs" />
-    <Compile Include="WebView2Style.cs" />
-    <Compile Include="WebView2TextRange.cs" />
+    <Compile Include="TestForm.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\olw-dom-bridge.js" />
+    <Content Include="editor.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OpenLiveWriter.WebView2Shim.csproj">
+      <Project>{8E5C2A3D-F9B4-4C1E-A7D5-6B3E9F8A2C1D}</Project>
+      <Name>OpenLiveWriter.WebView2Shim</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\OpenLiveWriter.Interop.Mshtml\OpenLiveWriter.Interop.Mshtml.csproj">
-      <Project>{0ae37842-33af-4a3c-b405-e57a1dd78e9f}</Project>
-      <Name>OpenLiveWriter.Interop.Mshtml</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
