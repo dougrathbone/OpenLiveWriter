@@ -8,6 +8,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -292,10 +293,9 @@ namespace OpenLiveWriter.PostEditor.Video.YouTube
 
             if (!string.IsNullOrEmpty(_updateUrl))
             {
-                HttpWebRequest req = HttpRequestHelper.CreateHttpWebRequest(_updateUrl, true, -1, -1);
-                YouTubeUploadRequestHelper.AddSimpleHeader(req, _authToken);
-                req.Method = "DELETE";
-                req.GetResponse().Close();
+                using var request = new HttpRequestMessage(HttpMethod.Delete, _updateUrl);
+                YouTubeUploadRequestHelper.AddSimpleHeader(request, _authToken);
+                using var response = HttpClientService.DefaultClient.SendAsync(request).GetAwaiter().GetResult();
             }
 
         }
@@ -455,15 +455,13 @@ namespace OpenLiveWriter.PostEditor.Video.YouTube
         private bool IsVideoComepleted()
         {
             // Send a request to get the status
-            HttpWebRequest req = HttpRequestHelper.CreateHttpWebRequest(_updateUrl, true, -1, -1);
-            YouTubeUploadRequestHelper.AddSimpleHeader(req, _authToken);
+            using var request = new HttpRequestMessage(HttpMethod.Get, _updateUrl);
+            YouTubeUploadRequestHelper.AddSimpleHeader(request, _authToken);
             string innerResult;
-            using (HttpWebResponse response = (HttpWebResponse)req.GetResponse())
+            using (var response = HttpClientService.DefaultClient.SendAsync(request).GetAwaiter().GetResult())
             {
-                using (StreamReader responseReader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
-                {
-                    innerResult = responseReader.ReadToEnd();
-                }
+                response.EnsureSuccessStatusCode();
+                innerResult = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
             }
 
             // Find the status element
@@ -556,6 +554,13 @@ namespace OpenLiveWriter.PostEditor.Video.YouTube
             request.Headers.Add("Authorization", authToken);
             //request.Headers.Add("X-GData-Client", YouTubeVideoPublisher.CLIENT_CODE);
             request.Headers.Add("X-GData-Key", "key=" + YouTubeVideoPublisher.DEVELOPER_KEY);
+        }
+
+        internal static void AddSimpleHeader(HttpRequestMessage request, string authToken)
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", authToken);
+            //request.Headers.TryAddWithoutValidation("X-GData-Client", YouTubeVideoPublisher.CLIENT_CODE);
+            request.Headers.TryAddWithoutValidation("X-GData-Key", "key=" + YouTubeVideoPublisher.DEVELOPER_KEY);
         }
 
         internal void Open()

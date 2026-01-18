@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Windows.Forms;
 using System.Xml;
 using OpenLiveWriter.CoreServices;
@@ -237,15 +238,24 @@ namespace OpenLiveWriter.PostEditor.Video.YouTube
             Stream responseStream;
             try
             {
-                HttpWebRequest req = HttpRequestHelper.CreateHttpWebRequest(requestUrl, true, timeoutMs, timeoutMs);
-                YouTubeUploadRequestHelper.AddSimpleHeader(req, YouTubeAuth.Instance.AuthToken);
-                using (HttpWebResponse response = (HttpWebResponse)req.GetResponse())
+                using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+                YouTubeUploadRequestHelper.AddSimpleHeader(request, YouTubeAuth.Instance.AuthToken);
+
+                using var cts = timeoutMs > 0
+                    ? new System.Threading.CancellationTokenSource(timeoutMs)
+                    : new System.Threading.CancellationTokenSource();
+
+                var response = HttpClientService.DefaultClient.SendAsync(request, cts.Token).GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
+
+                using (Stream responseStreamOriginal = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
                 {
-                    using (Stream responseStreamOrginal = response.GetResponseStream())
-                    {
-                        responseStream = StreamHelper.CopyToMemoryStream(responseStreamOrginal);
-                    }
+                    responseStream = StreamHelper.CopyToMemoryStream(responseStreamOriginal);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw new YouTubeException("Request Timed Out", "The request to YouTube timed out (the service may be unavailable right now).");
             }
             catch (Exception ex)
             {
