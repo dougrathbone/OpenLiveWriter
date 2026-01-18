@@ -16,7 +16,7 @@
     <Compile Remove="HTML\WebPageDownloader.cs" />
     <Compile Remove="HTML\AsyncPageDownload.cs" />
     <!-- InternetShortCut.cs re-enabled - simple COM interop -->
-    <Compile Remove="WebRequest\MultiThreadedPageDownloader.cs" />
+    <!-- MultiThreadedPageDownloader.cs re-enabled - namespace updated from Project31 to OpenLiveWriter -->
     <Compile Remove="WebRequest\CloseTrackingHttpWebRequest.cs" />
     <Compile Remove="DataObject\SearchReferrerChain.cs" />
     <Compile Remove="ComponentRootDesigner.cs" />

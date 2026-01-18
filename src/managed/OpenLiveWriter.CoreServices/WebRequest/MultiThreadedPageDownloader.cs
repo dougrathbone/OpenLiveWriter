@@ -2,17 +2,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
-using System.Diagnostics;
-using System.Drawing;
 using System.Collections;
-using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Threading;
-using System.Windows.Forms;
-using Project31.CoreServices.Progress;
+using OpenLiveWriter.CoreServices.Progress;
+using OpenLiveWriter.CoreServices.Threading;
 
-namespace Project31.CoreServices
+namespace OpenLiveWriter.CoreServices
 {
 
     public class DownloadResults

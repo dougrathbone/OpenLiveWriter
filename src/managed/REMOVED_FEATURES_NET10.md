@@ -35,7 +35,6 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 |------|--------|
 | `HTML/WebPageDownloader.cs` | Uses unavailable Project31 namespaces |
 | `HTML/AsyncPageDownload.cs` | Uses unavailable Project31 namespaces |
-| `WebRequest/MultiThreadedPageDownloader.cs` | Uses unavailable Project31 namespaces |
 | `WebRequest/CloseTrackingHttpWebRequest.cs` | Uses `RealProxy` (not available in .NET 10) |
 | `DataObject/SearchReferrerChain.cs` | Uses unavailable Project31 namespaces |
 
@@ -79,6 +78,7 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 - ✅ `HttpClientRedirectHelper.cs` - New HttpClient-based redirect helper (replaces RedirectHelper)
 - ✅ `HttpClientXmlRestRequestHelper.cs` - New HttpClient-based XML REST helper (replaces XmlRestRequestHelper)
 - ✅ `PostEditorMainControl.ValidateHtml` - Migrated to use HttpClient
+- ✅ `MultiThreadedPageDownloader.cs` - Re-enabled (namespace updated from Project31 to OpenLiveWriter)
 - ⏳ Blog client infrastructure (AtomClient, YouTube, etc.) - Legacy callers still use old patterns
 
 **For New Code:**
