@@ -387,6 +387,39 @@ namespace OpenLiveWriter.WebView2Shim
             return child;
         }
 
+        /// <summary>
+        /// Removes this element from the DOM. If removeChildren is true, removes children too.
+        /// </summary>
+        public IHTMLElement removeNode(bool removeChildren)
+        {
+            _bridge.ExecuteScript($@"
+                var el = OLW.util.getById({WebView2Bridge.JsonEncode(_elementId)});
+                if (el && el.parentNode) {{
+                    if ({(removeChildren ? "true" : "false")}) {{
+                        el.parentNode.removeChild(el);
+                    }} else {{
+                        // Move children to parent before removing
+                        while (el.firstChild) {{
+                            el.parentNode.insertBefore(el.firstChild, el);
+                        }}
+                        el.parentNode.removeChild(el);
+                    }}
+                }}");
+            return this;
+        }
+
+        /// <summary>
+        /// Creates a text range for this element (IHTMLTxtRange equivalent).
+        /// </summary>
+        public WebView2TextRange createTextRange()
+        {
+            if (_document == null)
+                throw new InvalidOperationException("Element is not associated with a document");
+            var range = new WebView2TextRange(_bridge, _document);
+            range.moveToElementText(this);
+            return range;
+        }
+
         public override string ToString()
         {
             return $"WebView2Element[{_elementId}]: <{tagName}>";

@@ -36,7 +36,7 @@ namespace OpenLiveWriter.WebView2Shim.TestHarness
             _buttonPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 70,
+                Height = 90,
                 Padding = new Padding(5)
             };
 
@@ -48,6 +48,16 @@ namespace OpenLiveWriter.WebView2Shim.TestHarness
             AddButton("Get Selection", (s, e) => TestGetSelection());
             AddButton("Get innerHTML", (s, e) => TestGetInnerHTML());
             AddButton("Set innerHTML", (s, e) => TestSetInnerHTML());
+            
+            // Row 2: TextRange operations
+            AddButton("PasteHTML", (s, e) => TestPasteHTML());
+            AddButton("Range.select()", (s, e) => TestRangeSelect());
+            AddButton("MoveToElement", (s, e) => TestMoveToElement());
+            AddButton("InsertAdjacent", (s, e) => TestInsertAdjacentHTML());
+            AddButton("CreateElement", (s, e) => TestCreateElement());
+            AddButton("RemoveNode", (s, e) => TestRemoveNode());
+            AddButton("ParentElement", (s, e) => TestParentElement());
+            AddButton("GetByTagName", (s, e) => TestGetElementsByTagName());
 
             Controls.Add(_buttonPanel);
 
@@ -270,6 +280,186 @@ namespace OpenLiveWriter.WebView2Shim.TestHarness
                 {
                     editor.innerHTML = "<p><strong>Content set via C# shim!</strong></p><p>This proves the bridge works.</p>";
                     Log("Set innerHTML via C# shim - check the editor!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error: {ex.Message}");
+            }
+        }
+
+        private void TestPasteHTML()
+        {
+            if (!CheckBridge()) return;
+            try
+            {
+                var selection = _document.selection;
+                var range = selection.createRange();
+                range.pasteHTML("<em>[PASTED via pasteHTML]</em>");
+                Log("pasteHTML() executed - check the editor for inserted content!");
+                range.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log($"Error: {ex.Message}");
+            }
+        }
+
+        private void TestRangeSelect()
+        {
+            if (!CheckBridge()) return;
+            try
+            {
+                // Get the editor and select at its start
+                var editor = _document.getElementById("editor");
+                if (editor != null)
+                {
+                    var range = _document.body.createTextRange();
+                    range.moveToElementText(editor);
+                    range.collapse(true); // Collapse to start
+                    range.select();
+                    // Focus the editor element in JS
+                    editor.focus();
+                    // Also focus the WebView2 control in WinForms
+                    _webView.Focus();
+                    Log("Range.select() executed - cursor should be at start of editor!");
+                    range.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error: {ex.Message}");
+            }
+        }
+
+        private void TestMoveToElement()
+        {
+            if (!CheckBridge()) return;
+            try
+            {
+                var editor = _document.getElementById("editor");
+                if (editor != null)
+                {
+                    var range = _document.body.createTextRange();
+                    range.moveToElementText(editor);
+                    Log($"moveToElementText() - range text: '{range.text?.Substring(0, Math.Min(50, range.text?.Length ?? 0))}...'");
+                    Log($"moveToElementText() - range htmlText length: {range.htmlText?.Length ?? 0}");
+                    range.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error: {ex.Message}");
+            }
+        }
+
+        private void TestInsertAdjacentHTML()
+        {
+            if (!CheckBridge()) return;
+            try
+            {
+                var editor = _document.getElementById("editor");
+                if (editor != null)
+                {
+                    editor.insertAdjacentHTML("beforeend", "<p style='color:blue'>[Inserted via insertAdjacentHTML]</p>");
+                    Log("insertAdjacentHTML('beforeend') executed - check the editor!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error: {ex.Message}");
+            }
+        }
+
+        private void TestCreateElement()
+        {
+            if (!CheckBridge()) return;
+            try
+            {
+                var newElement = _document.createElement("div");
+                newElement.innerHTML = "<strong>[Created via createElement]</strong>";
+                newElement.id = "created-element";
+                
+                var editor = _document.getElementById("editor");
+                if (editor != null)
+                {
+                    editor.appendChild(newElement);
+                    Log($"createElement() + appendChild() executed!");
+                    Log($"New element id: {newElement.id}, tagName: {newElement.tagName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error: {ex.Message}");
+            }
+        }
+
+        private void TestRemoveNode()
+        {
+            if (!CheckBridge()) return;
+            try
+            {
+                // Try to remove the element we created
+                var created = _document.getElementById("created-element");
+                if (created != null)
+                {
+                    created.removeNode(true);
+                    Log("removeNode(true) executed - created element should be gone!");
+                }
+                else
+                {
+                    Log("No 'created-element' found to remove. Click 'CreateElement' first.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error: {ex.Message}");
+            }
+        }
+
+        private void TestParentElement()
+        {
+            if (!CheckBridge()) return;
+            try
+            {
+                var editor = _document.getElementById("editor");
+                if (editor != null)
+                {
+                    var parent = editor.parentElement;
+                    Log($"editor.parentElement: tagName={parent?.tagName}, id={parent?.id}");
+                    
+                    // Walk up the tree
+                    var current = editor as WebView2Element;
+                    int depth = 0;
+                    while (current != null && depth < 5)
+                    {
+                        Log($"  [{depth}] {current.tagName} (id: {current.id})");
+                        current = current.parentElement;
+                        depth++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error: {ex.Message}");
+            }
+        }
+
+        private void TestGetElementsByTagName()
+        {
+            if (!CheckBridge()) return;
+            try
+            {
+                var paragraphs = _document.getElementsByTagName("p");
+                Log($"getElementsByTagName('p'): found {paragraphs.length} elements");
+                for (int i = 0; i < Math.Min(3, paragraphs.length); i++)
+                {
+                    var p = paragraphs.item(i) as WebView2Element;
+                    if (p != null)
+                    {
+                        var text = p.innerText;
+                        Log($"  [{i}] {text?.Substring(0, Math.Min(40, text?.Length ?? 0))}...");
+                    }
                 }
             }
             catch (Exception ex)
