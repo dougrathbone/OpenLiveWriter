@@ -4,6 +4,8 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
 using mshtml;
@@ -14,6 +16,46 @@ using OpenLiveWriter.Mshtml;
 
 namespace OpenLiveWriter.WebView2Shim
 {
+    /// <summary>
+    /// COM-visible class exposed to JavaScript for bidirectional communication.
+    /// JS updates these properties on input, C# reads them synchronously.
+    /// </summary>
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.AutoDual)]
+    public class EditorContentBridge
+    {
+        private string _title = "";
+        private string _body = "";
+        
+        public string Title 
+        { 
+            get => _title;
+            set
+            {
+                _title = value;
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Bridge.Title SET: {value?.Length ?? 0} chars");
+            }
+        }
+        
+        public string Body 
+        { 
+            get => _body;
+            set
+            {
+                _body = value;
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Bridge.Body SET: {value?.Length ?? 0} chars");
+            }
+        }
+        
+        public bool IsDirty { get; set; } = false;
+        
+        public void MarkDirty()
+        {
+            IsDirty = true;
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Bridge.MarkDirty() called");
+        }
+    }
+    
     /// <summary>
     /// WebView2-based HTML editor control that implements IHtmlEditor.
     /// This is designed to be a drop-in replacement for the MSHTML-based editor.
@@ -30,11 +72,13 @@ namespace OpenLiveWriter.WebView2Shim
         private string _pendingHtml;
         private string _pendingFilePath;
         private WebView2HtmlEditorCommandSource _commandSource;
+        private EditorContentBridge _contentBridge;
 
         public WebView2HtmlEditorControl()
         {
             _instanceId = ++_instanceCounter;
             System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl#{_instanceId} created");
+            _contentBridge = new EditorContentBridge();
             InitializeComponent();
             // Create command source immediately so it's never null
             _commandSource = new WebView2HtmlEditorCommandSource(this, null);
@@ -64,6 +108,10 @@ namespace OpenLiveWriter.WebView2Shim
                 // Set background color after initialization
                 _webView.DefaultBackgroundColor = System.Drawing.Color.White;
                 
+                // Expose the content bridge to JavaScript - this allows synchronous read/write
+                _webView.CoreWebView2.AddHostObjectToScript("olw", _contentBridge);
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} Host object 'olw' added to script");
+                
                 // Mark as initialized once CoreWebView2 is ready - we can now navigate
                 _isInitialized = true;
                 
@@ -72,13 +120,13 @@ namespace OpenLiveWriter.WebView2Shim
                     System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} NavigationStarting - URL: {e.Uri}");
                 };
                 
-                _webView.CoreWebView2.NavigationCompleted += (s, e) =>
+                _webView.CoreWebView2.NavigationCompleted += async (s, e) =>
                 {
                     System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} NavigationCompleted - IsSuccess: {e.IsSuccess}, URL: {_webView.CoreWebView2.Source}");
                     if (e.IsSuccess)
                     {
-                        // Bridge init can fail on file:// URLs without our editor, that's OK
-                        try { InitializeBridge(); } catch { }
+                        // Inject host object sync listeners after navigation completes
+                        await SetupHostObjectListeners();
                     }
                 };
 
@@ -107,6 +155,49 @@ namespace OpenLiveWriter.WebView2Shim
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl init error: {ex.Message}");
+            }
+        }
+        
+        private async Task SetupHostObjectListeners()
+        {
+            try
+            {
+                // Inject JavaScript that sets up input listeners to sync content to the host object
+                var script = @"
+                    (function() {
+                        if (window.olwListenersSetup) return 'already setup';
+                        
+                        var titleEl = document.getElementById('olw-title');
+                        var bodyEl = document.getElementById('olw-body');
+                        
+                        if (!titleEl || !bodyEl) return 'elements not found';
+                        if (!window.chrome || !window.chrome.webview || !window.chrome.webview.hostObjects) return 'hostObjects not available';
+                        
+                        window.olwListenersSetup = true;
+                        var olw = window.chrome.webview.hostObjects.sync.olw;
+                        
+                        function syncContent() {
+                            olw.Title = titleEl.innerHTML;
+                            olw.Body = bodyEl.innerHTML;
+                            olw.MarkDirty();
+                        }
+                        
+                        titleEl.addEventListener('input', syncContent);
+                        bodyEl.addEventListener('input', syncContent);
+                        
+                        // Sync initial content
+                        syncContent();
+                        
+                        return 'listeners setup ok';
+                    })();
+                ";
+                
+                var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} SetupHostObjectListeners result: {result}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} SetupHostObjectListeners error: {ex.Message}");
             }
         }
 
@@ -155,19 +246,37 @@ namespace OpenLiveWriter.WebView2Shim
 <head>
     <meta charset='utf-8'>
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; }
-        #olw-editor {
-            min-height: 100%;
-            padding: 10px;
-            box-sizing: border-box;
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%;
+            background-color: #ffffff;
+        }
+        body {
             font-family: Segoe UI, Arial, sans-serif;
             font-size: 14px;
+            padding: 10px;
+        }
+        #olw-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+            outline: none;
+        }
+        #olw-body {
+            min-height: 300px;
+            outline: none;
+        }
+        [contenteditable]:focus {
             outline: none;
         }
     </style>
 </head>
 <body>
-    <div id='olw-editor' contenteditable='true'></div>
+    <div id='olw-title' contenteditable='true'></div>
+    <div id='olw-body' contenteditable='true'></div>
 </body>
 </html>";
         }
@@ -183,19 +292,16 @@ namespace OpenLiveWriter.WebView2Shim
                 }
             }
         }
-
-        private string _cachedBodyHtml = "";
-        private string _cachedTitleHtml = "";
         
         private string GetEditorContent()
         {
-            // For now, return what we last loaded - will be updated when we have proper JS bridge
-            return _cachedBodyHtml;
+            return _contentBridge.Body ?? "";
         }
         
         public string GetEditedTitleHtml()
         {
-            return _cachedTitleHtml;
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} GetEditedTitleHtml - bridge title length: {_contentBridge.Title?.Length ?? 0}, value: '{_contentBridge.Title}'");
+            return _contentBridge.Title ?? "";
         }
 
         public WebView2Document Document => _document;
@@ -238,9 +344,9 @@ namespace OpenLiveWriter.WebView2Shim
                 var title = titleMatch.Success ? titleMatch.Groups[1].Value : "";
                 var body = bodyMatch.Success ? bodyMatch.Groups[1].Value : "";
                 
-                // Cache the content we're loading
-                _cachedTitleHtml = title;
-                _cachedBodyHtml = body;
+                // Update the content bridge so C# has initial values
+                _contentBridge.Title = title;
+                _contentBridge.Body = body;
                 
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} UpdateContentViaJavaScript - title length: {title.Length}, body length: {body.Length}");
                 
@@ -248,9 +354,29 @@ namespace OpenLiveWriter.WebView2Shim
                 var escapedTitle = title.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
                 var escapedBody = body.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
                 
+                // Update content AND setup host object sync
                 var script = $@"
                     document.getElementById('olw-title').innerHTML = '{escapedTitle}';
                     document.getElementById('olw-body').innerHTML = '{escapedBody}';
+                    
+                    // Setup change listeners using host object (sync to C#)
+                    if (!window.olwListenersSetup) {{
+                        window.olwListenersSetup = true;
+                        
+                        // Get the host object - this is synchronous COM bridge to C#
+                        const olw = window.chrome.webview.hostObjects.sync.olw;
+                        
+                        function syncContentToHost() {{
+                            olw.Title = document.getElementById('olw-title').innerHTML;
+                            olw.Body = document.getElementById('olw-body').innerHTML;
+                            olw.MarkDirty();
+                        }}
+                        
+                        document.getElementById('olw-title').addEventListener('input', syncContentToHost);
+                        document.getElementById('olw-body').addEventListener('input', syncContentToHost);
+                        
+                        console.log('OLW: Host object sync setup');
+                    }}
                     'done';
                 ";
                 
@@ -265,14 +391,15 @@ namespace OpenLiveWriter.WebView2Shim
 
         public string GetEditedHtml(bool preferWellFormed)
         {
-            // Return cached body - updates happen when content changes via JS bridge
-            return _cachedBodyHtml;
+            // Read directly from the content bridge - JS syncs on every input event
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} GetEditedHtml - bridge body length: {_contentBridge.Body?.Length ?? 0}");
+            return _contentBridge.Body ?? "";
         }
 
         public string GetEditedHtmlFast()
         {
-            // Return cached without updating - used for quick checks
-            return _cachedBodyHtml;
+            // Same as GetEditedHtml - bridge is always current
+            return _contentBridge.Body ?? "";
         }
 
         public string SelectedText

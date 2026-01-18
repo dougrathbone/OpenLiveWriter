@@ -1725,7 +1725,9 @@ namespace OpenLiveWriter.PostEditor
                     componentContext.AfterInitialInsertion += new EventHandler(ContentEditor_AfterInitialInsertion);
                 }
 
+                Debug.WriteLine($"[OLW-DEBUG] SetCurrentEditor - getting title from {_currentEditor.GetType().Name}");
                 htmlTitle = _currentEditor.GetEditedTitleHtml();
+                Debug.WriteLine($"[OLW-DEBUG] SetCurrentEditor - got title: '{htmlTitle}'");
                 htmlContents = Body;
 
                 //refresh smart content HTML (deal with the case where user edits the content directly in the source editor)

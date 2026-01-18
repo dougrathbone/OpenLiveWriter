@@ -76,6 +76,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             _baseUrl = baseUrl ?? "";
             
             // For now, just load the body HTML into the editor
+            // NOTE: No inline script - listeners are set up via ExecuteScriptAsync after navigation
             var html = $@"<!DOCTYPE html>
 <html>
 <head>
@@ -106,7 +107,6 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             background-color: #ffffff;
             outline: none;
         }}
-        /* Remove default contenteditable focus outline */
         [contenteditable]:focus {{
             outline: none;
         }}

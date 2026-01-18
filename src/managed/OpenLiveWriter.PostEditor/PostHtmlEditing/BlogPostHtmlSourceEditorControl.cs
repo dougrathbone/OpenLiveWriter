@@ -173,6 +173,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public void LoadHtmlFragment(string title, string postBodyHtml, string baseUrl, BlogEditingTemplate editingTemplate)
         {
+            Debug.WriteLine($"[OLW-DEBUG] SourceEditor.LoadHtmlFragment - title: '{title}', ContainsTitle: {editingTemplate.ContainsTitle}");
             const int SPACE_BETWEEN_TITLE_AND_BODY = 4;
             if (editingTemplate.ContainsTitle)
             {
@@ -181,6 +182,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
                 panelSourceEditor.Top = textBoxTitle.Bottom + SPACE_BETWEEN_TITLE_AND_BODY;
                 panelSourceEditor.Height = Height - panelSourceEditor.Top;
                 textBoxTitle.Text = title;
+                Debug.WriteLine($"[OLW-DEBUG] SourceEditor - title textbox set to: '{title}'");
             }
             else
             {
@@ -188,6 +190,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
                 textBoxTitle.Visible = false;
                 panelSourceEditor.Top = textBoxTitle.Top;
                 panelSourceEditor.Height = Height - panelSourceEditor.Top;
+                Debug.WriteLine($"[OLW-DEBUG] SourceEditor - title textbox HIDDEN (ContainsTitle=false)");
             }
 
             //make the post body HTML look pretty
