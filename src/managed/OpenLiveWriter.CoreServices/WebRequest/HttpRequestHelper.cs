@@ -72,12 +72,20 @@ namespace OpenLiveWriter.CoreServices
         
         /// <summary>
         /// Wraps an HttpWebResponse for close tracking in DEBUG builds.
-        /// Call this after calling GetResponse() on a tracked request.
+        /// Returns a tracker that should be marked as closed when the response is disposed.
         /// </summary>
-        [System.Diagnostics.Conditional("DEBUG")]
-        public static void TrackResponse(ref HttpWebResponse response)
+        public static ResponseCloseTracker TrackResponse(HttpWebResponse response)
         {
-            CloseTrackingHttpWebRequest.TrackResponse(ref response);
+            return CloseTrackingHttpWebRequest.TrackResponse(response);
+        }
+        
+        /// <summary>
+        /// Gets a response stream that automatically tracks disposal in DEBUG builds.
+        /// Disposing this stream marks the response as properly closed.
+        /// </summary>
+        public static Stream GetTrackedResponseStream(HttpWebResponse response)
+        {
+            return CloseTrackingHttpWebRequest.GetTrackedResponseStream(response);
         }
 
         #region HttpClient-based methods (Modern API)
