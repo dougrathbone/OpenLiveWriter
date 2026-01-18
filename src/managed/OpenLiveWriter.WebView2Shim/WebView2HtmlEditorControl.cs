@@ -20,7 +20,7 @@ namespace OpenLiveWriter.WebView2Shim
 {
     /// <summary>
     /// COM-visible class exposed to JavaScript for bidirectional communication.
-    /// JS updates these properties on input, C# reads them synchronously.
+    /// JS updates these properties on input/selection change, C# reads them synchronously.
     /// </summary>
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.AutoDual)]
@@ -28,6 +28,7 @@ namespace OpenLiveWriter.WebView2Shim
     {
         private string _title = "";
         private string _body = "";
+        private string _selection = "";
         
         public string Title 
         { 
@@ -47,6 +48,15 @@ namespace OpenLiveWriter.WebView2Shim
                 _body = value;
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Bridge.Body SET: {value?.Length ?? 0} chars");
             }
+        }
+        
+        /// <summary>
+        /// Current selection text - updated by JS on selectionchange event
+        /// </summary>
+        public string Selection
+        {
+            get => _selection;
+            set => _selection = value ?? "";
         }
         
         public bool IsDirty { get; set; } = false;
@@ -75,6 +85,11 @@ namespace OpenLiveWriter.WebView2Shim
         private string _pendingFilePath;
         private WebView2HtmlEditorCommandSource _commandSource;
         private EditorContentBridge _contentBridge;
+        
+        /// <summary>
+        /// Fired when the editor has finished loading and is ready for editing.
+        /// </summary>
+        public event EventHandler ReadyForEditing;
 
         public WebView2HtmlEditorControl()
         {
@@ -114,6 +129,26 @@ namespace OpenLiveWriter.WebView2Shim
                 _webView.CoreWebView2.AddHostObjectToScript("olw", _contentBridge);
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} Host object 'olw' added to script");
                 
+                // Set up message handler for Ctrl+K and other JS-initiated actions
+                _webView.CoreWebView2.WebMessageReceived += (s, e) =>
+                {
+                    try
+                    {
+                        var json = e.WebMessageAsJson;
+                        if (json?.Contains("insertLink") == true)
+                        {
+                            // Get selection from bridge (synced by JS on selectionchange)
+                            var selectedText = _contentBridge.Selection;
+                            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Received insertLink from JS, selection from bridge: '{selectedText}'");
+                            _commandSource.ShowInsertLinkDialog(selectedText);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebMessageReceived error: {ex.Message}");
+                    }
+                };
+                
                 // Mark as initialized once CoreWebView2 is ready - we can now navigate
                 _isInitialized = true;
                 
@@ -132,8 +167,68 @@ namespace OpenLiveWriter.WebView2Shim
                         
                         // Notify command source that WebView2 is ready
                         _commandSource.SetWebView(_webView);
+                        
+                        // Fire ReadyForEditing event - editor is now fully operational
+                        ReadyForEditing?.Invoke(this, EventArgs.Empty);
                     }
                 };
+                
+                // Handle keyboard shortcuts via CoreWebView2Controller
+                _webView.CoreWebView2.GetDevToolsProtocolEventReceiver("cycler").DevToolsProtocolEventReceived += (s, e) => { };
+                var controller = (Microsoft.Web.WebView2.Core.CoreWebView2Controller)typeof(WebView2)
+                    .GetProperty("CoreWebView2Controller", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.GetValue(_webView);
+                
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} CoreWebView2Controller obtained: {controller != null}");
+                    
+                if (controller != null)
+                {
+                    controller.AcceleratorKeyPressed += (s, e) =>
+                    {
+                        // Check for Ctrl+key combinations on KeyDown
+                        if (e.KeyEventKind == Microsoft.Web.WebView2.Core.CoreWebView2KeyEventKind.KeyDown &&
+                            (Control.ModifierKeys & Keys.Control) == Keys.Control)
+                        {
+                            var key = (Keys)e.VirtualKey;
+                            bool handled = false;
+                            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] AcceleratorKey: Ctrl+{key}");
+                            
+                            switch (key)
+                            {
+                                case Keys.B:
+                                    _commandSource.ApplyBold();
+                                    handled = true;
+                                    break;
+                                case Keys.I:
+                                    _commandSource.ApplyItalic();
+                                    handled = true;
+                                    break;
+                                case Keys.U:
+                                    _commandSource.ApplyUnderline();
+                                    handled = true;
+                                    break;
+                                case Keys.K:
+                                    System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] Ctrl+K detected, calling InsertLink");
+                                    _commandSource.InsertLink();
+                                    handled = true;
+                                    break;
+                                case Keys.Z:
+                                    _commandSource.Undo();
+                                    handled = true;
+                                    break;
+                                case Keys.Y:
+                                    _commandSource.Redo();
+                                    handled = true;
+                                    break;
+                            }
+                            
+                            if (handled)
+                            {
+                                e.Handled = true;
+                            }
+                        }
+                    };
+                }
 
                 // Check if we have pending html to load
                 if (!string.IsNullOrEmpty(_pendingHtml))
@@ -181,6 +276,12 @@ namespace OpenLiveWriter.WebView2Shim
                         window.olwListenersSetup = true;
                         var olw = window.chrome.webview.hostObjects.sync.olw;
                         
+                        // Sync selection to bridge on every selection change - C# can read it synchronously
+                        document.addEventListener('selectionchange', function() {
+                            var sel = window.getSelection();
+                            olw.Selection = sel ? sel.toString() : '';
+                        });
+                        
                         function syncContent() {
                             olw.Title = titleEl.innerHTML;
                             olw.Body = bodyEl.innerHTML;
@@ -189,6 +290,15 @@ namespace OpenLiveWriter.WebView2Shim
                         
                         titleEl.addEventListener('input', syncContent);
                         bodyEl.addEventListener('input', syncContent);
+                        
+                        // Handle Ctrl+K for hyperlink insertion via postMessage
+                        document.addEventListener('keydown', function(e) {
+                            if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.chrome.webview.postMessage(JSON.stringify({ type: 'insertLink' }));
+                            }
+                        });
                         
                         // Sync initial content
                         syncContent();
@@ -229,10 +339,17 @@ namespace OpenLiveWriter.WebView2Shim
                 {
                     try
                     {
-                        // Simple check without dynamic - just look for the contentChanged message
-                        if (e.WebMessageAsJson?.Contains("contentChanged") == true)
+                        var json = e.WebMessageAsJson;
+                        // Handle contentChanged message
+                        if (json?.Contains("contentChanged") == true)
                         {
                             IsDirty = true;
+                        }
+                        // Handle insertLink (Ctrl+K) message
+                        else if (json?.Contains("insertLink") == true)
+                        {
+                            System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] Received insertLink message from JS (Ctrl+K)");
+                            _commandSource.InsertLink();
                         }
                     }
                     catch { }
@@ -407,24 +524,7 @@ namespace OpenLiveWriter.WebView2Shim
             return _contentBridge.Body ?? "";
         }
 
-        public string SelectedText
-        {
-            get
-            {
-                if (_isInitialized && _document != null)
-                {
-                    var selection = _document.selection;
-                    if (selection.type != "None")
-                    {
-                        var range = selection.createRange();
-                        var text = range.text;
-                        range.Dispose();
-                        return text;
-                    }
-                }
-                return "";
-            }
-        }
+        public string SelectedText => _contentBridge?.Selection ?? "";
 
         public string SelectedHtml
         {
@@ -682,13 +782,26 @@ namespace OpenLiveWriter.WebView2Shim
         public bool SelectionBlockquoted => false; // TODO
 
         public bool CanInsertLink => _webView?.CoreWebView2 != null;
+        
+        /// <summary>
+        /// Called by ribbon button - reads selection from bridge (synced by JS) and shows dialog
+        /// </summary>
         public void InsertLink()
+        {
+            // Selection is continuously synced to bridge by JS selectionchange handler
+            // So we can read it synchronously here via the public property
+            var selectedText = _editor?.SelectedText ?? "";
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertLink (ribbon), selection from bridge: '{selectedText}'");
+            ShowInsertLinkDialog(selectedText);
+        }
+        
+        /// <summary>
+        /// Shows the hyperlink dialog with the given selected text
+        /// </summary>
+        public void ShowInsertLinkDialog(string selectedText)
         {
             using (new WaitCursor())
             {
-                // Get selected text for the link text
-                string selectedText = GetSelectedText();
-                
                 // Create a temporary CommandManager for the dialog
                 using (var commandManager = new CommandManager())
                 using (var hyperlinkForm = new HyperlinkForm(commandManager, true))
@@ -710,26 +823,6 @@ namespace OpenLiveWriter.WebView2Shim
                     }
                 }
             }
-        }
-        
-        private string GetSelectedText()
-        {
-            if (_webView?.CoreWebView2 == null) return "";
-            
-            try
-            {
-                var task = _webView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()");
-                task.Wait(1000);
-                if (task.IsCompleted)
-                {
-                    var result = task.Result;
-                    // Result is JSON-encoded string
-                    if (result != null && result.StartsWith("\"") && result.EndsWith("\""))
-                        return result.Substring(1, result.Length - 2).Replace("\\n", "\n").Replace("\\\"", "\"");
-                }
-            }
-            catch { }
-            return "";
         }
 
         public bool CanRemoveLink => false; // TODO

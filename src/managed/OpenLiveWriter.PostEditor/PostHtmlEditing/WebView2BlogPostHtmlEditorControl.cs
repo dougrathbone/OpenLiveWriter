@@ -24,9 +24,11 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
         private string _title;
         private bool _fullyEditableRegionActive;
 
-#pragma warning disable CS0067 // Events not used yet - will be wired up when WebView2 editor is fully implemented
+#pragma warning disable CS0067 // Events not used yet
         public event EventHandler TitleChanged;
+#pragma warning restore CS0067
         public event EventHandler EditableRegionFocusChanged;
+#pragma warning disable CS0067 // Event not used yet
         public event EventHandler IsDirtyEvent;
 #pragma warning restore CS0067
 
@@ -39,7 +41,29 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             _editor = new WebView2HtmlEditorControl { Dock = DockStyle.Fill };
             _container.Controls.Add(_editor);
             
+            // WebView2 editor is always fully editable
+            _fullyEditableRegionActive = true;
+            
+            // Fire EditableRegionFocusChanged when the editor gets focus
+            _editor.EditorControl.GotFocus += (s, e) =>
+            {
+                OnEditableRegionFocusChanged(true);
+            };
+            
+            // Fire EditableRegionFocusChanged when WebView2 finishes loading
+            _editor.ReadyForEditing += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] WebView2BlogPostHtmlEditorControl: ReadyForEditing received, firing EditableRegionFocusChanged");
+                OnEditableRegionFocusChanged(true);
+            };
+            
             System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] WebView2BlogPostHtmlEditorControl created");
+        }
+        
+        private void OnEditableRegionFocusChanged(bool isFullyEditable)
+        {
+            _fullyEditableRegionActive = isFullyEditable;
+            EditableRegionFocusChanged?.Invoke(this, new EditableRegionFocusChangedEventArgs(isFullyEditable));
         }
 
         #region IBlogPostHtmlEditor Implementation
@@ -123,6 +147,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             System.IO.File.WriteAllText(tempPath, html);
             System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFragment - wrote {html.Length} chars to {tempPath}");
             _editor.LoadHtmlFile(tempPath);
+            // Note: EditableRegionFocusChanged will fire via ReadyForEditing event when navigation completes
         }
 
         public string GetEditedTitleHtml()
