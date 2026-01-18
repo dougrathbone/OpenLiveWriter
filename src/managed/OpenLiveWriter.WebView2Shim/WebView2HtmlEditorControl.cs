@@ -38,11 +38,12 @@ namespace OpenLiveWriter.WebView2Shim
 
         private void InitializeComponent()
         {
-            BackColor = SystemColors.Window;
+            BackColor = System.Drawing.Color.White;
             
             _webView = new WebView2
             {
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                DefaultBackgroundColor = System.Drawing.Color.White
             };
             Controls.Add(_webView);
         }
@@ -52,6 +53,9 @@ namespace OpenLiveWriter.WebView2Shim
             try
             {
                 await _webView.EnsureCoreWebView2Async();
+                
+                // Set background color after initialization
+                _webView.DefaultBackgroundColor = System.Drawing.Color.White;
                 
                 _webView.CoreWebView2.NavigationCompleted += (s, e) =>
                 {
