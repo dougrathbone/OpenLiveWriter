@@ -73,20 +73,36 @@ namespace OpenLiveWriter.WebView2Shim
 
         /// <summary>
         /// Execute JavaScript synchronously and return the result.
+        /// Uses a nested message loop to avoid deadlocking the UI thread.
         /// </summary>
         public string ExecuteScript(string script)
         {
-            try
+            string result = null;
+            Exception error = null;
+            bool completed = false;
+
+            // Use async/await with a continuation that doesn't deadlock
+            var task = _webView.CoreWebView2.ExecuteScriptAsync(script);
+            task.ContinueWith(t =>
             {
-                var task = _webView.CoreWebView2.ExecuteScriptAsync(script);
-                // Use synchronous wait - acceptable for desktop app DOM operations
-                task.Wait();
-                return task.Result;
-            }
-            catch (AggregateException ex)
+                if (t.IsFaulted)
+                    error = t.Exception?.InnerException ?? t.Exception;
+                else
+                    result = t.Result;
+                completed = true;
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+
+            // Pump messages while waiting (prevents UI deadlock)
+            while (!completed)
             {
-                throw ex.InnerException ?? ex;
+                System.Windows.Forms.Application.DoEvents();
+                System.Threading.Thread.Sleep(1);
             }
+
+            if (error != null)
+                throw error;
+
+            return result;
         }
 
         /// <summary>

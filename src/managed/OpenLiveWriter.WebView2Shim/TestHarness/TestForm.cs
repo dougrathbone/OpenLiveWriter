@@ -36,7 +36,7 @@ namespace OpenLiveWriter.WebView2Shim.TestHarness
             _buttonPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 40,
+                Height = 70,
                 Padding = new Padding(5)
             };
 
@@ -168,7 +168,8 @@ namespace OpenLiveWriter.WebView2Shim.TestHarness
                 {
                     Log($"Body element ID: {body.ElementId}");
                     Log($"Body tagName: {body.tagName}");
-                    Log($"Body children count: {body.children.length}");
+                    var children = body.children as WebView2ElementCollection;
+                    Log($"Body children count: {children?.length ?? 0}");
                 }
                 else
                 {
