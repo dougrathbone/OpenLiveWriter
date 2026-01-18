@@ -7,8 +7,8 @@ param(
 $msbuild = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\msbuild.exe"
 $projectPath = "D:\github\OpenLiveWriter\src\managed\OpenLiveWriter.WebView2Shim\OpenLiveWriter.WebView2Shim.csproj"
 $outputDll = "D:\github\OpenLiveWriter\src\managed\OpenLiveWriter.WebView2Shim\bin\Debug\OpenLiveWriter.WebView2Shim.dll"
-$targetDir = "D:\github\OpenLiveWriter\src\managed\bin\Debug\i386\Writer\"
-$exePath = "D:\github\OpenLiveWriter\src\managed\bin\Debug\i386\Writer\OpenLiveWriter.exe"
+$targetDir = "D:\github\OpenLiveWriter\src\managed\bin\Debug\x64\Writer\"
+$exePath = "D:\github\OpenLiveWriter\src\managed\bin\Debug\x64\Writer\OpenLiveWriter.exe"
 
 Write-Host "Building WebView2Shim..." -ForegroundColor Cyan
 & $msbuild $projectPath /p:Configuration=Debug /v:minimal /nologo

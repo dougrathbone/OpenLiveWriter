@@ -149,14 +149,14 @@ Write-Host ""
 Write-Host "[4/5] Building OpenLiveWriter..." -ForegroundColor Yellow
 Write-Host "  Platform Toolset: $platformToolset" -ForegroundColor Gray
 Write-Host "  Configuration: Debug" -ForegroundColor Gray
-Write-Host "  Platform: x86" -ForegroundColor Gray
+Write-Host "  Platform: x64" -ForegroundColor Gray
 Write-Host ""
 
 # Call the main build script with the detected toolset
 & "$PSScriptRoot\build.ps1" /p:PlatformToolset=$platformToolset
 
 # Check if the executable was actually built (more reliable than exit code)
-$exePath = Join-Path $PSScriptRoot "src\managed\bin\Debug\i386\Writer\OpenLiveWriter.exe"
+$exePath = Join-Path $PSScriptRoot "src\managed\bin\Debug\x64\Writer\OpenLiveWriter.exe"
 if (-not (Test-Path $exePath)) {
     Write-Host ""
     Write-Host "=======================================================" -ForegroundColor Red

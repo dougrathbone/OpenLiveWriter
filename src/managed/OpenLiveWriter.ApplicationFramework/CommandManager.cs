@@ -916,13 +916,18 @@ namespace OpenLiveWriter.ApplicationFramework
         {
             try
             {
+                // Verbose logging commented out - uncomment if debugging Ribbon issues:
+                // System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} UpdateProperty: commandId={commandId}, key={PropertyKeys.GetName(key)}");
                 Command command = Get((CommandId)commandId);
                 if (command == null)
                 {
+                    // System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} UpdateProperty: null command, using generic handler");
                     return genericCommandHandler.NullCommandUpdateProperty(commandId, ref key, currentValue, out newValue);
                 }
 
-                return command.UpdateProperty(ref key, currentValue, out newValue);
+                int result = command.UpdateProperty(ref key, currentValue, out newValue);
+                // System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} UpdateProperty: done, result={result}");
+                return result;
             }
             catch (Exception ex)
             {

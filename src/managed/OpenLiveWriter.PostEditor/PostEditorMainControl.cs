@@ -468,27 +468,36 @@ namespace OpenLiveWriter.PostEditor
         private IUIRibbon ribbon;
         private void InitializeRibbon()
         {
-
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - Creating Framework");
             IUIFramework framework = (IUIFramework)Activator.CreateInstance<Framework>();
 
             Trace.Assert(framework != null, "Failed to create IUIFramework.");
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - Framework created");
 
             ribbonControl = new RibbonControl(_htmlEditor.IHtmlEditorComponentContext, _htmlEditor);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - RibbonControl created");
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - Calling framework.Initialize");
             int initializeResult = framework.Initialize(_mainFrameWindow.Handle, this);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - framework.Initialize returned {initializeResult}");
             Trace.Assert(initializeResult == HRESULT.S_OK, "Ribbon framework failed to initialize: " + initializeResult);
 
             _framework = framework;
 
             string nativeResourceDLL = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\OpenLiveWriter.Ribbon.dll";
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - Loading {nativeResourceDLL}");
             IntPtr hMod = Kernel32.LoadLibrary(nativeResourceDLL);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - LoadLibrary returned {hMod}");
 
             using (new QuickTimer("IUIRibbonFramework::LoadUI"))
             {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - Calling LoadUI");
                 int loadResult = _framework.LoadUI(hMod, "RIBBON_RIBBON");
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - LoadUI returned {loadResult}");
                 Trace.Assert(loadResult == HRESULT.S_OK, "Ribbon failed to load: " + loadResult);
             }
 
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - Calling SetModes");
             _framework.SetModes(mode);
 
             CommandManager.Invalidate(CommandId.MRUList);
@@ -497,6 +506,7 @@ namespace OpenLiveWriter.PostEditor
 
             ApplicationDiagnostics.TestModeChanged += OnTestModeChanged;
             TestMode = ApplicationDiagnostics.TestMode;
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} InitializeRibbon - Complete");
         }
 
         protected override void OnSizeChanged(EventArgs e)
@@ -1581,6 +1591,7 @@ namespace OpenLiveWriter.PostEditor
 
         public int OnViewChanged(uint viewId, CommandTypeID typeID, object view, ViewVerb verb, int uReasonCode)
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnViewChanged called: viewId={viewId}, verb={verb}");
             if (ribbon == null)
             {
                 ribbon = view as IUIRibbon;
@@ -1591,7 +1602,9 @@ namespace OpenLiveWriter.PostEditor
                 switch (verb)
                 {
                     case ViewVerb.Create:
+                        System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnViewChanged - ViewVerb.Create, calling LoadRibbonSettings");
                         LoadRibbonSettings();
+                        System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnViewChanged - LoadRibbonSettings done");
                         break;
                     case ViewVerb.Destroy:
                         break;
@@ -1748,7 +1761,10 @@ namespace OpenLiveWriter.PostEditor
 
         public int OnCreateUICommand(uint commandId, CommandTypeID typeID, out IUICommandHandler commandHandler)
         {
+            // Verbose logging commented out - uncomment if debugging Ribbon issues:
+            // System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnCreateUICommand: commandId={commandId}, typeID={typeID}");
             commandHandler = _htmlEditor.CommandManager;
+            // System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnCreateUICommand: returning handler");
             return HRESULT.S_OK;
         }
 

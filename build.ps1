@@ -1,8 +1,9 @@
 # Cause powershell to fail on errors rather than keep going
 $ErrorActionPreference = "Stop";
 
-# Supported Visual Studio versions: VS2017, VS2019, VS2022, VS2026
-# To override the C++ platform toolset, pass: /p:PlatformToolset=v142 (or v141, v143, v144)
+# Build configuration:
+# - Builds x64 (64-bit) only - x86/32-bit is no longer supported
+# - To override C++ toolset: /p:PlatformToolset=v142 (VS2019), v143 (VS2022), v144 (VS2026)
 
 @"
 
@@ -116,6 +117,34 @@ if (-Not (Test-Path env:OLW_CONFIG))
 =======================================================
 "@
 Get-Date
+
+# Determine platform target (default x64)
+$platformTarget = "x64"
+foreach ($arg in $ARGS) {
+    if ($arg -match "PlatformTarget=(\w+)") {
+        $platformTarget = $matches[1]
+    }
+}
+"Building for platform: $platformTarget"
+
+# Build the native C++ Ribbon project first (x64 only)
+$ribbonProject = "$PSSCRIPTROOT\src\unmanaged\OpenLiveWriter.Ribbon\OpenLiveWriter.Ribbon.vcxproj"
+@"
+
+=======================================================
+ Building native Ribbon DLL (x64)
+=======================================================
+"@
+$ribbonBuildCommand = "`"$msBuildExe`" `"$ribbonProject`" /nologo /maxcpucount /verbosity:minimal /p:Configuration=$env:OLW_CONFIG /p:Platform=x64 $ARGS"
+"Running: $ribbonBuildCommand"
+Invoke-Expression "& $ribbonBuildCommand"
+
+@"
+
+=======================================================
+ Building managed solution
+=======================================================
+"@
 $buildCommand = "`"$msBuildExe`" $solutionFile /nologo /maxcpucount /verbosity:minimal /p:Configuration=$env:OLW_CONFIG $ARGS"
 "Running build command '$buildCommand'"
 Invoke-Expression "& $buildCommand"

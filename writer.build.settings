@@ -37,22 +37,12 @@
         <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
 
         <!-- Processor Architecture -->
-        <!-- Currently building from anything other than i386 window isn't supported -->
         <ProcessorArchitecture Condition="'$(ProcessorArchitecture)' == ''">$(PROCESSOR_ARCHITECTURE)</ProcessorArchitecture>
 
-        <!-- Build Architectures -->
+        <!-- Build Architecture - x64 only (x86 is no longer supported) -->
         <DefaultBuildArchitecture Condition="'$(_defaultBuildArch)'!=''">$(_defaultBuildArch)</DefaultBuildArchitecture>
-        <DefaultBuildArchitecture Condition="'$(DefaultBuildArchitecture)'==''">i386</DefaultBuildArchitecture>
-
-        <!-- TODO: We need to make sure we are setting _BUILDARCH correctly based on ProcessorArchitecture -->
-        <!-- Do not use $(386) - msbuild ignores properties with periods or starting with numbers so it will never be set -->
-        <BuildArchitecture Condition="'$(ia64)' == '1'">ia64</BuildArchitecture>
-        <BuildArchitecture Condition="'$(amd64)' == '1'">amd64</BuildArchitecture>
-        <BuildArchitecture Condition="'$(_BuildArch)' == 'x86'">i386</BuildArchitecture>
-        <BuildArchitecture Condition="'$(arm)' == '1'">arm</BuildArchitecture>
-
+        <DefaultBuildArchitecture Condition="'$(DefaultBuildArchitecture)'==''">x64</DefaultBuildArchitecture>
         <BuildArchitecture Condition="'$(BuildArchitecture)' == ''">$(DefaultBuildArchitecture)</BuildArchitecture>
-        <BuildArchitecture Condition="'$(BuildArchitecture)' == 'x86'">i386</BuildArchitecture>
     </PropertyGroup>
         
     <!-- ********************************************************************************************* -->
@@ -60,9 +50,7 @@
     <!-- ********************************************************************************************* -->
     <PropertyGroup Condition="'$(PlatformSpecificBuild)' == 'true'">
         <PlatformTarget>AnyCPU</PlatformTarget>
-        <PlatformTarget Condition="'$(BuildArchitecture)' == 'ia64'">Itanium</PlatformTarget>
         <PlatformTarget Condition="'$(BuildArchitecture)' == 'amd64'">x64</PlatformTarget>
-        <PlatformTarget Condition="'$(BuildArchitecture)' == 'i386'">x86</PlatformTarget>
     </PropertyGroup>
     
     <!-- ********************************************************************************************* -->
@@ -124,7 +112,8 @@
       <CopyrightText>Copyright (c) Open Live Writer. All rights reserved.</CopyrightText>
       <OutputPath>$(OutputPath)$(Project)\</OutputPath>
       <OutDir>$(OutputPath)</OutDir>
-      <PlatformTarget>x86</PlatformTarget>
+      <!-- Platform target: x64 only (x86/32-bit is no longer supported) -->
+      <PlatformTarget Condition="'$(PlatformTarget)' == ''">x64</PlatformTarget>
     </PropertyGroup>
 	
     <PropertyGroup>
