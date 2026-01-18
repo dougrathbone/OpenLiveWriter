@@ -44,14 +44,16 @@ MSHTML (Internet Explorer's HTML engine) is deeply embedded throughout the codeb
 ### TODO 📋
 
 #### Phase 1a: Simple Browser Uses
-- [ ] `OpenLiveWriter.CoreServices/HtmlScreenCaptureCore.cs`
+- [x] `OpenLiveWriter.CoreServices/HtmlScreenCaptureCore.cs` - STUBBED (returns null)
 - [ ] `OpenLiveWriter.CoreServices/HTML/WebPageDownloader.cs` (uses old Project31 namespace)
-- [ ] `OpenLiveWriter.CoreServices/BrowserOperationInvoker.cs`
-- [ ] `OpenLiveWriter.CoreServices/WebRequest/WebPageDownloader.cs`
-- [x] `OpenLiveWriter.InternalWriterPlugin/MapControl.cs` - Done, but Bing Maps API is dead
+- [ ] `OpenLiveWriter.CoreServices/BrowserOperationInvoker.cs` - Used by BackgroundColorDetector
+- [x] `OpenLiveWriter.CoreServices/WebRequest/WebPageDownloader.cs` - REPLACED by WebView2PageDownloader
+- [x] `OpenLiveWriter.InternalWriterPlugin/MapControl.cs` - Uses factory, but Bing Maps API is dead
+- [x] `OpenLiveWriter.BlogClient/Detection/BackgroundColorDetector.cs` - STUBBED (returns default color)
 
 #### Phase 1b: Feature Cleanup
-- [ ] Remove or replace dead Bing Maps feature
+- [x] Remove or replace dead Bing Maps feature - STUBBED with deprecation message
+- [x] Video embed feature - STUBBED with deprecation message
 - [ ] Audit other features using deprecated APIs
 
 #### Phase 1c: DOM Interop Layer

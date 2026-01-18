@@ -106,7 +106,7 @@ namespace OpenLiveWriter.CoreServices
             return this;
         }
 
-        private async void InitializeAndNavigate()
+        private void InitializeAndNavigate()
         {
             try
             {
@@ -115,7 +115,9 @@ namespace OpenLiveWriter.CoreServices
                 // Initialize WebView2 if not already done
                 if (!_isInitialized)
                 {
-                    await _webView.EnsureCoreWebView2Async(null);
+                    // Use synchronous wait with message pump to avoid async void issues
+                    var initTask = _webView.EnsureCoreWebView2Async(null);
+                    WaitWithMessagePump(initTask);
                     _isInitialized = true;
 
                     // Configure settings
@@ -147,7 +149,27 @@ namespace OpenLiveWriter.CoreServices
             {
                 Debug.WriteLine("[OLW-DEBUG] WebView2PageDownloader.InitializeAndNavigate exception: " + ex.Message);
                 Result = new WebPageDownloaderResult(500, Url);
+                _completionEvent.Set();
                 OnDownloadComplete(EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Wait for a task while pumping Windows messages.
+        /// This avoids deadlocks when waiting on UI thread.
+        /// </summary>
+        private void WaitWithMessagePump(Task task)
+        {
+            while (!task.IsCompleted)
+            {
+                Application.DoEvents();
+                Thread.Sleep(10);
+            }
+
+            // Propagate any exception
+            if (task.IsFaulted && task.Exception != null)
+            {
+                throw task.Exception.InnerException ?? task.Exception;
             }
         }
 
@@ -164,7 +186,7 @@ namespace OpenLiveWriter.CoreServices
             _progressHost?.UpdateProgress(0, 100, string.Format(CultureInfo.CurrentCulture, Res.Get(StringId.ProgressDownloading), Title ?? Url));
         }
 
-        private async void CoreWebView2_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        private void CoreWebView2_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             Debug.WriteLine("[OLW-DEBUG] WebView2PageDownloader - Navigation completed, Success: " + e.IsSuccess);
 
@@ -174,8 +196,10 @@ namespace OpenLiveWriter.CoreServices
             {
                 try
                 {
-                    // Get the rendered HTML
-                    _htmlContent = await _webView.CoreWebView2.ExecuteScriptAsync("document.documentElement.outerHTML");
+                    // Get the rendered HTML - use synchronous wait with message pump
+                    var scriptTask = _webView.CoreWebView2.ExecuteScriptAsync("document.documentElement.outerHTML");
+                    WaitWithMessagePump(scriptTask);
+                    _htmlContent = scriptTask.Result;
 
                     // The result comes back as a JSON string, need to unescape it
                     if (_htmlContent != null && _htmlContent.StartsWith("\"") && _htmlContent.EndsWith("\""))

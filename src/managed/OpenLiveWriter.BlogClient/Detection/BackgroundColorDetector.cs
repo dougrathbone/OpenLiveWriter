@@ -2,16 +2,8 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Text;
-using System.Threading;
-using System.Windows.Forms;
-using mshtml;
-using OpenLiveWriter.BrowserControl;
-using OpenLiveWriter.CoreServices;
-using OpenLiveWriter.CoreServices.Threading;
 
 namespace OpenLiveWriter.BlogClient.Detection
 {
@@ -20,27 +12,26 @@ namespace OpenLiveWriter.BlogClient.Detection
         /// <summary>
         /// Detect the background color of a post body from a URI where
         /// the post body element contains BlogEditingTemplate.POST_BODY_MARKER.
-        /// This must be done in a browser (as opposed to a simple DOM) because
-        /// the page elements don't layout relative to each other unless they
-        /// are being displayed in a browser.
+        /// 
+        /// STUBBED OUT: This previously used IE via BrowserOperationInvoker which was slow
+        /// and depends on MSHTML. Returns default color for now.
+        /// 
+        /// TODO: Re-implement with WebView2 when tackling BrowserOperationInvoker migration.
+        /// The WebView2 implementation would use JavaScript:
+        ///   var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        ///   while(walker.nextNode()) {
+        ///       if (walker.currentNode.textContent.includes('MARKER')) {
+        ///           return window.getComputedStyle(walker.currentNode.parentElement).backgroundColor;
+        ///       }
+        ///   }
         /// </summary>
         public static Color? DetectColor(string uri, Color? defaultColor)
         {
-            return BrowserOperationInvoker.InvokeAfterDocumentComplete(uri, "BackgroundColorDetector", 700, 700, defaultColor,
-                delegate (ExplorerBrowserControl browser)
-                {
-                    IHTMLDocument2 document = browser.Document as IHTMLDocument2;
-                    IHTMLElement[] elements = HTMLDocumentHelper.FindElementsContainingText(document, BlogEditingTemplate.POST_BODY_MARKER);
-                    if (elements.Length == 1)
-                    {
-                        IHTMLElement postBody = elements[0];
-                        if (postBody.offsetHeight < 300)
-                            postBody.style.height = 300;
-                        return HTMLColorHelper.GetBackgroundColor(postBody, true, null, Color.White);
-                    }
-                    return defaultColor;
-                });
+            Debug.WriteLine("[OLW-DEBUG] BackgroundColorDetector.DetectColor() - STUBBED, returning default color");
+            
+            // Return white as the default - most blogs have light backgrounds
+            // This is purely cosmetic - affects editor background color matching
+            return defaultColor ?? Color.White;
         }
     }
-
 }

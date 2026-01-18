@@ -76,27 +76,18 @@ namespace OpenLiveWriter.CoreServices
         /// <summary>
         /// Gets whether to use WebView2 for downloading.
         /// Controlled by OLW_USE_WEBVIEW2 environment variable.
-        /// NOTE: Currently disabled - WebView2 page downloading has timing issues.
-        /// TODO: Fix async/threading issues in WebView2HTMLDocumentDownloader before enabling.
+        /// NOTE: Currently disabled - WebView2 page downloading causes timing issues with 
+        /// the main editor due to Application.DoEvents() message pumping.
+        /// TODO: Need a different async approach that doesn't interfere with main window.
         /// </summary>
         public static bool UseWebView2
         {
             get
             {
-                // Temporarily disabled - WebView2 page downloader has timing issues
-                // that cause "document isn't fully loaded" errors during template detection.
-                // The WebView2 browser control (BrowserControlFactory) still works.
+                // Temporarily disabled - WebView2 page downloader's message pump
+                // interferes with MshtmlEditor loading, causing "document not loaded" errors.
+                // The WebView2 browser control (BrowserControlFactory) still works for UI.
                 return false;
-                
-                /*
-                if (!_useWebView2.HasValue)
-                {
-                    string envVar = Environment.GetEnvironmentVariable("OLW_USE_WEBVIEW2");
-                    _useWebView2 = !string.IsNullOrEmpty(envVar) && 
-                                   (envVar == "1" || envVar.Equals("true", StringComparison.OrdinalIgnoreCase));
-                }
-                return _useWebView2.Value;
-                */
             }
         }
 
