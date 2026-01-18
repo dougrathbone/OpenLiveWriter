@@ -99,10 +99,16 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             border-bottom: 1px solid #ccc; 
             padding-bottom: 10px; 
             background-color: #ffffff;
+            outline: none;
         }}
         #olw-body {{ 
             min-height: 300px; 
             background-color: #ffffff;
+            outline: none;
+        }}
+        /* Remove default contenteditable focus outline */
+        [contenteditable]:focus {{
+            outline: none;
         }}
     </style>
 </head>
