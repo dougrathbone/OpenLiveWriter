@@ -375,6 +375,98 @@ namespace OpenLiveWriter.CoreServices
                 SetStyleReferences(HTMLDocumentHelper.GetStyleReferencesForDocument(document, baseUrl));
         }
 
+        /// <summary>
+        /// Updates frames and style information based on HTML content string (WebView2-compatible).
+        /// Note: Frame contents cannot be extracted from HTML string alone - only frame URLs.
+        /// </summary>
+        /// <param name="html">The HTML content string</param>
+        /// <param name="baseUrl">The base URL for resolving relative paths</param>
+        public void UpdateBasedUponHTMLContent(string html, string baseUrl)
+        {
+            // For frames, we can only extract frame tag info, not actual frame content
+            // The caller will need to download frame content separately if needed
+            if (_frames == null)
+            {
+                SetFrames(GetFrameDocumentsFromHtml(html, baseUrl));
+            }
+
+            if (_styleResourceUrls == null)
+            {
+                SetStyleReferences(GetStyleReferencesFromHtml(html, baseUrl));
+            }
+        }
+
+        /// <summary>
+        /// Extracts frame URLs and creates placeholder LightWeightHTMLDocuments from HTML string.
+        /// </summary>
+        private static LightWeightHTMLDocument[] GetFrameDocumentsFromHtml(string html, string baseUrl)
+        {
+            ArrayList frameDocuments = new ArrayList();
+            LightWeightHTMLDocument tempDoc = new LightWeightHTMLDocument(html, baseUrl, null);
+            tempDoc.Parse();
+
+            // Get FRAME tags
+            foreach (LightWeightTag tag in tempDoc.GetTagsByName(HTMLTokens.Frame))
+            {
+                string src = tag.BeginTag.GetAttributeValue("src");
+                string name = tag.BeginTag.GetAttributeValue("name");
+                if (!string.IsNullOrEmpty(src))
+                {
+                    string absoluteUrl = UrlHelper.EscapeRelativeURL(baseUrl, src);
+                    // Create placeholder document - content will need to be downloaded separately
+                    LightWeightHTMLDocument frameDoc = new LightWeightHTMLDocument(string.Empty, absoluteUrl, name);
+                    frameDocuments.Add(frameDoc);
+                }
+            }
+
+            // Get IFRAME tags
+            foreach (LightWeightTag tag in tempDoc.GetTagsByName(HTMLTokens.IFrame))
+            {
+                string src = tag.BeginTag.GetAttributeValue("src");
+                string name = tag.BeginTag.GetAttributeValue("name");
+                if (!string.IsNullOrEmpty(src))
+                {
+                    string absoluteUrl = UrlHelper.EscapeRelativeURL(baseUrl, src);
+                    // Create placeholder document - content will need to be downloaded separately
+                    LightWeightHTMLDocument frameDoc = new LightWeightHTMLDocument(string.Empty, absoluteUrl, name);
+                    frameDocuments.Add(frameDoc);
+                }
+            }
+
+            return (LightWeightHTMLDocument[])frameDocuments.ToArray(typeof(LightWeightHTMLDocument));
+        }
+
+        /// <summary>
+        /// Extracts style sheet references from HTML string (WebView2-compatible).
+        /// Note: Only extracts external stylesheets from LINK tags. Inline @import is not supported
+        /// as it would require parsing HTML content between tags which is complex.
+        /// </summary>
+        private static HTMLDocumentHelper.ResourceUrlInfo[] GetStyleReferencesFromHtml(string html, string baseUrl)
+        {
+            ArrayList styleUrls = new ArrayList();
+            LightWeightHTMLDocument tempDoc = new LightWeightHTMLDocument(html, baseUrl, null);
+            tempDoc.Parse();
+
+            // Get LINK tags with rel="stylesheet"
+            foreach (LightWeightTag tag in tempDoc.GetTagsByName(HTMLTokens.Link))
+            {
+                string rel = tag.BeginTag.GetAttributeValue("rel");
+                string href = tag.BeginTag.GetAttributeValue("href");
+                if (!string.IsNullOrEmpty(href) && 
+                    (string.IsNullOrEmpty(rel) || rel.ToLower(CultureInfo.InvariantCulture).Contains("stylesheet")))
+                {
+                    string absoluteUrl = UrlHelper.EscapeRelativeURL(baseUrl, href);
+                    var resourceInfo = new HTMLDocumentHelper.ResourceUrlInfo();
+                    resourceInfo.ResourceUrl = href;
+                    resourceInfo.ResourceAbsoluteUrl = absoluteUrl;
+                    resourceInfo.ResourceType = "stylesheet";
+                    styleUrls.Add(resourceInfo);
+                }
+            }
+
+            return (HTMLDocumentHelper.ResourceUrlInfo[])styleUrls.ToArray(typeof(HTMLDocumentHelper.ResourceUrlInfo));
+        }
+
         public void SetStyleReferences(HTMLDocumentHelper.ResourceUrlInfo[] styleResourceUrls)
         {
             _styleResourceUrls = styleResourceUrls;

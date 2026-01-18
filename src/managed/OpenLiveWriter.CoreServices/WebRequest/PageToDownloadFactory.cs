@@ -170,17 +170,9 @@ namespace OpenLiveWriter.CoreServices
                                 // Only redownload if we absolutely need to
                                 if (htmlDoc.HasFramesOrStyles && (htmlDoc.Frames == null || htmlDoc.StyleResourcesUrls == null))
                                 {
-
                                     string html = htmlDoc.GenerateHtml();
-                                    string tempFile = TempFileManager.Instance.CreateTempFile("temp.htm");
-                                    using (StreamWriter writer = new StreamWriter(tempFile, false, Encoding.UTF8))
-                                        writer.Write(html);
-                                    using (HTMLDocumentDownloader downloader = new HTMLDocumentDownloader(_parentControl, UrlHelper.GetLocalFileUrl(tempFile), htmlDoc.Title, _context.CookieString, _context.TimeoutMS, false))
-                                    {
-                                        downloader.DownloadHTMLDocument(pageDownloadProgress);
-
-                                        htmlDoc.UpdateBasedUponHTMLDocumentData(downloader.HtmlDocument, url);
-                                    }
+                                    // Use HTML string-based extraction (WebView2-compatible)
+                                    htmlDoc.UpdateBasedUponHTMLContent(html, url);
                                 }
                                 thisPageToDownload = new PageToDownload(htmlDoc, url, null, parentPageToDownload);
                                 if (htmlDoc.StyleResourcesUrls != null)
@@ -265,13 +257,22 @@ namespace OpenLiveWriter.CoreServices
             // Download the current page
             LightWeightHTMLDocument lightWeightDoc = null;
 
-            using (HTMLDocumentDownloader downloader = new HTMLDocumentDownloader(_parentControl, url, null, _context.CookieString, _context.TimeoutMS, true))
+            using (var downloader = HTMLDocumentDownloaderFactory.Create(_parentControl, url, null, _context.CookieString, _context.TimeoutMS, true))
             {
                 downloader.DownloadHTMLDocument(progress);
-                lightWeightDoc = LightWeightHTMLDocument.FromIHTMLDocument2(downloader.HtmlDocument, downloader.Url);
+                
+                // Get HTML content and create document
+                string htmlContent = downloader.GetHTMLContent();
+                string finalUrl = downloader.FinalUrl;
+                
+                lightWeightDoc = LightWeightHTMLDocument.FromString(htmlContent, finalUrl, true);
+                
+                // Update frames and styles using HTML-based extraction (WebView2-compatible)
+                lightWeightDoc.UpdateBasedUponHTMLContent(htmlContent, finalUrl);
+                
                 thisPageToDownload = new PageToDownload(lightWeightDoc, url, null, parent);
                 // Reset the url in the event that a redirect occurred
-                thisPageToDownload.AbsoluteUrl = downloader.Url;
+                thisPageToDownload.AbsoluteUrl = finalUrl;
             }
 
             foreach (HTMLDocumentHelper.ResourceUrlInfo styleUrl in lightWeightDoc.StyleResourcesUrls)
