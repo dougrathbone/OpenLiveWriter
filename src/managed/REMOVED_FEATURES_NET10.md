@@ -77,6 +77,11 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 - ✅ `YouTubeVideoService.cs` - Fully migrated to HttpClientService
 - ✅ `YoutubeVideoPublisher.cs` - Partially migrated (DELETE, IsVideoCompleted use HttpClient)
 - ✅ `LiveJournalClient.cs` - FotobilderRequestManager fully migrated to HttpClient
+- ✅ `ResourceFileDownloader.cs` - Fully migrated to HttpClientService
+- ✅ `PluginHttpRequest.cs` - Fully migrated to HttpClientService
+- ✅ `HockeyAppProxy.cs` - Fully migrated to HttpClientService
+- ✅ `GDataCaptchaForm.cs` - Fully migrated to HttpClientService
+- ✅ `WebImageSource.cs` - Fully migrated to HttpClientService
 - ✅ `DestinationValidator.cs` - Migrated to use HttpRequestHelper.CheckUrlReachable
 - ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods
 - ✅ `HttpClientRedirectHelper.cs` - New HttpClient-based redirect helper (replaces RedirectHelper)
@@ -88,9 +93,11 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 **Remaining Legacy HttpWebRequest Usages (deferred):**
 - `AtomClient.cs` / `AtomMediaUploader.cs` / `BloggerAtomClient.cs` - Complex Picasa file upload with multipart MIME
 - `YouTubeUploadRequestHelper` - Multipart video upload
+- `XmlRpcClient.cs` - XML-RPC infrastructure with auth filters
 - `XmlRestRequestHelper.cs` / `RedirectHelper.cs` - Core infrastructure (used by above)
+- Blog detection infrastructure (`WriterEditingManifest.cs`, `BlogEditingTemplateDetector.cs`, etc.)
 
-These legacy usages are suppressed via `SYSLIB0014` in `HttpRequestHelper.cs` and work correctly. Full migration would require significant refactoring of the multipart upload patterns.
+These legacy usages are suppressed via `SYSLIB0014` in `HttpRequestHelper.cs` and work correctly. Full migration would require significant refactoring of the multipart upload patterns and authentication infrastructure.
 
 **For New Code:**
 - Use `HttpClientRedirectHelper` instead of `RedirectHelper`
