@@ -214,6 +214,26 @@ The application uses `BinaryFormatter` to serialize arbitrary `ISerializable` ob
 
 ---
 
+## Native Ribbon Status (Working!)
+
+The Windows Ribbon Framework native DLL builds and works correctly:
+
+1. **Project:** `src/unmanaged/OpenLiveWriter.Ribbon/OpenLiveWriter.Ribbon.vcxproj`
+2. **Build:** Requires Visual Studio C++ tools with UICC.exe (Ribbon compiler)
+3. **Toolset:** Default v143 (VS2022), can override with `/p:PlatformToolset=v145` for VS2028
+4. **Output:** `src/managed/bin/$(Configuration)/i386/Writer/OpenLiveWriter.Ribbon.dll`
+
+**Build Command:**
+```powershell
+cd src/unmanaged/OpenLiveWriter.Ribbon
+msbuild OpenLiveWriter.Ribbon.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:PlatformToolset=v145
+```
+
+The managed `OpenLiveWriter.csproj` conditionally copies the Ribbon DLL to the output if it exists.
+The application loads the ribbon optionally - if the DLL is missing, it runs without the ribbon toolbar.
+
+---
+
 ## COM Interop Status (Commit 2.4)
 
 The COM interop for MSHTML is properly configured:
