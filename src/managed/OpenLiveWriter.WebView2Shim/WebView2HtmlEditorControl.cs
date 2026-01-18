@@ -26,6 +26,7 @@ namespace OpenLiveWriter.WebView2Shim
         private bool _isInitialized;
         private bool _isDirty;
         private string _pendingHtml;
+        private string _pendingFilePath;
         private WebView2HtmlEditorCommandSource _commandSource;
 
         public WebView2HtmlEditorControl()
@@ -52,13 +53,16 @@ namespace OpenLiveWriter.WebView2Shim
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] WebView2HtmlEditorControl.InitializeWebView starting");
                 await _webView.EnsureCoreWebView2Async();
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] WebView2HtmlEditorControl.EnsureCoreWebView2Async completed");
                 
                 // Set background color after initialization
                 _webView.DefaultBackgroundColor = System.Drawing.Color.White;
                 
                 _webView.CoreWebView2.NavigationCompleted += (s, e) =>
                 {
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] NavigationCompleted - IsSuccess: {e.IsSuccess}");
                     if (e.IsSuccess)
                     {
                         InitializeBridge();
@@ -70,9 +74,18 @@ namespace OpenLiveWriter.WebView2Shim
                     }
                 };
 
-                // Load the editor template
-                var editorHtml = GetEditorTemplate();
-                _webView.CoreWebView2.NavigateToString(editorHtml);
+                // Check if we have a pending file to load
+                if (!string.IsNullOrEmpty(_pendingFilePath) && File.Exists(_pendingFilePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Loading pending file: {_pendingFilePath}");
+                    _webView.CoreWebView2.Navigate($"file:///{_pendingFilePath.Replace('\\', '/')}");
+                }
+                else
+                {
+                    // Load the editor template
+                    var editorHtml = GetEditorTemplate();
+                    _webView.CoreWebView2.NavigateToString(editorHtml);
+                }
             }
             catch (Exception ex)
             {
@@ -171,16 +184,19 @@ namespace OpenLiveWriter.WebView2Shim
 
         public void LoadHtmlFile(string filePath)
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFile called - path: {filePath}, exists: {File.Exists(filePath)}, isInitialized: {_isInitialized}");
             if (File.Exists(filePath))
             {
-                var html = File.ReadAllText(filePath);
-                if (_isInitialized)
+                if (_isInitialized && _webView.CoreWebView2 != null)
                 {
-                    SetEditorContent(html);
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFile - navigating immediately");
+                    _webView.CoreWebView2.Navigate($"file:///{filePath.Replace('\\', '/')}");
                 }
                 else
                 {
-                    _pendingHtml = html;
+                    // Store the file path for when WebView2 finishes initializing
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFile - storing pending file path");
+                    _pendingFilePath = filePath;
                 }
             }
         }

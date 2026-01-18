@@ -32,7 +32,10 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public WebView2BlogPostHtmlEditorControl()
         {
-            _container = new Panel { Dock = DockStyle.Fill };
+            _container = new Panel { 
+                Dock = DockStyle.Fill,
+                BackColor = System.Drawing.Color.White
+            };
             _editor = new WebView2HtmlEditorControl { Dock = DockStyle.Fill };
             _container.Controls.Add(_editor);
             
@@ -43,6 +46,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public void Focus()
         {
+            System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] WebView2BlogPostHtmlEditorControl.Focus called");
             _editor.EditorControl.Focus();
         }
 
@@ -66,6 +70,8 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public void LoadHtmlFragment(string title, string postBodyHtml, string baseUrl, BlogEditingTemplate editingTemplate)
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFragment called - title: {title?.Length ?? 0} chars, body: {postBodyHtml?.Length ?? 0} chars");
+            
             _title = title ?? "";
             _baseUrl = baseUrl ?? "";
             
