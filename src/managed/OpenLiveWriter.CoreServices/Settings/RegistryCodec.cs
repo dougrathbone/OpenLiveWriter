@@ -505,6 +505,14 @@ namespace OpenLiveWriter.CoreServices.Settings
         /// <summary>
         /// Handles any ISerializable type by converting to/from byte array.
         /// </summary>
+        /// <remarks>
+        /// TODO: BinaryFormatter is deprecated (SYSLIB0011) and will be removed in future .NET versions.
+        /// Migration plan:
+        /// 1. Replace with System.Text.Json or Newtonsoft.Json for new serialization
+        /// 2. Keep backward compatibility reader for existing registry data
+        /// 3. Test all ISerializable types stored in registry
+        /// Risk: User settings stored with BinaryFormatter cannot be read after migration
+        /// </remarks>
         internal class SerializableCodec : Codec
         {
             /// <summary>

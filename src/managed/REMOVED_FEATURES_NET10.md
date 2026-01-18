@@ -169,10 +169,26 @@ These are not removed features but warnings that were suppressed to allow compil
 ### Global Suppressions (Directory.Build.props) - Still Active
 - `SYSLIB0003` - SecurityPermission, IPermission (COM interop security attributes)
 - `SYSLIB0009` - AuthenticationManager (legacy web authentication)
-- `SYSLIB0011` - BinaryFormatter (requires serialization rewrite)
+- `SYSLIB0011` - BinaryFormatter - See below for details
 - `SYSLIB0014` - WebRequest/HttpWebRequest (would require full HttpClient migration)
 - `SYSLIB0050` - Type.IsSerializable (serialization related)
-- `SYSLIB0051` - Formatter-based serialization (requires rewrite)
+- `SYSLIB0051` - Formatter-based serialization - See below for details
+
+### BinaryFormatter Usage (SYSLIB0011, SYSLIB0051) - Technical Debt
+
+**Location:** `OpenLiveWriter.CoreServices/Settings/RegistryCodec.cs`
+**Class:** `SerializableCodec`
+
+The application uses `BinaryFormatter` to serialize arbitrary `ISerializable` objects to the Windows Registry for persistent user settings storage. This is deprecated in .NET 10.
+
+**Migration Plan:**
+1. Replace with `System.Text.Json` or `Newtonsoft.Json` for new serialization
+2. Implement backward compatibility reader for existing BinaryFormatter data
+3. Test all `ISerializable` types that may be stored in registry
+
+**Risk:** User settings stored with BinaryFormatter may become unreadable after migration. Requires careful testing before removal of backward compatibility support.
+
+**Current Status:** Suppressed with SYSLIB0011. TODO comment added to code.
 - `CA1416` - Platform compatibility (app is Windows-only by design)
 - `CS9191` - ref vs in parameter (minor code style)
 - `WFO1000`, `WFO1001` - WinForms serialization (internal detail)
