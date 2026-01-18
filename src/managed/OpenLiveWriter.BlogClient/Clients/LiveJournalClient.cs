@@ -6,11 +6,12 @@ using System.Collections;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Xml;
-using System.Net;
-using System.Text;
 using OpenLiveWriter.Extensibility.BlogClient;
 using OpenLiveWriter.BlogClient.Providers;
 using OpenLiveWriter.HtmlParser.Parser;
@@ -307,27 +308,29 @@ namespace OpenLiveWriter.BlogClient.Clients
 
             public XmlDocument PerformGet(string mode, string challenge, params string[] addlParams)
             {
-                HttpWebRequest request = CreateRequest(mode, challenge, addlParams);
-                request.Method = "GET";
+                using var request = CreateRequest(HttpMethod.Get, mode, challenge, addlParams);
                 return GetResponse(request, mode);
             }
 
             public XmlDocument PerformPut(string mode, string challenge, Stream requestBody, params string[] addlParams)
             {
-                HttpWebRequest request = CreateRequest(mode, challenge, addlParams);
-                request.Method = "PUT";
-                using (Stream requestStream = request.GetRequestStream())
-                    StreamHelper.Transfer(requestBody, requestStream);
+                using var request = CreateRequest(HttpMethod.Put, mode, challenge, addlParams);
+
+                // Copy stream to byte array for HttpContent
+                using var ms = new MemoryStream();
+                StreamHelper.Transfer(requestBody, ms);
+                request.Content = new ByteArrayContent(ms.ToArray());
+
                 return GetResponse(request, mode);
             }
 
-            private HttpWebRequest CreateRequest(string mode, string challenge, params string[] addlParams)
+            private HttpRequestMessage CreateRequest(HttpMethod method, string mode, string challenge, params string[] addlParams)
             {
-                HttpWebRequest request = HttpRequestHelper.CreateHttpWebRequest(ENDPOINT, true, Timeout.Infinite, Timeout.Infinite);
-                request.Headers.Add("X-FB-User", username);
+                var request = new HttpRequestMessage(method, ENDPOINT);
+                request.Headers.TryAddWithoutValidation("X-FB-User", username);
                 if (challenge != null)
-                    request.Headers.Add("X-FB-Auth", CreateAuthString(challenge));
-                request.Headers.Add("X-FB-Mode", mode);
+                    request.Headers.TryAddWithoutValidation("X-FB-Auth", CreateAuthString(challenge));
+                request.Headers.TryAddWithoutValidation("X-FB-Mode", mode);
 
                 if (addlParams != null)
                 {
@@ -336,25 +339,23 @@ namespace OpenLiveWriter.BlogClient.Clients
                         string name = addlParams[i];
                         string value = addlParams[i + 1];
                         if (name != null)
-                            request.Headers.Add("X-FB-" + name, value);
+                            request.Headers.TryAddWithoutValidation("X-FB-" + name, value);
                     }
                 }
 
                 return request;
             }
 
-            private static XmlDocument GetResponse(HttpWebRequest request, string mode)
+            private static XmlDocument GetResponse(HttpRequestMessage request, string mode)
             {
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-                {
-                    using (StreamReader responseReader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
-                    {
-                        XmlDocument xmlDoc = new XmlDocument();
-                        xmlDoc.Load(responseReader);
-                        CheckForErrors(xmlDoc, mode);
-                        return xmlDoc;
-                    }
-                }
+                using var response = HttpClientService.DefaultClient.SendAsync(request).GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
+                using var responseStream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+                using var responseReader = new StreamReader(responseStream, Encoding.UTF8);
+                XmlDocument xmlDoc = new XmlDocument();
+                xmlDoc.Load(responseReader);
+                CheckForErrors(xmlDoc, mode);
+                return xmlDoc;
             }
 
             private string CreateAuthString(string challenge)
