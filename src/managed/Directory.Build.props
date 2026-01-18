@@ -23,7 +23,12 @@
     <!-- Maintain existing warning/error behavior -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
-    <NoWarn>$(NoWarn);SYSLIB0011</NoWarn> <!-- BinaryFormatter obsolete warning - will address in Phase 2 -->
+    <!-- Suppress obsolete API warnings during migration - will address in Phase 2 -->
+    <NoWarn>$(NoWarn);SYSLIB0003</NoWarn> <!-- Code Access Security obsolete -->
+    <NoWarn>$(NoWarn);SYSLIB0011</NoWarn> <!-- BinaryFormatter obsolete -->
+    <NoWarn>$(NoWarn);SYSLIB0051</NoWarn> <!-- Formatter-based serialization obsolete -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>     <!-- Platform compatibility - Windows-only APIs (will add attributes in Phase 2) -->
+    <NoWarn>$(NoWarn);CS9191</NoWarn>     <!-- ref vs in parameter - minor code style -->
     
     <!-- Generate binding redirects for compatibility -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -37,6 +42,9 @@
     <Product>Open Live Writer</Product>
     <Company>.NET Foundation</Company>
     <Copyright>Copyright (c) .NET Foundation. All rights reserved.</Copyright>
+    
+    <!-- Disable auto-generation of assembly info (using existing GlobalAssemblyInfo.cs) -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     
     <!-- Suppress specific analyzers that may cause issues during migration -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>

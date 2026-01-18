@@ -1,0 +1,13 @@
+feat(dot net 10): convert leaf projects to SDK-style format (Commit 1.3)
+
+Converts leaf and editor projects to SDK-style format:
+- OpenLiveWriter.HtmlParser
+- OpenLiveWriter.Localization
+- OpenLiveWriter.Api
+- OpenLiveWriter.Mshtml
+- OpenLiveWriter.HtmlEditor
+- OpenLiveWriter.PostEditor
+- OpenLiveWriter.SpellChecker
+- OpenLiveWriter.Interop.Mshtml
+
+Includes CustomMarshalers.cs shim for .NET 10 compatibility.
