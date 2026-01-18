@@ -3,14 +3,15 @@
 
 using System;
 using System.Collections;
+using mshtml;
 
 namespace OpenLiveWriter.WebView2Shim
 {
     /// <summary>
-    /// WebView2 element collection - standalone class for now.
-    /// TODO: Implement IHTMLElementCollection once all members are added.
+    /// WebView2 element collection implementing IHTMLElementCollection.
+    /// Translates MSHTML interface calls to JavaScript DOM operations via WebView2.
     /// </summary>
-    public class WebView2ElementCollection : IEnumerable
+    public class WebView2ElementCollection : IHTMLElementCollection
     {
         private readonly WebView2Bridge _bridge;
         private readonly string[] _elementIds;
@@ -160,7 +161,7 @@ namespace OpenLiveWriter.WebView2Shim
         // Indexer for convenience
         public WebView2Element this[int index] => GetElementAt(index);
 
-        public string toString() => $"[object HTMLCollection]";
+        string IHTMLElementCollection.toString() => $"[object HTMLCollection]";
 
         public override string ToString() => $"WebView2ElementCollection[{_elementIds.Length} elements]";
     }
