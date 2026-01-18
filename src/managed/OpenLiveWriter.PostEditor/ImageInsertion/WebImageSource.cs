@@ -10,6 +10,7 @@ using System.Drawing.Text;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Windows.Forms;
 using OpenLiveWriter.ApplicationFramework;
 using OpenLiveWriter.Controls;
@@ -261,9 +262,11 @@ namespace OpenLiveWriter.PostEditor.ImageInsertion
                 {
                     try
                     {
-                        HttpWebResponse response = HttpRequestHelper.SendRequest(UrlHelper.FixUpUrl(imageUrl));
+                        using var response = HttpClientService.DefaultClient.GetAsync(UrlHelper.FixUpUrl(imageUrl)).GetAwaiter().GetResult();
+                        response.EnsureSuccessStatusCode();
+
                         Bitmap webImage;
-                        using (Stream responseStream = response.GetResponseStream())
+                        using (Stream responseStream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
                             webImage = new Bitmap(StreamHelper.CopyToMemoryStream(responseStream));
 
                         SetPreviewPicture(webImage, imageUrl);
