@@ -73,15 +73,24 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 - ✅ `WebRequestWithCache.cs` - Fully migrated to HttpClient
 - ✅ `AsyncWebRequestWithCache.cs` - Fully migrated to HttpClient
 - ✅ `ContentTypeHelper.cs` - Updated to use HttpResponseMessage
-- ✅ `TistoryBlogClient.cs` - Fully migrated to HttpClient
+- ✅ `TistoryBlogClient.cs` - Fully migrated to HttpClientXmlRestRequestHelper
+- ✅ `YouTubeVideoService.cs` - Fully migrated to HttpClientService
+- ✅ `YoutubeVideoPublisher.cs` - Partially migrated (DELETE, IsVideoCompleted use HttpClient)
+- ✅ `LiveJournalClient.cs` - FotobilderRequestManager fully migrated to HttpClient
 - ✅ `DestinationValidator.cs` - Migrated to use HttpRequestHelper.CheckUrlReachable
-- ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods (`HttpClient`, `SendRequestAsync`, `DownloadStream`, `CheckUrlReachable`, `GetResponse`, `GetResponseStream`, `PostForm`, `PostFormStream`)
+- ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods
 - ✅ `HttpClientRedirectHelper.cs` - New HttpClient-based redirect helper (replaces RedirectHelper)
 - ✅ `HttpClientXmlRestRequestHelper.cs` - New HttpClient-based XML REST helper (replaces XmlRestRequestHelper)
 - ✅ `PostEditorMainControl.ValidateHtml` - Migrated to use HttpClient
 - ✅ `MultiThreadedPageDownloader.cs` - Re-enabled (namespace updated from Project31 to OpenLiveWriter)
 - ✅ `CloseTrackingHttpWebRequest.cs` - Rewritten without `RealProxy` using wrapper pattern for .NET 10 compatibility
-- ⏳ Blog client infrastructure (AtomClient, YouTube, etc.) - Legacy callers still use old patterns
+
+**Remaining Legacy HttpWebRequest Usages (deferred):**
+- `AtomClient.cs` / `AtomMediaUploader.cs` / `BloggerAtomClient.cs` - Complex Picasa file upload with multipart MIME
+- `YouTubeUploadRequestHelper` - Multipart video upload
+- `XmlRestRequestHelper.cs` / `RedirectHelper.cs` - Core infrastructure (used by above)
+
+These legacy usages are suppressed via `SYSLIB0014` in `HttpRequestHelper.cs` and work correctly. Full migration would require significant refactoring of the multipart upload patterns.
 
 **For New Code:**
 - Use `HttpClientRedirectHelper` instead of `RedirectHelper`
