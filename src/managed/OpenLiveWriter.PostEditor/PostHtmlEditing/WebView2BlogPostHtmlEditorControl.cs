@@ -127,8 +127,8 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public string GetEditedTitleHtml()
         {
-            // TODO: Extract title from #olw-title element
-            return _title;
+            // Get title from WebView2 editor's #olw-title element
+            return _editor.GetEditedTitleHtml();
         }
 
         public bool FullyEditableRegionActive

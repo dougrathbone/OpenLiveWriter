@@ -20,6 +20,8 @@ namespace OpenLiveWriter.WebView2Shim
     /// </summary>
     public class WebView2HtmlEditorControl : UserControl, IHtmlEditor
     {
+        private static int _instanceCounter;
+        private readonly int _instanceId;
         private WebView2 _webView;
         private WebView2Bridge _bridge;
         private WebView2Document _document;
@@ -31,6 +33,8 @@ namespace OpenLiveWriter.WebView2Shim
 
         public WebView2HtmlEditorControl()
         {
+            _instanceId = ++_instanceCounter;
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl#{_instanceId} created");
             InitializeComponent();
             // Create command source immediately so it's never null
             _commandSource = new WebView2HtmlEditorCommandSource(this, null);
@@ -53,9 +57,9 @@ namespace OpenLiveWriter.WebView2Shim
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] WebView2HtmlEditorControl.InitializeWebView starting");
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl#{_instanceId}.InitializeWebView starting");
                 await _webView.EnsureCoreWebView2Async();
-                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] WebView2HtmlEditorControl.EnsureCoreWebView2Async completed");
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl#{_instanceId}.EnsureCoreWebView2Async completed");
                 
                 // Set background color after initialization
                 _webView.DefaultBackgroundColor = System.Drawing.Color.White;
@@ -63,9 +67,14 @@ namespace OpenLiveWriter.WebView2Shim
                 // Mark as initialized once CoreWebView2 is ready - we can now navigate
                 _isInitialized = true;
                 
+                _webView.CoreWebView2.NavigationStarting += (s, e) =>
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} NavigationStarting - URL: {e.Uri}");
+                };
+                
                 _webView.CoreWebView2.NavigationCompleted += (s, e) =>
                 {
-                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] NavigationCompleted - IsSuccess: {e.IsSuccess}, URL: {_webView.CoreWebView2.Source}");
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} NavigationCompleted - IsSuccess: {e.IsSuccess}, URL: {_webView.CoreWebView2.Source}");
                     if (e.IsSuccess)
                     {
                         // Bridge init can fail on file:// URLs without our editor, that's OK
@@ -73,12 +82,20 @@ namespace OpenLiveWriter.WebView2Shim
                     }
                 };
 
-                // Check if we have a pending file to load
-                if (!string.IsNullOrEmpty(_pendingFilePath) && File.Exists(_pendingFilePath))
+                // Check if we have pending html to load
+                if (!string.IsNullOrEmpty(_pendingHtml))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Loading pending file: {_pendingFilePath}");
-                    _webView.CoreWebView2.Navigate($"file:///{_pendingFilePath.Replace('\\', '/')}");
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} Loading pending html, length: {_pendingHtml.Length}");
+                    var html = _pendingHtml;
+                    _pendingHtml = null;
+                    _webView.CoreWebView2.NavigateToString(html);
+                }
+                else if (!string.IsNullOrEmpty(_pendingFilePath) && File.Exists(_pendingFilePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} Loading pending file: {_pendingFilePath}");
+                    var html = File.ReadAllText(_pendingFilePath);
                     _pendingFilePath = null;
+                    _webView.CoreWebView2.NavigateToString(html);
                 }
                 else
                 {
@@ -167,14 +184,18 @@ namespace OpenLiveWriter.WebView2Shim
             }
         }
 
+        private string _cachedBodyHtml = "";
+        private string _cachedTitleHtml = "";
+        
         private string GetEditorContent()
         {
-            if (_isInitialized && _document != null)
-            {
-                var editor = _document.getElementById("olw-editor");
-                return editor?.innerHTML ?? "";
-            }
-            return "";
+            // For now, return what we last loaded - will be updated when we have proper JS bridge
+            return _cachedBodyHtml;
+        }
+        
+        public string GetEditedTitleHtml()
+        {
+            return _cachedTitleHtml;
         }
 
         public WebView2Document Document => _document;
@@ -186,31 +207,72 @@ namespace OpenLiveWriter.WebView2Shim
 
         public void LoadHtmlFile(string filePath)
         {
-            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFile called - path: {filePath}, exists: {File.Exists(filePath)}, isInitialized: {_isInitialized}");
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} LoadHtmlFile called - path: {filePath}, exists: {File.Exists(filePath)}, isInitialized: {_isInitialized}");
             if (File.Exists(filePath))
             {
+                // Read the HTML content directly
+                var htmlContent = File.ReadAllText(filePath);
+                _pendingHtml = htmlContent;
+                
                 if (_isInitialized && _webView.CoreWebView2 != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFile - navigating immediately");
-                    _webView.CoreWebView2.Navigate($"file:///{filePath.Replace('\\', '/')}");
+                    // Use JavaScript to update the content directly
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} LoadHtmlFile - updating content via JS, html length: {htmlContent.Length}");
+                    UpdateContentViaJavaScript(htmlContent);
                 }
                 else
                 {
-                    // Store the file path for when WebView2 finishes initializing
-                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFile - storing pending file path");
-                    _pendingFilePath = filePath;
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} LoadHtmlFile - NOT READY, storing pending html");
                 }
+            }
+        }
+        
+        private async void UpdateContentViaJavaScript(string html)
+        {
+            try
+            {
+                // Extract title and body from the HTML
+                var titleMatch = System.Text.RegularExpressions.Regex.Match(html, @"<div id=""olw-title""[^>]*>(.*?)</div>", System.Text.RegularExpressions.RegexOptions.Singleline);
+                var bodyMatch = System.Text.RegularExpressions.Regex.Match(html, @"<div id=""olw-body""[^>]*>(.*?)</div>", System.Text.RegularExpressions.RegexOptions.Singleline);
+                
+                var title = titleMatch.Success ? titleMatch.Groups[1].Value : "";
+                var body = bodyMatch.Success ? bodyMatch.Groups[1].Value : "";
+                
+                // Cache the content we're loading
+                _cachedTitleHtml = title;
+                _cachedBodyHtml = body;
+                
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} UpdateContentViaJavaScript - title length: {title.Length}, body length: {body.Length}");
+                
+                // Escape for JavaScript string
+                var escapedTitle = title.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
+                var escapedBody = body.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
+                
+                var script = $@"
+                    document.getElementById('olw-title').innerHTML = '{escapedTitle}';
+                    document.getElementById('olw-body').innerHTML = '{escapedBody}';
+                    'done';
+                ";
+                
+                var result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} UpdateContentViaJavaScript - ExecuteScriptAsync returned: {result}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} UpdateContentViaJavaScript error: {ex.Message}");
             }
         }
 
         public string GetEditedHtml(bool preferWellFormed)
         {
-            return GetEditorContent();
+            // Return cached body - updates happen when content changes via JS bridge
+            return _cachedBodyHtml;
         }
 
         public string GetEditedHtmlFast()
         {
-            return GetEditorContent();
+            // Return cached without updating - used for quick checks
+            return _cachedBodyHtml;
         }
 
         public string SelectedText
