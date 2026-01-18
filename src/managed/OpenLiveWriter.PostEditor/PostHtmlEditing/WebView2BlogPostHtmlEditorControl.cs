@@ -75,9 +75,29 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 <head>
     <base href=""{_baseUrl}"" />
     <style>
-        body {{ font-family: Segoe UI, Arial, sans-serif; font-size: 14px; padding: 10px; }}
-        #olw-title {{ font-size: 24px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }}
-        #olw-body {{ min-height: 300px; }}
+        html, body {{ 
+            background-color: #ffffff; 
+            color: #000000;
+            margin: 0;
+            padding: 0;
+        }}
+        body {{ 
+            font-family: Segoe UI, Arial, sans-serif; 
+            font-size: 14px; 
+            padding: 10px; 
+        }}
+        #olw-title {{ 
+            font-size: 24px; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+            border-bottom: 1px solid #ccc; 
+            padding-bottom: 10px; 
+            background-color: #ffffff;
+        }}
+        #olw-body {{ 
+            min-height: 300px; 
+            background-color: #ffffff;
+        }}
     </style>
 </head>
 <body>
