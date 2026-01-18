@@ -16,6 +16,8 @@ namespace OpenLiveWriter.CoreServices
     /// </summary>
     internal class WebRequestWithCache
     {
+        private readonly bool _isFileUrl;
+        private readonly string _filePath;
 
         /// <summary>
         /// Constructs a new WebRequestWithCache
@@ -24,6 +26,13 @@ namespace OpenLiveWriter.CoreServices
         public WebRequestWithCache(string url)
         {
             m_url = url;
+
+            // Check if this is a file:// URL - handle directly without WebRequest
+            if (Uri.TryCreate(url, UriKind.Absolute, out Uri uri) && uri.Scheme == Uri.UriSchemeFile)
+            {
+                _isFileUrl = true;
+                _filePath = uri.LocalPath;
+            }
         }
 
         /// <summary>
@@ -42,6 +51,12 @@ namespace OpenLiveWriter.CoreServices
 
         public WebResponse GetHeadOnly(int timeOut)
         {
+            // For file:// URLs, we can't get "head only" - return null
+            // The caller should check file existence directly
+            if (_isFileUrl)
+            {
+                return null;
+            }
 
             // Note that in the event that the server returns a 403 for head, we try again using a get
             WebResponse response = null;
@@ -71,17 +86,6 @@ namespace OpenLiveWriter.CoreServices
                     }
                 }
             }
-            else if (WebRequest is FileWebRequest)
-            {
-                try
-                {
-                    response = WebRequest.GetResponse();
-                }
-                catch (WebException we)
-                {
-                    Trace.WriteLine("Error while finding FILE content type using " + WebRequest.Method + ": " + we.Message);
-                }
-            }
             return response;
         }
 
@@ -105,6 +109,23 @@ namespace OpenLiveWriter.CoreServices
         {
             Stream stream = Stream.Null;
 
+            // Handle file:// URLs directly without WebRequest
+            if (_isFileUrl)
+            {
+                try
+                {
+                    if (File.Exists(_filePath))
+                    {
+                        return new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"WebRequestWithCache: Error reading file {_filePath}: {ex.Message}");
+                }
+                return Stream.Null;
+            }
+
             // Check the cache
             if (cacheSettings != CacheSettings.NOCACHE)
             {
@@ -124,9 +145,8 @@ namespace OpenLiveWriter.CoreServices
                 if (m_url == null)
                     return null;
 
-                if (WebRequest is HttpWebRequest)
+                if (WebRequest is HttpWebRequest thisRequest)
                 {
-                    HttpWebRequest thisRequest = (HttpWebRequest)WebRequest;
                     thisRequest.Timeout = timeOut;
                 }
 
@@ -145,23 +165,15 @@ namespace OpenLiveWriter.CoreServices
         {
             get
             {
-                if (m_webRequest == null)
+                if (m_webRequest == null && !_isFileUrl)
                 {
                     try
                     {
                         m_webRequest = HttpRequestHelper.CreateHttpWebRequest(m_url, true);
                     }
-                    catch (InvalidCastException)
+                    catch (Exception ex) when (ex is InvalidCastException || ex is NotSupportedException)
                     {
-                        try
-                        {
-                            #pragma warning disable SYSLIB0014 // WebRequest is obsolete - fallback for non-HTTP URLs
-                            m_webRequest = WebRequest.Create(m_url);
-                            #pragma warning restore SYSLIB0014
-                        }
-                        catch (NotSupportedException)
-                        {
-                        }
+                        Trace.WriteLine($"WebRequestWithCache: Unable to create request for {m_url}: {ex.Message}");
                     }
                 }
                 return m_webRequest;

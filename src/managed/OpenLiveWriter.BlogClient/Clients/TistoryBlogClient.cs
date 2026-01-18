@@ -8,6 +8,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Xml;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
 using OpenLiveWriter.CoreServices;
 using OpenLiveWriter.Extensibility.BlogClient;
 using OpenLiveWriter.BlogClient.Providers;
@@ -104,32 +107,32 @@ namespace OpenLiveWriter.BlogClient.Clients
         */
 
 
+        private static readonly HttpClient _httpClient = CreateHttpClient();
+
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler
+            {
+                UseCookies = true,
+                CookieContainer = new CookieContainer()
+            };
+            var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)");
+            return client;
+        }
+
         private XmlDocument WebPost(string uri, FormData formData)
         {
             try
             {
-                byte[] byteformParams = UTF8Encoding.UTF8.GetBytes(formData.ToString());
-
-                #pragma warning disable SYSLIB0014 // WebRequest is obsolete
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
-                #pragma warning restore SYSLIB0014
-                request.Method = "POST";
-                request.ContentType = "application/x-www-form-urlencoded; charset=UTF-8";
-                request.ContentLength = byteformParams.Length;
-                request.UserAgent = "Mozilla / 4.0(compatible; MSIE 7.0; Windows NT 5.1)";
-                request.CookieContainer = new CookieContainer();
-
-
-                Stream stDataParams = request.GetRequestStream();
-                stDataParams.Write(byteformParams, 0, byteformParams.Length);
-                stDataParams.Close();
-
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                var content = new StringContent(formData.ToString(), Encoding.UTF8, "application/x-www-form-urlencoded");
+                var response = _httpClient.PostAsync(uri, content).GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
                 return ParseXmlResponse(response);
             }
-            catch(WebException web_ex)
+            catch (HttpRequestException ex)
             {
-                Console.WriteLine(web_ex.Message);
+                Trace.WriteLine($"TistoryBlogClient.WebPost error: {ex.Message}");
             }
 
             return null;
@@ -139,96 +142,26 @@ namespace OpenLiveWriter.BlogClient.Clients
         {
             try
             {
+                using var content = new MultipartFormDataContent();
 
-                string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
-                byte[] boundarybytes = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\n");
-
-                #pragma warning disable SYSLIB0014 // WebRequest is obsolete
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
-                #pragma warning restore SYSLIB0014
-                request.Method = "POST";
-                request.KeepAlive = true;
-                request.ContentType = "multipart/form-data; boundary=" + boundary;
-                
-                request.UserAgent = "Mozilla / 4.0(compatible; MSIE 7.0; Windows NT 5.1)";
-                request.Credentials = System.Net.CredentialCache.DefaultCredentials;
-                request.CookieContainer = new CookieContainer();
-
-                // file multi part
-                Stream memStream = new System.IO.MemoryStream();
-
-                string formdataTemplate = "\r\n--" + boundary + "\r\nContent-Disposition: form-data; name=\"{0}\";\r\n\r\n{1}";
-
+                // Add form fields
                 foreach (string key in parameter.Keys)
                 {
-                    string formitem = string.Format(formdataTemplate, key, parameter[key]);
-                    byte[] formitembytes = System.Text.Encoding.UTF8.GetBytes(formitem);
-                    memStream.Write(formitembytes, 0, formitembytes.Length);
+                    content.Add(new StringContent(parameter[key]), key);
                 }
 
+                // Add file content
+                var fileContent = new StreamContent(filestream);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(content_type);
+                content.Add(fileContent, "uploadedfile", filename);
 
-                memStream.Write(boundarybytes, 0, boundarybytes.Length);
-
-                string headerTemplate = "Content-Disposition: form-data; name=\"uploadedfile\"; filename=\"{0}\"\r\n Content-Type: {1}\r\n\r\n";
-                string header = string.Format(headerTemplate, filename, content_type);
-                byte[] headerbytes = System.Text.Encoding.UTF8.GetBytes(header);
-                memStream.Write(headerbytes, 0, headerbytes.Length);
-
-                byte[] buffer = new byte[1024];
-
-                int bytesRead = 0;
-
-                while ((bytesRead = filestream.Read(buffer, 0, buffer.Length)) != 0)
-                {
-                    memStream.Write(buffer, 0, bytesRead);
-                }
-
-                memStream.Write(boundarybytes, 0, boundarybytes.Length);
-
-
-                /*
-                for (int i = 0; i < files.Length; i++)
-                {
-
-                    string header = string.Format(headerTemplate, "file" + i, files[i]);
-                    byte[] headerbytes = System.Text.Encoding.UTF8.GetBytes(header);
-                    memStream.Write(headerbytes, 0, headerbytes.Length);
-
-
-                    FileStream fileStream = new FileStream(files[i], FileMode.Open,
-                    FileAccess.Read);
-                    byte[] buffer = new byte[1024];
-
-                    int bytesRead = 0;
-
-                    while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) != 0)
-                    {
-                        memStream.Write(buffer, 0, bytesRead);
-                    }
-
-
-                    memStream.Write(boundarybytes, 0, boundarybytes.Length);
-
-
-                    fileStream.Close();
-                }
-                */
-                request.ContentLength = memStream.Length;
-                Stream requestStream = request.GetRequestStream();
-
-                memStream.Position = 0;
-                byte[] tempBuffer = new byte[memStream.Length];
-                memStream.Read(tempBuffer, 0, tempBuffer.Length);
-                memStream.Close();
-                requestStream.Write(tempBuffer, 0, tempBuffer.Length);
-                requestStream.Close();
-
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                var response = _httpClient.PostAsync(uri, content).GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
                 return ParseXmlResponse(response);
             }
-            catch (WebException web_ex)
+            catch (HttpRequestException ex)
             {
-                Console.WriteLine(web_ex.Message);
+                Trace.WriteLine($"TistoryBlogClient.WebPostFileUpload error: {ex.Message}");
             }
 
             return null;
@@ -243,41 +176,16 @@ namespace OpenLiveWriter.BlogClient.Clients
                     "password", password,
                     "redirectUrl", redirect_url);
 
-                byte[] byteformParams = UTF8Encoding.UTF8.GetBytes(formData.ToString());
+                var content = new StringContent(formData.ToString(), Encoding.UTF8, "application/x-www-form-urlencoded");
 
-                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                ////System.Net.ServicePointManager.ServerCertificateValidationCallback = new System.Net.Security.RemoteCertificateValidationCallback(AcceptAllCertifications);
-                //ServicePointManager.ServerCertificateValidationCallback = delegate
-                //{
-                //    return true;
-                //};
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://www.tistory.com/auth/login");
+                request.Content = content;
+                request.Headers.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8");
 
-                #pragma warning disable SYSLIB0014 // WebRequest is obsolete
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://www.tistory.com/auth/login");
-                #pragma warning restore SYSLIB0014
-                request.Method = "POST";
-                request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8";
-                request.ContentType = "application/x-www-form-urlencoded; charset=UTF-8";//"application/x-www-form-urlencoded";
-                request.ContentLength = byteformParams.Length;
-                request.UserAgent = "Mozilla / 4.0(compatible; MSIE 7.0; Windows NT 5.1)";
-                request.CookieContainer = new CookieContainer();
+                var response = _httpClient.SendAsync(request).GetAwaiter().GetResult();
+                var strResult = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
-
-                Stream stDataParams = request.GetRequestStream();
-                stDataParams.Write(byteformParams, 0, byteformParams.Length);
-                stDataParams.Close();
-
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-
-                Stream stReadData = response.GetResponseStream();
-                StreamReader srReadData = new StreamReader(stReadData, Encoding.UTF8);
-
-                string strResult = srReadData.ReadToEnd();
-
-                response.Close();
-
-
-                string url_check = response.ResponseUri.ToString();
+                string url_check = response.RequestMessage?.RequestUri?.ToString() ?? "";
 
                 if (url_check.Contains("#access_token="))
                 {
@@ -290,13 +198,13 @@ namespace OpenLiveWriter.BlogClient.Clients
                     return true;
                 }
             }
-            catch(WebException web_ex)
+            catch (HttpRequestException ex)
             {
-                Console.WriteLine(web_ex.Message);
+                Trace.WriteLine($"TistoryBlogClient.LoginWithWeb error: {ex.Message}");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Trace.WriteLine($"TistoryBlogClient.LoginWithWeb error: {ex.Message}");
             }
             return false;
         }
@@ -1507,15 +1415,11 @@ namespace OpenLiveWriter.BlogClient.Clients
             return Math.Floor(diff.TotalSeconds);
         }
 
-        protected XmlDocument ParseXmlResponse(HttpWebResponse response)
+        protected XmlDocument ParseXmlResponse(HttpResponseMessage response)
         {
-            MemoryStream ms = new MemoryStream();
-            using (Stream s = response.GetResponseStream())
-            {
-                StreamHelper.Transfer(s, ms);
-            }
-            ms.Seek(0, SeekOrigin.Begin);
-            string text = new StreamReader(ms, Encoding.UTF8).ReadToEnd();
+            using var stream = response.Content.ReadAsStream();
+            var ms = new MemoryStream();
+            stream.CopyTo(ms);
 
             ms.Seek(0, SeekOrigin.Begin);
             if (ms.Length == 0)
@@ -1525,7 +1429,10 @@ namespace OpenLiveWriter.BlogClient.Clients
             {
                 XmlDocument xmlDoc = new XmlDocument();
                 xmlDoc.Load(ms);
-                XmlHelper.ApplyBaseUri(xmlDoc, response.ResponseUri);
+                if (response.RequestMessage?.RequestUri != null)
+                {
+                    XmlHelper.ApplyBaseUri(xmlDoc, response.RequestMessage.RequestUri);
+                }
 
                 return xmlDoc;
             }

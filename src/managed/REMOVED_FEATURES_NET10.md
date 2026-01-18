@@ -68,7 +68,6 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 |------|---------|--------|
 | `RegistryCodec.cs` | `SYSLIB0011` | BinaryFormatter read-only fallback |
 | `HttpRequestHelper.cs` | `SYSLIB0009`, `SYSLIB0014` | Legacy WebRequest/AuthenticationManager |
-| `WebRequestWithCache.cs` | `SYSLIB0014` | WebRequest fallback |
-| `AsyncWebRequestWithCache.cs` | `SYSLIB0014` | WebRequest fallback |
-| `TistoryBlogClient.cs` | `SYSLIB0014` | Tistory API |
 | `GenericAtomClient.cs` | `SYSLIB0009` | Google login auth |
+
+**Note:** `WebRequestWithCache.cs`, `AsyncWebRequestWithCache.cs`, and `TistoryBlogClient.cs` were migrated to use HttpClient and `File.OpenRead()` for file URLs - no longer require SYSLIB0014 suppressions.

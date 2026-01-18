@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using OpenLiveWriter.Interop.Windows;
@@ -20,6 +21,9 @@ namespace OpenLiveWriter.CoreServices
         /// </summary>
         public Stream ResponseStream;
 
+        private readonly bool _isFileUrl;
+        private readonly string _filePath;
+
         /// <summary>
         /// Event called when an asynchronous request is completed.
         /// </summary>
@@ -37,6 +41,13 @@ namespace OpenLiveWriter.CoreServices
         public AsyncWebRequestWithCache(string url)
         {
             m_url = url;
+
+            // Check if this is a file:// URL - handle directly without WebRequest
+            if (Uri.TryCreate(url, UriKind.Absolute, out Uri uri) && uri.Scheme == Uri.UriSchemeFile)
+            {
+                _isFileUrl = true;
+                _filePath = uri.LocalPath;
+            }
         }
 
         /// <summary>
@@ -65,6 +76,24 @@ namespace OpenLiveWriter.CoreServices
         {
             requestRunning = true;
 
+            // Handle file:// URLs directly without WebRequest
+            if (_isFileUrl)
+            {
+                try
+                {
+                    if (File.Exists(_filePath))
+                    {
+                        ResponseStream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"AsyncWebRequestWithCache: Error reading file {_filePath}: {ex.Message}");
+                }
+                FireRequestComplete();
+                return;
+            }
+
             // Check the cache
             if (cacheSettings != CacheSettings.NOCACHE)
             {
@@ -82,17 +111,14 @@ namespace OpenLiveWriter.CoreServices
                 try
                 {
                     m_webRequest = HttpRequestHelper.CreateHttpWebRequest(m_url, true);
+                    m_webRequest.Timeout = timeOut;
+                    m_webRequest.BeginGetResponse(new AsyncCallback(RequestCompleteHandler), new object());
                 }
-                catch (InvalidCastException)
+                catch (Exception ex) when (ex is InvalidCastException || ex is NotSupportedException)
                 {
-                    #pragma warning disable SYSLIB0014 // WebRequest is obsolete - fallback for non-HTTP URLs
-                    m_webRequest = WebRequest.Create(m_url);
-                    #pragma warning restore SYSLIB0014
+                    Trace.WriteLine($"AsyncWebRequestWithCache: Unable to create request for {m_url}: {ex.Message}");
+                    FireRequestComplete();
                 }
-
-                m_webRequest.Timeout = timeOut;
-
-                m_webRequest.BeginGetResponse(new AsyncCallback(RequestCompleteHandler), new object());
             }
         }
 
