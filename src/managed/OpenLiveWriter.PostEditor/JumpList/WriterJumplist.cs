@@ -76,10 +76,15 @@ namespace OpenLiveWriter.PostEditor.JumpList
             }
             catch (Exception e)
             {
-                Trace.Fail(e.ToString());
+                // UnauthorizedAccessException occurs when Windows "Recent documents tracking" is disabled
+                // This is a user privacy setting, not an error - silently ignore these expected cases
                 if (e is InvalidOperationException || e is UnauthorizedAccessException || e is COMException)
+                {
+                    Trace.WriteLine("[OLW-DEBUG] JumpList update skipped: " + e.Message);
                     return;
+                }
 
+                Trace.Fail(e.ToString());
                 throw;
             }
         }
