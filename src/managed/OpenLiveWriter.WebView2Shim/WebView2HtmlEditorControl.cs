@@ -10,7 +10,9 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
 using mshtml;
 using OpenLiveWriter.ApplicationFramework;
+using OpenLiveWriter.CoreServices;
 using OpenLiveWriter.HtmlEditor;
+using OpenLiveWriter.HtmlEditor.Linking;
 using OpenLiveWriter.Localization;
 using OpenLiveWriter.Mshtml;
 
@@ -458,39 +460,26 @@ namespace OpenLiveWriter.WebView2Shim
 
         public void InsertHtml(string content, HtmlInsertionOptions options)
         {
-            if (_isInitialized && _document != null)
+            if (_isInitialized && _webView?.CoreWebView2 != null)
             {
-                var selection = _document.selection;
-                var range = selection.createRange();
-                
-                if (options.HasFlag(HtmlInsertionOptions.PlainText))
-                {
-                    range.text = content;
-                }
-                else
-                {
-                    range.pasteHTML(content);
-                }
-                
-                if (options.HasFlag(HtmlInsertionOptions.MoveCursorAfter))
-                {
-                    range.collapse(false);
-                    range.select();
-                }
-                
-                range.Dispose();
+                // Use execCommand insertHTML to insert at cursor position
+                var escapedContent = content.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "");
+                var script = $"document.execCommand('insertHTML', false, '{escapedContent}')";
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertHtml: {script}");
+                _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
                 IsDirty = true;
             }
         }
 
         public void InsertLink(string url, string linkText, string linkTitle, string rel, bool newWindow)
         {
-            if (_isInitialized && _document != null)
+            if (_isInitialized && _webView?.CoreWebView2 != null)
             {
                 var target = newWindow ? " target=\"_blank\"" : "";
-                var relAttr = !string.IsNullOrEmpty(rel) ? $" rel=\"{WebView2Bridge.HtmlEncode(rel)}\"" : "";
-                var titleAttr = !string.IsNullOrEmpty(linkTitle) ? $" title=\"{WebView2Bridge.HtmlEncode(linkTitle)}\"" : "";
-                var html = $"<a href=\"{WebView2Bridge.HtmlEncode(url)}\"{titleAttr}{relAttr}{target}>{WebView2Bridge.HtmlEncode(linkText)}</a>";
+                var relAttr = !string.IsNullOrEmpty(rel) ? $" rel=\"{System.Net.WebUtility.HtmlEncode(rel)}\"" : "";
+                var titleAttr = !string.IsNullOrEmpty(linkTitle) ? $" title=\"{System.Net.WebUtility.HtmlEncode(linkTitle)}\"" : "";
+                var html = $"<a href=\"{System.Net.WebUtility.HtmlEncode(url)}\"{titleAttr}{relAttr}{target}>{System.Net.WebUtility.HtmlEncode(linkText)}</a>";
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertLink: {html}");
                 InsertHtml(html, HtmlInsertionOptions.MoveCursorAfter);
             }
         }
@@ -692,8 +681,56 @@ namespace OpenLiveWriter.WebView2Shim
         public void ApplyBlockquote() { /* TODO: wrap selection in blockquote */ }
         public bool SelectionBlockquoted => false; // TODO
 
-        public bool CanInsertLink => true;
-        public void InsertLink() { /* Handled by caller */ }
+        public bool CanInsertLink => _webView?.CoreWebView2 != null;
+        public void InsertLink()
+        {
+            using (new WaitCursor())
+            {
+                // Get selected text for the link text
+                string selectedText = GetSelectedText();
+                
+                // Create a temporary CommandManager for the dialog
+                using (var commandManager = new CommandManager())
+                using (var hyperlinkForm = new HyperlinkForm(commandManager, true))
+                {
+                    if (!string.IsNullOrEmpty(selectedText))
+                        hyperlinkForm.LinkText = selectedText;
+                    
+                    hyperlinkForm.EditStyle = false;
+                    
+                    var owner = _editor?.FindForm();
+                    if (hyperlinkForm.ShowDialog(owner) == DialogResult.OK)
+                    {
+                        _editor?.InsertLink(
+                            hyperlinkForm.Hyperlink, 
+                            hyperlinkForm.LinkText, 
+                            hyperlinkForm.LinkTitle, 
+                            hyperlinkForm.Rel, 
+                            hyperlinkForm.NewWindow);
+                    }
+                }
+            }
+        }
+        
+        private string GetSelectedText()
+        {
+            if (_webView?.CoreWebView2 == null) return "";
+            
+            try
+            {
+                var task = _webView.CoreWebView2.ExecuteScriptAsync("window.getSelection().toString()");
+                task.Wait(1000);
+                if (task.IsCompleted)
+                {
+                    var result = task.Result;
+                    // Result is JSON-encoded string
+                    if (result != null && result.StartsWith("\"") && result.EndsWith("\""))
+                        return result.Substring(1, result.Length - 2).Replace("\\n", "\n").Replace("\\\"", "\"");
+                }
+            }
+            catch { }
+            return "";
+        }
 
         public bool CanRemoveLink => false; // TODO
         public void RemoveLink() => ExecuteCommand("unlink");

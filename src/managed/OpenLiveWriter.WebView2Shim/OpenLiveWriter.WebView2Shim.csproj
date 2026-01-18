@@ -67,9 +67,21 @@
       <Project>{0ae37842-33af-4a3c-b405-e57a1dd78e9f}</Project>
       <Name>OpenLiveWriter.Interop.Mshtml</Name>
     </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.Interop\OpenLiveWriter.Interop.csproj">
+      <Project>{67C6BC3B-9CB3-44C1-AACC-B7AB19A85B65}</Project>
+      <Name>OpenLiveWriter.Interop</Name>
+    </ProjectReference>
     <ProjectReference Include="..\OpenLiveWriter.ApplicationFramework\OpenLiveWriter.ApplicationFramework.csproj">
       <Project>{71b6a7f7-ac05-4a07-9426-64c15ea8bb56}</Project>
       <Name>OpenLiveWriter.ApplicationFramework</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.CoreServices\OpenLiveWriter.CoreServices.csproj">
+      <Project>{9511f965-531a-440c-8c7a-d9f382ed70c7}</Project>
+      <Name>OpenLiveWriter.CoreServices</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.Controls\OpenLiveWriter.Controls.csproj">
+      <Project>{38fe0a0e-afbb-4c11-a24b-5f972a0c939e}</Project>
+      <Name>OpenLiveWriter.Controls</Name>
     </ProjectReference>
     <ProjectReference Include="..\OpenLiveWriter.HtmlEditor\OpenLiveWriter.HtmlEditor.csproj">
       <Project>{7658f706-8a4f-4bba-8e33-a29edf6b6ade}</Project>
