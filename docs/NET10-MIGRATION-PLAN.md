@@ -34,23 +34,31 @@ MSHTML (Internet Explorer's HTML engine) is deeply embedded throughout the codeb
 2. **WebView2BrowserControl.cs** - Implements `IBrowserControl` interface
 3. **BrowserControlFactory.cs** - Toggle via `OLW_USE_WEBVIEW2=1` env var
 4. **BrowserMiniForm.cs** - Updated to use factory pattern
-5. **TLS 1.2 Support** - Fixed HTTPS connectivity for modern servers
-6. **Debug Logging** - `[OLW-DEBUG]` prefix for DebugView filtering
+5. **MapControl.cs** - Updated to use factory pattern
+6. **TLS 1.2 Support** - Fixed HTTPS connectivity for modern servers
+7. **Debug Logging** - `[OLW-DEBUG]` prefix for DebugView filtering
+
+### Decisions Made 📝
+- **Maps Feature**: Bing Maps API is dead. Options: Remove feature, replace with OpenStreetMap/Leaflet, or Google Maps. Recommendation: Remove for now to simplify migration.
 
 ### TODO 📋
 
 #### Phase 1a: Simple Browser Uses
 - [ ] `OpenLiveWriter.CoreServices/HtmlScreenCaptureCore.cs`
-- [ ] `OpenLiveWriter.CoreServices/HTML/WebPageDownloader.cs`
+- [ ] `OpenLiveWriter.CoreServices/HTML/WebPageDownloader.cs` (uses old Project31 namespace)
 - [ ] `OpenLiveWriter.CoreServices/BrowserOperationInvoker.cs`
 - [ ] `OpenLiveWriter.CoreServices/WebRequest/WebPageDownloader.cs`
-- [ ] `OpenLiveWriter.InternalWriterPlugin/MapControl.cs`
+- [x] `OpenLiveWriter.InternalWriterPlugin/MapControl.cs` - Done, but Bing Maps API is dead
 
-#### Phase 1b: DOM Interop Layer
+#### Phase 1b: Feature Cleanup
+- [ ] Remove or replace dead Bing Maps feature
+- [ ] Audit other features using deprecated APIs
+
+#### Phase 1c: DOM Interop Layer
 - [ ] Create `WebView2DomHelper.cs` with common DOM operations
 - [ ] Map IHTMLElement operations to JavaScript equivalents
 
-#### Phase 1c: HTML Editor (Major Work)
+#### Phase 1d: HTML Editor (Major Work)
 - [ ] Analyze `OpenLiveWriter.Mshtml/MshtmlEditor.cs` (106+ IHTMLDocument refs)
 - [ ] Design WebView2-based editing with contenteditable
 - [ ] Handle paste, drag-drop, undo/redo, spell checking
@@ -81,3 +89,9 @@ $env:OLW_USE_WEBVIEW2 = "1"
 | `OpenLiveWriter.BrowserControl/BrowserControlFactory.cs` | Factory for switching |
 | `OpenLiveWriter.Mshtml/MshtmlEditor.cs` | Main HTML editing engine (needs rewrite) |
 | `writer.build.settings` | Build settings |
+
+---
+
+## Known Issues
+- **dasBlog XML-RPC**: Server returns NullReferenceException on `blogger.getUsersBlogs` - this is a dasBlog Core bug, not OLW
+- **Bing Maps**: Virtual Earth API is deprecated/dead - map feature non-functional
