@@ -76,13 +76,14 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public void FocusTitle()
         {
-            // WebView2 doesn't have separate title region yet - just focus body
+            // WebView2 doesn't have separate title region yet - just focus control
             Focus();
         }
 
         public void FocusBody()
         {
-            Focus();
+            // Actually focus the body contenteditable element, not just the control
+            _editor.FocusBody();
         }
 
         public bool DocumentHasFocus()

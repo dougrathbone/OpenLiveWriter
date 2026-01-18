@@ -7,6 +7,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using mshtml;
 using OpenLiveWriter.ApplicationFramework;
@@ -131,7 +132,12 @@ namespace OpenLiveWriter.WebView2Shim
             try
             {
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl#{_instanceId}.InitializeWebView starting");
-                await _webView.EnsureCoreWebView2Async();
+                
+                // Create environment with --allow-file-access-from-files to load local images
+                // OLW stores images in temp folders and references them via file:// URLs
+                var options = new CoreWebView2EnvironmentOptions("--allow-file-access-from-files");
+                var env = await CoreWebView2Environment.CreateAsync(null, null, options);
+                await _webView.EnsureCoreWebView2Async(env);
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl#{_instanceId}.EnsureCoreWebView2Async completed");
                 
                 // Set background color after initialization
@@ -160,6 +166,22 @@ namespace OpenLiveWriter.WebView2Shim
                         System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebMessageReceived error: {ex.Message}");
                     }
                 };
+                
+                // Set up virtual host mapping for local file access
+                // WebView2 blocks file:// URLs for security, so we map drive letters to virtual hosts
+                // file:///C:/path/image.png -> https://olw-local-c/path/image.png
+                foreach (var drive in System.IO.DriveInfo.GetDrives())
+                {
+                    if (drive.IsReady && drive.DriveType == System.IO.DriveType.Fixed)
+                    {
+                        var driveLetter = drive.Name[0].ToString().ToLowerInvariant();
+                        var hostName = $"olw-local-{driveLetter}";
+                        var folderPath = drive.RootDirectory.FullName;
+                        _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                            hostName, folderPath, CoreWebView2HostResourceAccessKind.Allow);
+                        System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Mapped {hostName} -> {folderPath}");
+                    }
+                }
                 
                 // Mark as initialized once CoreWebView2 is ready - we can now navigate
                 _isInitialized = true;
@@ -525,17 +547,40 @@ namespace OpenLiveWriter.WebView2Shim
             try
             {
                 // Extract title and body from the HTML
+                // Note: Body can contain nested divs, so we match to the last </div> before </body> or end
                 var titleMatch = System.Text.RegularExpressions.Regex.Match(html, @"<div id=""olw-title""[^>]*>(.*?)</div>", System.Text.RegularExpressions.RegexOptions.Singleline);
-                var bodyMatch = System.Text.RegularExpressions.Regex.Match(html, @"<div id=""olw-body""[^>]*>(.*?)</div>", System.Text.RegularExpressions.RegexOptions.Singleline);
+                
+                // For body, find the start tag and capture everything until we hit the closing pattern
+                // The body div is followed by </body> or end of document
+                var bodyStartMatch = System.Text.RegularExpressions.Regex.Match(html, @"<div id=""olw-body""[^>]*>", System.Text.RegularExpressions.RegexOptions.Singleline);
+                var body = "";
+                if (bodyStartMatch.Success)
+                {
+                    var startIndex = bodyStartMatch.Index + bodyStartMatch.Length;
+                    // Find the closing </div> that's followed by </body> or whitespace then </body>
+                    var endMatch = System.Text.RegularExpressions.Regex.Match(html.Substring(startIndex), @"</div>\s*</body>", System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (endMatch.Success)
+                    {
+                        body = html.Substring(startIndex, endMatch.Index);
+                    }
+                    else
+                    {
+                        // Fallback: take everything to the last </div>
+                        var lastDivIndex = html.LastIndexOf("</div>", StringComparison.OrdinalIgnoreCase);
+                        if (lastDivIndex > startIndex)
+                        {
+                            body = html.Substring(startIndex, lastDivIndex - startIndex);
+                        }
+                    }
+                }
                 
                 var title = titleMatch.Success ? titleMatch.Groups[1].Value : "";
-                var body = bodyMatch.Success ? bodyMatch.Groups[1].Value : "";
+                
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} UpdateContentViaJavaScript - title length: {title.Length}, body length: {body.Length}");
                 
                 // Update the content bridge so C# has initial values
                 _contentBridge.Title = title;
                 _contentBridge.Body = body;
-                
-                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} UpdateContentViaJavaScript - title length: {title.Length}, body length: {body.Length}");
                 
                 // Escape for JavaScript string
                 var escapedTitle = title.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
@@ -622,20 +667,139 @@ namespace OpenLiveWriter.WebView2Shim
                 _document.selection.empty();
             }
         }
+        
+        /// <summary>
+        /// Focuses the body contenteditable element (not the title).
+        /// Called before inserting images to ensure they go in the right place.
+        /// </summary>
+        public void FocusBody()
+        {
+            if (_isInitialized && _webView?.CoreWebView2 != null)
+            {
+                var script = @"
+                    var body = document.getElementById('olw-body');
+                    if (body) {
+                        body.focus();
+                        // Move cursor to end if no selection
+                        var sel = window.getSelection();
+                        if (sel.rangeCount === 0) {
+                            var range = document.createRange();
+                            range.selectNodeContents(body);
+                            range.collapse(false);
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+                        }
+                    }
+                ";
+                _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
+                System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] FocusBody called");
+            }
+        }
 
         public void InsertHtml(string content, bool moveSelectionRight)
         {
             InsertHtml(content, moveSelectionRight ? HtmlInsertionOptions.MoveCursorAfter : HtmlInsertionOptions.Default);
         }
 
+        private static string GetMimeType(string filePath)
+        {
+            var ext = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
+            switch (ext)
+            {
+                case ".jpg":
+                case ".jpeg":
+                    return "image/jpeg";
+                case ".png":
+                    return "image/png";
+                case ".gif":
+                    return "image/gif";
+                case ".bmp":
+                    return "image/bmp";
+                case ".webp":
+                    return "image/webp";
+                case ".svg":
+                    return "image/svg+xml";
+                case ".ico":
+                    return "image/x-icon";
+                default:
+                    return "application/octet-stream";
+            }
+        }
+
+        /// <summary>
+        /// Converts file:// URLs to virtual host URLs that WebView2 can serve.
+        /// file:///C:/path/image.png -> https://olw-local-c/path/image.png
+        /// </summary>
+        private string ConvertFileUrlsToVirtualHost(string html)
+        {
+            // Match file:// URLs (file:///C:/... or file:///D:/...)
+            var regex = new System.Text.RegularExpressions.Regex(
+                @"file:///([A-Za-z]):/",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            return regex.Replace(html, match =>
+            {
+                var driveLetter = match.Groups[1].Value.ToLowerInvariant();
+                var result = $"https://olw-local-{driveLetter}/";
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Converted file URL: {match.Value} -> {result}");
+                return result;
+            });
+        }
+
         public void InsertHtml(string content, HtmlInsertionOptions options)
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertHtml RECEIVED: {content}");
+            
             if (_isInitialized && _webView?.CoreWebView2 != null)
             {
-                // Use execCommand insertHTML to insert at cursor position
-                var escapedContent = content.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "");
-                var script = $"document.execCommand('insertHTML', false, '{escapedContent}')";
-                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertHtml: {script}");
+                // Convert file:// URLs to virtual host URLs for WebView2
+                content = ConvertFileUrlsToVirtualHost(content);
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertHtml AFTER conversion: {content}");
+                
+                // Properly escape for JavaScript string literal
+                // Double-backslash the hex codes so JS string parsing doesn't interpret them
+                // We want the regex to find literal "\x3c" and replace with "<"
+                var escaped = content
+                    .Replace("\\", "\\\\")  // Backslash first!
+                    .Replace("\"", "\\\"")  // Double quotes
+                    .Replace("'", "\\'")    // Single quotes
+                    .Replace("\r", "")      // Remove CR
+                    .Replace("\n", "\\n")   // Newlines
+                    .Replace("\t", "\\t")   // Tabs
+                    .Replace("<", "\\\\x3c")  // Double-escape: C# \\\\x3c -> JS \\x3c -> literal \x3c
+                    .Replace(">", "\\\\x3e"); // Same for >
+                
+                // Focus body first to ensure content goes there, then insert
+                // Note: We decode the escaped HTML back in JS before inserting
+                // Double-escape the hex codes so JS doesn't interpret them as escape sequences
+                var script = @"
+                    (function() {
+                        var body = document.getElementById('olw-body');
+                        var sel = window.getSelection();
+                        var activeEl = document.activeElement;
+                        
+                        // If focus is in title or no selection in body, focus body first
+                        if (activeEl && activeEl.id === 'olw-title') {
+                            body.focus();
+                            // Move to end of body
+                            var range = document.createRange();
+                            range.selectNodeContents(body);
+                            range.collapse(false);
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+                        }
+                        
+                        // The content comes in with literal backslash-x-3-c sequences (8 chars: \\x3c)
+                        // Replace them with actual < and > characters
+                        var rawStr = """ + escaped + @""";
+                        console.log('[OLW-JS] rawStr before replace:', rawStr.substring(0, 200));
+                        var html = rawStr.replace(/\\x3c/g, '<').replace(/\\x3e/g, '>');
+                        console.log('[OLW-JS] html after replace:', html.substring(0, 200));
+                        document.execCommand('insertHTML', false, html);
+                        console.log('[OLW-JS] body.innerHTML after insert:', body.innerHTML.substring(0, 200));
+                    })();
+                ";
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertHtml: {content.Substring(0, Math.Min(100, content.Length))}...");
                 _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
                 IsDirty = true;
             }
