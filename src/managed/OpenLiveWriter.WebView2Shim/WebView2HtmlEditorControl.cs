@@ -59,6 +59,18 @@ namespace OpenLiveWriter.WebView2Shim
             set => _selection = value ?? "";
         }
         
+        // Link state - synced when selection changes
+        public bool IsInLink { get; set; } = false;
+        public string LinkHref { get; set; } = "";
+        public string LinkText { get; set; } = "";
+        public string LinkTitle { get; set; } = "";
+        public string LinkRel { get; set; } = "";
+        public string LinkTarget { get; set; } = "";
+        
+        // Block state - synced when selection changes
+        public bool IsInBlockquote { get; set; } = false;
+        public string CurrentBlockTag { get; set; } = ""; // H1, H2, P, etc.
+        
         public bool IsDirty { get; set; } = false;
         
         public void MarkDirty()
@@ -276,11 +288,63 @@ namespace OpenLiveWriter.WebView2Shim
                         window.olwListenersSetup = true;
                         var olw = window.chrome.webview.hostObjects.sync.olw;
                         
-                        // Sync selection to bridge on every selection change - C# can read it synchronously
-                        document.addEventListener('selectionchange', function() {
+                        // Find parent element of given type
+                        function findParent(node, tagName) {
+                            while (node && node !== bodyEl) {
+                                if (node.nodeType === 1 && node.tagName === tagName) return node;
+                                node = node.parentNode;
+                            }
+                            return null;
+                        }
+                        
+                        // Find closest block element (H1-H6, P, DIV, BLOCKQUOTE)
+                        function findBlockParent(node) {
+                            var blockTags = ['H1','H2','H3','H4','H5','H6','P','DIV','BLOCKQUOTE','PRE','LI'];
+                            while (node && node !== bodyEl && node !== document.body) {
+                                if (node.nodeType === 1 && blockTags.indexOf(node.tagName) >= 0) {
+                                    return node;
+                                }
+                                node = node.parentNode;
+                            }
+                            return null;
+                        }
+                        
+                        // Sync selection and context state to bridge
+                        function syncSelectionState() {
                             var sel = window.getSelection();
                             olw.Selection = sel ? sel.toString() : '';
-                        });
+                            
+                            // Get anchor node for context
+                            var node = sel && sel.anchorNode ? sel.anchorNode : null;
+                            if (node && node.nodeType === 3) node = node.parentNode; // text node -> parent
+                            
+                            // Check if we're inside a link
+                            var anchor = findParent(node, 'A');
+                            olw.IsInLink = !!anchor;
+                            if (anchor) {
+                                olw.LinkHref = anchor.href || '';
+                                olw.LinkText = anchor.innerText || '';
+                                olw.LinkTitle = anchor.title || '';
+                                olw.LinkRel = anchor.rel || '';
+                                olw.LinkTarget = anchor.target || '';
+                            } else {
+                                olw.LinkHref = '';
+                                olw.LinkText = '';
+                                olw.LinkTitle = '';
+                                olw.LinkRel = '';
+                                olw.LinkTarget = '';
+                            }
+                            
+                            // Check if we're inside a blockquote
+                            olw.IsInBlockquote = !!findParent(node, 'BLOCKQUOTE');
+                            
+                            // Get current block element type
+                            var block = findBlockParent(node);
+                            olw.CurrentBlockTag = block ? block.tagName : '';
+                        }
+                        
+                        // Sync selection to bridge on every selection change
+                        document.addEventListener('selectionchange', syncSelectionState);
                         
                         function syncContent() {
                             olw.Title = titleEl.innerHTML;
@@ -302,6 +366,7 @@ namespace OpenLiveWriter.WebView2Shim
                         
                         // Sync initial content
                         syncContent();
+                        syncSelectionState();
                         
                         return 'listeners setup ok';
                     })();
@@ -525,6 +590,11 @@ namespace OpenLiveWriter.WebView2Shim
         }
 
         public string SelectedText => _contentBridge?.Selection ?? "";
+        
+        /// <summary>
+        /// Access to the content bridge for the command source to read link/block state.
+        /// </summary>
+        internal EditorContentBridge ContentBridge => _contentBridge;
 
         public string SelectedHtml
         {
@@ -696,8 +766,26 @@ namespace OpenLiveWriter.WebView2Shim
         public string SelectionFontFamily => null; // TODO
         public void ApplyFontFamily(string fontFamily) => ExecuteCommand("fontName", fontFamily);
 
-        public float SelectionFontSize => 0; // TODO
-        public void ApplyFontSize(float fontSize) => ExecuteCommand("fontSize", ((int)fontSize).ToString());
+        public float SelectionFontSize => 0; // TODO: would need to sync this via bridge
+        
+        /// <summary>
+        /// Applies font size. Browser execCommand uses size 1-7, not points.
+        /// OLW uses point sizes, so we map: 8pt->1, 10pt->2, 12pt->3, 14pt->4, 18pt->5, 24pt->6, 36pt->7
+        /// </summary>
+        public void ApplyFontSize(float fontSize)
+        {
+            // Map point size to browser fontSize (1-7)
+            int browserSize;
+            if (fontSize <= 8) browserSize = 1;
+            else if (fontSize <= 10) browserSize = 2;
+            else if (fontSize <= 12) browserSize = 3;
+            else if (fontSize <= 14) browserSize = 4;
+            else if (fontSize <= 18) browserSize = 5;
+            else if (fontSize <= 24) browserSize = 6;
+            else browserSize = 7;
+            
+            ExecuteCommand("fontSize", browserSize.ToString());
+        }
 
         public int SelectionForeColor => 0;
         public void ApplyFontForeColor(int color) 
@@ -716,8 +804,20 @@ namespace OpenLiveWriter.WebView2Shim
             }
         }
 
-        public string SelectionStyleName => null;
-        public void ApplyHtmlFormattingStyle(IHtmlFormattingStyle style) { /* TODO */ }
+        public string SelectionStyleName => _editor?.ContentBridge?.CurrentBlockTag;
+        
+        /// <summary>
+        /// Applies HTML formatting style (H1, H2, P, etc.) using formatBlock command.
+        /// </summary>
+        public void ApplyHtmlFormattingStyle(IHtmlFormattingStyle style)
+        {
+            if (style == null) return;
+            var elementName = style.ElementName?.ToUpperInvariant();
+            if (string.IsNullOrEmpty(elementName)) return;
+            
+            // formatBlock needs angle brackets for the tag
+            ExecuteCommand("formatBlock", $"<{elementName}>");
+        }
 
         public bool SelectionBold => QueryCommandState("bold");
         public void ApplyBold()
@@ -778,27 +878,66 @@ namespace OpenLiveWriter.WebView2Shim
         public bool CanOutdent => true;
         public void ApplyOutdent() => ExecuteCommand("outdent");
 
-        public void ApplyBlockquote() { /* TODO: wrap selection in blockquote */ }
-        public bool SelectionBlockquoted => false; // TODO
+        /// <summary>
+        /// Toggles blockquote. If already in blockquote, outdents. Otherwise wraps in blockquote.
+        /// </summary>
+        public void ApplyBlockquote()
+        {
+            if (SelectionBlockquoted)
+            {
+                // Remove blockquote by outdenting
+                ExecuteCommand("outdent");
+            }
+            else
+            {
+                // Wrap in blockquote using formatBlock
+                ExecuteCommand("formatBlock", "<blockquote>");
+            }
+        }
+        
+        public bool SelectionBlockquoted => _editor?.ContentBridge?.IsInBlockquote ?? false;
 
         public bool CanInsertLink => _webView?.CoreWebView2 != null;
         
         /// <summary>
-        /// Called by ribbon button - reads selection from bridge (synced by JS) and shows dialog
+        /// Called by ribbon button - reads selection from bridge (synced by JS) and shows dialog.
+        /// If cursor is in an existing link, populates the dialog with link info for editing.
         /// </summary>
         public void InsertLink()
         {
-            // Selection is continuously synced to bridge by JS selectionchange handler
-            // So we can read it synchronously here via the public property
-            var selectedText = _editor?.SelectedText ?? "";
-            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertLink (ribbon), selection from bridge: '{selectedText}'");
-            ShowInsertLinkDialog(selectedText);
+            var bridge = _editor?.ContentBridge;
+            var isEditing = bridge?.IsInLink ?? false;
+            
+            string selectedText;
+            string existingUrl = null;
+            string existingTitle = null;
+            string existingRel = null;
+            bool existingNewWindow = false;
+            
+            if (isEditing)
+            {
+                // Editing existing link - use the link's text and attributes
+                selectedText = bridge.LinkText ?? "";
+                existingUrl = bridge.LinkHref;
+                existingTitle = bridge.LinkTitle;
+                existingRel = bridge.LinkRel;
+                existingNewWindow = bridge.LinkTarget == "_blank";
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertLink (ribbon) - editing existing link: '{existingUrl}'");
+            }
+            else
+            {
+                // New link - use selection
+                selectedText = _editor?.SelectedText ?? "";
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] InsertLink (ribbon), selection from bridge: '{selectedText}'");
+            }
+            
+            ShowInsertLinkDialog(selectedText, existingUrl, existingTitle, existingRel, existingNewWindow, isEditing);
         }
         
         /// <summary>
-        /// Shows the hyperlink dialog with the given selected text
+        /// Shows the hyperlink dialog with the given parameters
         /// </summary>
-        public void ShowInsertLinkDialog(string selectedText)
+        public void ShowInsertLinkDialog(string selectedText, string url = null, string title = null, string rel = null, bool newWindow = false, bool isEditing = false)
         {
             using (new WaitCursor())
             {
@@ -809,11 +948,28 @@ namespace OpenLiveWriter.WebView2Shim
                     if (!string.IsNullOrEmpty(selectedText))
                         hyperlinkForm.LinkText = selectedText;
                     
-                    hyperlinkForm.EditStyle = false;
+                    if (!string.IsNullOrEmpty(url))
+                        hyperlinkForm.Hyperlink = url;
+                    
+                    if (!string.IsNullOrEmpty(title))
+                        hyperlinkForm.LinkTitle = title;
+                    
+                    if (!string.IsNullOrEmpty(rel))
+                        hyperlinkForm.Rel = rel;
+                    
+                    hyperlinkForm.NewWindow = newWindow;
+                    hyperlinkForm.EditStyle = isEditing;
                     
                     var owner = _editor?.FindForm();
                     if (hyperlinkForm.ShowDialog(owner) == DialogResult.OK)
                     {
+                        if (isEditing)
+                        {
+                            // When editing, we need to remove the old link first, then insert new one
+                            // The user's cursor is in the link, so unlink then insert new
+                            ExecuteCommand("unlink");
+                        }
+                        
                         _editor?.InsertLink(
                             hyperlinkForm.Hyperlink, 
                             hyperlinkForm.LinkText, 
@@ -825,7 +981,14 @@ namespace OpenLiveWriter.WebView2Shim
             }
         }
 
-        public bool CanRemoveLink => false; // TODO
+        /// <summary>
+        /// Can remove link if cursor is inside a link element.
+        /// </summary>
+        public bool CanRemoveLink => _editor?.ContentBridge?.IsInLink ?? false;
+        
+        /// <summary>
+        /// Removes the link at the cursor position.
+        /// </summary>
         public void RemoveLink() => ExecuteCommand("unlink");
 
         public void OpenLink() { /* TODO */ }
@@ -842,7 +1005,29 @@ namespace OpenLiveWriter.WebView2Shim
         public void Print() { /* TODO */ }
         public void PrintPreview() { /* TODO */ }
 
-        public LinkInfo DiscoverCurrentLink() => null; // TODO
+        /// <summary>
+        /// Returns information about the current link at cursor position.
+        /// Used by other parts of the app to check link state.
+        /// </summary>
+        public LinkInfo DiscoverCurrentLink()
+        {
+            var bridge = _editor?.ContentBridge;
+            if (bridge == null || !bridge.IsInLink)
+            {
+                // Not in a link - return empty info with selection text if any
+                return new LinkInfo(_editor?.SelectedText, null, null, null, false);
+            }
+            
+            // In a link - return the link info from the bridge
+            bool newWindow = bridge.LinkTarget == "_blank";
+            return new LinkInfo(
+                bridge.LinkText,
+                bridge.LinkHref,
+                bridge.LinkTitle,
+                bridge.LinkRel,
+                newWindow
+            );
+        }
 
         public bool CheckSpelling() => true; // TODO
 
