@@ -24,17 +24,33 @@ namespace OpenLiveWriter.PostEditor.PostPropertyEditing.CategoryControl
     {
         #region IBlogPostEditor Members
 
-        void IBlogPostEditor.Initialize(IBlogPostEditingContext editingContext)
+        void IBlogPostEditor.Initialize(IBlogPostEditingContext editingContext, IBlogClientOptions clientOptions)
         {
             CategoryContext.SelectedCategories = editingContext.BlogPost.Categories ;
             toolTipCategories.SetToolTip(this, CategoryContext.FormattedCategoryList);
             _isDirty = false ;
         }
 
-        void IBlogPostEditor.SaveChanges(BlogPost post)
+        void IBlogPostEditor.SaveChanges(BlogPost post, BlogPostSaveOptions options)
         {
             post.Categories = CategoryContext.SelectedCategories;
             _isDirty = false ;
+        }
+
+        void IBlogPostEditor.OnClosing(CancelEventArgs e)
+        {
+        }
+
+        void IBlogPostEditor.OnPostClosing(CancelEventArgs e)
+        {
+        }
+
+        void IBlogPostEditor.OnClosed()
+        {
+        }
+
+        void IBlogPostEditor.OnPostClosed()
+        {
         }
 
         private System.Windows.Forms.ToolTip toolTipCategories;
@@ -46,7 +62,8 @@ namespace OpenLiveWriter.PostEditor.PostPropertyEditing.CategoryControl
             {
                 if ( PostEditorSettings.CategoryReminder && (CategoryContext.Categories.Length > 0) && (CategoryContext.SelectedCategories.Length == 0) )
                 {
-                    if ( DisplayMessage.Show(typeof(CategoryReminderDisplayMessage), FindForm(), "\r\n\r\n") == DialogResult.No )
+                    var message = new CategoryReminderDisplayMessage();
+                    if ( message.Show(FindForm(), "\r\n\r\n") == DialogResult.No )
                     {
                         Focus() ;
                         return false ;
@@ -195,7 +212,7 @@ namespace OpenLiveWriter.PostEditor.PostPropertyEditing.CategoryControl
 
             Focus();
 
-            _categoryDisplayForm = new CategoryDisplayForm(this, _categoryContext);
+            _categoryDisplayForm = new CategoryDisplayFormM1(this, _categoryContext);
             //_categoryDisplayForm.MinDropDownWidth = 0;
             IMiniFormOwner miniFormOwner = FindForm() as IMiniFormOwner;
             if (miniFormOwner != null)
@@ -203,7 +220,7 @@ namespace OpenLiveWriter.PostEditor.PostPropertyEditing.CategoryControl
             _categoryDisplayForm.Closed += new EventHandler(_categoryDisplayForm_Closed);
             _categoryDisplayForm.Show();
         }
-        private CategoryDisplayFormBase _categoryDisplayForm = null;
+        private MiniForm _categoryDisplayForm = null;
 
         private void _categoryContext_Changed(object sender, CategoryContext.CategoryChangedEventArgs e)
         {

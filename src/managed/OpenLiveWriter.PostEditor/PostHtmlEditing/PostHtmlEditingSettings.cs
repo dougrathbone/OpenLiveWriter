@@ -262,6 +262,49 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
         }
 
         private SettingsPersisterHelper _editorTemplateSettings;
+
+        /// <summary>
+        /// Legacy property for backward compatibility. Gets/sets the default template file path.
+        /// </summary>
+        public string EditorTemplateHtmlFile
+        {
+            get
+            {
+                var files = EditorTemplateHtmlFiles;
+                return files.Length > 0 ? files[0].TemplateFile : null;
+            }
+            set
+            {
+                if (value != null)
+                {
+                    EditorTemplateHtmlFiles = new[] { new BlogEditingTemplateFile(BlogEditingTemplateType.Normal, value) };
+                }
+            }
+        }
+
+        /// <summary>
+        /// Legacy property for backward compatibility. Gets/sets the default template HTML.
+        /// </summary>
+        public string EditorTemplateHtml
+        {
+            get
+            {
+                return GetEditorTemplateHtml(BlogEditingTemplateType.Normal, false);
+            }
+            set
+            {
+                // If setting HTML content, we need to save it to a file
+                if (!string.IsNullOrEmpty(value))
+                {
+                    string templateDir = BlogEditingTemplate.GetBlogTemplateDir(_blogId);
+                    if (!Directory.Exists(templateDir))
+                        Directory.CreateDirectory(templateDir);
+                    string templateFile = Path.Combine(templateDir, "template.htm");
+                    File.WriteAllText(templateFile, value, Encoding.UTF8);
+                    EditorTemplateHtmlFile = templateFile;
+                }
+            }
+        }
     }
 
 }

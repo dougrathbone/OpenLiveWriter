@@ -324,6 +324,7 @@ namespace OpenLiveWriter.Localization
         WebImage = 23033,
         WeblogMenu = 23486,
         WeblogPicker = 23487,
-        WordCount = 1016
+        WordCount = 1016,
+        Menu = 23489
     }
 }

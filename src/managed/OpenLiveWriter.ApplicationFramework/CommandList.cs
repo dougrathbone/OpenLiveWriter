@@ -8,14 +8,14 @@ using System.Collections;
 using System.Diagnostics;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
-using Project31.CoreServices;
+using OpenLiveWriter.CoreServices;
 
-namespace Project31.ApplicationFramework
+namespace OpenLiveWriter.ApplicationFramework
 {
     /// <summary>
     /// Summary description for CommandList.
     /// </summary>
-    [Designer(typeof(ComponentRootDesigner), typeof(IRootDesigner))]
+    // Note: Designer attribute removed - ComponentRootDesigner is not available in .NET 10
     public class CommandList : Component
     {
         /// <summary>

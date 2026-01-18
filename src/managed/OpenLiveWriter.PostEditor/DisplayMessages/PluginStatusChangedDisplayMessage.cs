@@ -19,7 +19,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -67,7 +67,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             this.Text = "You have chosen to enable or disable plugins. For these changes\nto take effect yo" +
                 "u need to restart the application.";
             this.Title = "Plugin Status";
-            this.Type = OpenLiveWriter.Controls.DisplayMessageType.Information;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Information;
 
         }
         #endregion

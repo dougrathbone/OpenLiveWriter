@@ -5603,6 +5603,32 @@ namespace OpenLiveWriter.Localization
         /// <summary>
         /// There was an unexpected error while uploading the video.
         /// </summary>
-        YouTubeVideoError
+        YouTubeVideoError,
+
+        // Missing StringIds - added for .NET 10 build compatibility
+        /// <summary>
+        /// Color Temperature
+        /// </summary>
+        DecoratorColorTemp,
+        /// <summary>
+        /// Hide Sidebar
+        /// </summary>
+        HideSidebar,
+        /// <summary>
+        /// Show Sidebar
+        /// </summary>
+        ShowSidebar,
+        /// <summary>
+        /// File uploads are not supported
+        /// </summary>
+        NoFileUploadText,
+        /// <summary>
+        /// Would you like to continue?
+        /// </summary>
+        NoFileUploadPrompt,
+        /// <summary>
+        /// File Upload Not Supported
+        /// </summary>
+        NoFileUploadTitle
     }
 }

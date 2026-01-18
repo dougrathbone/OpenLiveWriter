@@ -7,10 +7,10 @@ using System.Collections;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using Project31.CoreServices;
-using Project31.Interop.Windows;
+using OpenLiveWriter.CoreServices;
+using OpenLiveWriter.Interop.Windows;
 
-namespace Project31.Controls
+namespace OpenLiveWriter.Controls
 {
     /// <summary>
     /// Displays an information box.  This class is very similar to System.Windows.Forms.MessageBox
@@ -47,8 +47,8 @@ namespace Project31.Controls
         /// <summary>
         /// GetWindowLong and SetWindowLong. This stuff moves soon...
         /// </summary>
-        private Project31.Controls.LabelControl labelControlText;
-        private Project31.Controls.CheckBoxControl checkBoxControlAgain;
+        private OpenLiveWriter.Controls.LabelControl labelControlText;
+        private System.Windows.Forms.CheckBox checkBoxControlAgain;
         private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.Button buttonCancel;
         private System.Windows.Forms.Button buttonYes;
@@ -217,9 +217,9 @@ namespace Project31.Controls
             System.Resources.ResourceManager resources = new System.Resources.ResourceManager(typeof(InformationBox));
             this.buttonOK = new System.Windows.Forms.Button();
             this.pictureBoxError = new System.Windows.Forms.PictureBox();
-            this.labelControlText = new Project31.Controls.LabelControl();
+            this.labelControlText = new OpenLiveWriter.Controls.LabelControl();
             this.buttonCancel = new System.Windows.Forms.Button();
-            this.checkBoxControlAgain = new Project31.Controls.CheckBoxControl();
+            this.checkBoxControlAgain = new System.Windows.Forms.CheckBox();
             this.buttonYes = new System.Windows.Forms.Button();
             this.buttonNo = new System.Windows.Forms.Button();
             this.buttonAbort = new System.Windows.Forms.Button();
@@ -410,7 +410,8 @@ namespace Project31.Controls
             base.OnPaintBackground(e);
 
             //	Fill the dialog body.
-            GraphicsHelper.TileFillScaledImageHorizontally(	e.Graphics,
+            var g = new OpenLiveWriter.Localization.Bidi.BidiGraphics(e.Graphics, ClientRectangle);
+            GraphicsHelper.TileFillScaledImageHorizontally(g,
                                                             bodyBackgroundBitmap,
                                                             ClientRectangle);
         }

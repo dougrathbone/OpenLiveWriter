@@ -4,10 +4,17 @@
     <AssemblyName>OpenLiveWriter.Controls</AssemblyName>
     <RootNamespace>OpenLiveWriter.Controls</RootNamespace>
     <ProjectGuid>{D4A39612-3610-458F-83F8-5722D1F51063}</ProjectGuid>
+    <!-- Suppress CS0672: Overriding obsolete Form.OnClosed/OnClosing -->
+    <NoWarn>$(NoWarn);CS0672</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
+  </ItemGroup>
+
+  <!-- Exclude legacy designer files using unavailable .NET Framework APIs -->
+  <ItemGroup>
+    <Compile Remove="DisplayMessageDesigner.cs" />
   </ItemGroup>
 
   <!-- Embedded resources - images -->

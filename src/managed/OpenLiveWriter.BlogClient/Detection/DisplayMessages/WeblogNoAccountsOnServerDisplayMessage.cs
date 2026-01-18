@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
@@ -70,9 +71,10 @@ namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
                 "at you do not currently have an active weblog. Please ensure{0}that your account" +
                 " with this provider is current before proceeding.";
             this.Title = "No Weblogs Found on Server";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = MessageBoxIcon.Warning;
 
         }
         #endregion
     }
 }
+

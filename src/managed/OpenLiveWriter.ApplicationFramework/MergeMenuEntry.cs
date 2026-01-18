@@ -6,7 +6,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Windows.Forms;
 
-namespace Project31.ApplicationFramework
+namespace OpenLiveWriter.ApplicationFramework
 {
     /// <summary>
     /// MergeMenuEntry is an internal class used to build Command-based menus.
@@ -133,6 +133,16 @@ namespace Project31.ApplicationFramework
             return CreateMenuItems(mainMenu);
         }
 #endif
+
+        /// <summary>
+        /// Creates and returns a set of menu items from the child merge menu entries in this merge
+        /// menu entry. Defaults to non-main menu items.
+        /// </summary>
+        /// <returns>Array of menu items.</returns>
+        public MenuItem[] CreateMenuItems()
+        {
+            return CreateMenuItems(false);
+        }
 
         /// <summary>
         /// Creates and returns a set of menu items from the child merge menu entries in this merge

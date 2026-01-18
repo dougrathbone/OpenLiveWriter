@@ -101,6 +101,7 @@ namespace OpenLiveWriter.ApplicationFramework
         /// Raises the Closed event.
         /// </summary>
         /// <param name="e">An EventArgs that contains the event data.</param>
+        [System.Obsolete("Use FormClosed event instead")]
         protected override void OnClosed(EventArgs e)
         {
             //	Call the base class's method so that registered delegates receive the event.

@@ -19,7 +19,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Settings.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -57,7 +57,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Settings.DisplayMessages
         {
             this.Text = "If you choose to upload images to an FTP server you must speicfy the settings for the destination server.";
             this.Title = "FTP Settings Required";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

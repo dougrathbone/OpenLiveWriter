@@ -19,7 +19,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -62,7 +62,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             this.DefaultButton = System.Windows.Forms.MessageBoxDefaultButton.Button2;
             this.Text = "The remote server could not be contacted to verify the settings. Do you want to continue anyway?";
             this.Title = "Error Connecting";
-            this.Type = OpenLiveWriter.Controls.DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion

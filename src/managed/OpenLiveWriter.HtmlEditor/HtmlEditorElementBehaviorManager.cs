@@ -4,11 +4,11 @@
 using System;
 using System.Diagnostics;
 using System.Collections;
-using Project31.Interop.Com;
-using Project31.MshtmlEditor;
+using OpenLiveWriter.Interop.Com;
+using OpenLiveWriter.Mshtml;
 using mshtml;
 
-namespace Onfolio.Core.HtmlEditor
+namespace OpenLiveWriter.HtmlEditor
 {
     public class HtmlEditorElementBehaviorManager : IDisposable
     {
@@ -112,10 +112,9 @@ namespace Onfolio.Core.HtmlEditor
 
         private void _editorContext_SelectionChanged(object sender, EventArgs e)
         {
-            // update 'active' state of behaviors based on whether they contain the selection
-            MarkupRange selectedRange = _editorContext.GetSelectedMarkupRange() ;
-            foreach ( HtmlEditorElementBehavior elementBehavior in _activeBehaviors.Values )
-                elementBehavior.SelectionChanged(selectedRange);
+            // Note: Each HtmlEditorElementBehavior already subscribes to SelectionChanged
+            // independently in OnElementAttached(), so no action needed here.
+            // The behaviors update their own selection state via UpdateSelectionState().
         }
 
         private Hashtable _globalElementBehaviors = new Hashtable();

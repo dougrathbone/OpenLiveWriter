@@ -4,6 +4,8 @@
     <AssemblyName>OpenLiveWriter.HtmlEditor</AssemblyName>
     <RootNamespace>OpenLiveWriter.HtmlEditor</RootNamespace>
     <ProjectGuid>{6A6872BC-67EF-4A42-A21A-30ECED376923}</ProjectGuid>
+    <!-- Suppress unused field warnings during migration -->
+    <NoWarn>$(NoWarn);CS0414</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

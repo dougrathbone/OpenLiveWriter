@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -70,7 +70,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             this.Text = "The weblog entry you are editing has not been posted.{0}{0}Do you want to post a " +
                 "draft of the entry now?";
             this.Title = "Post Entry as Draft";
-            this.Type = DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion

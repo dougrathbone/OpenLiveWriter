@@ -5,6 +5,8 @@
     <RootNamespace>OpenLiveWriter.SpellChecker</RootNamespace>
     <ProjectGuid>{2DB3A424-0F1E-44AC-AE01-5454586CE769}</ProjectGuid>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Suppress warnings during migration -->
+    <NoWarn>$(NoWarn);CS0414;CS0672</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

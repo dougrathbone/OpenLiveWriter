@@ -83,6 +83,21 @@ namespace OpenLiveWriter.PostEditor.Video
         public string UseBackgroundColor
         { get { return _useBackgroundColor; } }
 
+        /// <summary>
+        /// Rectangle test for video snapshot capture. Not currently implemented.
+        /// </summary>
+        public RectTest RectangleTest { get { return null; } }
+
+        /// <summary>
+        /// Original color for snapshot loaded test. Not currently implemented.
+        /// </summary>
+        public Color SnapshotLoadedOrigColor { get { return Color.Empty; } }
+
+        /// <summary>
+        /// Color percentage for snapshot loaded test. Not currently implemented.
+        /// </summary>
+        public double SnapshotLoadedColorPct { get { return 0; } }
+
         public string EditorFormat
         { get { return _editorFormat; } }
 

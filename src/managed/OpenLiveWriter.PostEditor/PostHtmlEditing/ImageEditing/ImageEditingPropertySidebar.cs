@@ -8,7 +8,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using mshtml;
 using OpenLiveWriter.HtmlEditor;
-using OpenLiveWriter.Api.ImageEditing;
+using OpenLiveWriter.Extensibility.ImageEditing;
 using OpenLiveWriter.ApplicationFramework;
 using OpenLiveWriter.CoreServices;
 
@@ -22,7 +22,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
         private Container components = new Container();
 
         private IHtmlEditorComponentContext _editorContext ;
-        private IBlogPostImageDataContext _imageDataContext;
+        private IBlogPostImageEditingContext _imageDataContext;
         private ImageEditingPropertyTitlebar imageEditingPropertyTitlebar;
         private ImagePropertyEditorControl imagePropertyEditorControl;
         private ImageEditingPropertyStatusbar imageEditingPropertyStatusbar;
@@ -30,7 +30,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         #region Initialization/Singleton
 
-        public static void Initialize(IHtmlEditorComponentContext editorContext, IBlogPostImageDataContext dataContext, CreateFileCallback callback)
+        public static void Initialize(IHtmlEditorComponentContext editorContext, IBlogPostImageEditingContext dataContext, CreateFileCallback callback)
         {
             // initialize one form per-thread
             if ( _imagePropertySidebar == null )
@@ -145,7 +145,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         #endregion
 
-        private void Init(IHtmlEditorComponentContext editorContext, IBlogPostImageDataContext dataContext, CreateFileCallback callback)
+        private void Init(IHtmlEditorComponentContext editorContext, IBlogPostImageEditingContext dataContext, CreateFileCallback callback)
         {
             _editorContext = editorContext ;
             _editorContext.SelectionChanged +=new EventHandler(_editorContext_SelectionChanged);
@@ -258,7 +258,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
         private void RefreshImage()
         {
             // update selected image (null if none is selected)
-            _selectedImage = _editorContext.SelectedImage ;
+            _selectedImage = _editorContext.Selection?.SelectedImage;
 
             // refresh the view
             if ( SelectionIsImage )

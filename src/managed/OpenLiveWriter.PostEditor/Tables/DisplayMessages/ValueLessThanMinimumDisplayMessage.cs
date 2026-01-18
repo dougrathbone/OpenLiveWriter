@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.Tables.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -65,7 +65,7 @@ namespace OpenLiveWriter.PostEditor.Tables.DisplayMessages
         {
             this.Text = "You must enter a value of at least {0} for the {1} field.";
             this.Title = "Value Less Than Minimum";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -70,7 +70,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             this.Text = "Would you like to generate an authoring template that matches the style of your b" +
                 "log?";
             this.Title = "Generate Authoring Template";
-            this.Type = DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion

@@ -22,6 +22,15 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         /// <summary>
         /// Displays the editor (if one exists) for an image decorator in a dialog.
+        /// Simplified overload for legacy code.
+        /// </summary>
+        internal static DialogResult ShowImageDecoratorEditorDialog(Form owner, ImageDecorator imageDecorator, ImagePropertiesInfo ImageInfo, ApplyDecoratorCallback applyCallback)
+        {
+            return ShowImageDecoratorEditorDialog(imageDecorator, ImageInfo, applyCallback, null, null, null, ApplicationManager.CommandManager);
+        }
+
+        /// <summary>
+        /// Displays the editor (if one exists) for an image decorator in a dialog.
         /// </summary>
         /// <param name="imageDecorator"></param>
         /// <param name="ImageInfo"></param>

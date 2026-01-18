@@ -8,7 +8,14 @@
 
   <ItemGroup>
     <Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
+    <!-- Exclude MenuBuilderEntry.cs - dead code with missing dependencies (MenuBuilder.MenuType, SEPARATOR_TEXT) -->
+    <Compile Remove="MenuBuilderEntry.cs" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Suppress unused field warning during migration -->
+    <NoWarn>$(NoWarn);CS0414</NoWarn>
+  </PropertyGroup>
 
   <!-- Embedded Resources - images -->
   <ItemGroup>
@@ -17,7 +24,6 @@
     <EmbeddedResource Include="Images\**\*.bmp" />
     <EmbeddedResource Include="ApplicationStyles\Images\**\*.png" />
     <EmbeddedResource Include="Preferences\Images\**\*.png" />
-    <EmbeddedResource Include="Preferences\ImagesI\**\*.png" />
   </ItemGroup>
 
   <!-- Project References -->

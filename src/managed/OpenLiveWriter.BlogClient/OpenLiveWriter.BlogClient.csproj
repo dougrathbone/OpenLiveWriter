@@ -4,6 +4,8 @@
     <AssemblyName>OpenLiveWriter.BlogClient</AssemblyName>
     <RootNamespace>OpenLiveWriter.BlogClient</RootNamespace>
     <ProjectGuid>{FE2EA529-26E6-42C3-9F6A-E58966995FFE}</ProjectGuid>
+    <!-- Suppress obsolete warnings during migration -->
+    <NoWarn>$(NoWarn);CS0618</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

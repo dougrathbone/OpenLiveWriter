@@ -86,7 +86,7 @@ namespace OpenLiveWriter.BlogClient.Clients
                 Id = page.Id,
                 Permalink = page.Url,
                 Contents = page.Content,
-                DatePublished = page.Published.Value,
+                DatePublished = DateTime.TryParse(page.Published, out var pageDate) ? pageDate : DateTime.MinValue,
             };
         }
 
@@ -98,7 +98,7 @@ namespace OpenLiveWriter.BlogClient.Clients
                 Id = post.Id,
                 Permalink = post.Url,
                 Contents = post.Content,
-                DatePublished = post.Published.Value,
+                DatePublished = DateTime.TryParse(post.Published, out var postDate) ? postDate : DateTime.MinValue,
                 Categories = post.Labels?.Select(x => new BlogPostCategory(x)).ToArray() ?? new BlogPostCategory[0]
             };
         }
@@ -108,7 +108,7 @@ namespace OpenLiveWriter.BlogClient.Clients
             return new Page()
             {
                 Content = page.Contents,
-                Published = GetDatePublishedOverride(page, clientOptions),
+                Published = GetDatePublishedOverrideString(page, clientOptions),
                 Title = page.Title,
             };
         }
@@ -122,26 +122,30 @@ namespace OpenLiveWriter.BlogClient.Clients
             {
                 Content = post.Contents,
                 Labels = labels ?? new List<string>(),
-                Published = GetDatePublishedOverride(post, clientOptions),
+                Published = GetDatePublishedOverrideString(post, clientOptions),
                 Title = post.Title,
             };
         }
 
-        private static DateTime? GetDatePublishedOverride(BlogPost post, IBlogClientOptions clientOptions)
+        private static string GetDatePublishedOverrideString(BlogPost post, IBlogClientOptions clientOptions)
         {
-            DateTime? datePublishedOverride = post.HasDatePublishedOverride ? post?.DatePublishedOverride : null;
-            if (datePublishedOverride.HasValue && clientOptions.UseLocalTime)
+            if (!post.HasDatePublishedOverride)
+                return null;
+
+            DateTime datePublishedOverride = post.DatePublishedOverride;
+            if (clientOptions.UseLocalTime)
             {
-                datePublishedOverride = DateTimeHelper.UtcToLocal(datePublishedOverride.Value);
+                datePublishedOverride = DateTimeHelper.UtcToLocal(datePublishedOverride);
             }
 
-            return datePublishedOverride;
+            return datePublishedOverride.ToString("o"); // ISO 8601 format
         }
 
         private static PageInfo ConvertToPageInfo(Page page)
         {
             // Google Blogger doesn't support parent/child pages, so we pass string.Empty.
-            return new PageInfo(page.Id, page.Title, page.Published.GetValueOrDefault(DateTime.Now), string.Empty);
+            var publishedDate = DateTime.TryParse(page.Published, out var pageDate) ? pageDate : DateTime.Now;
+            return new PageInfo(page.Id, page.Title, publishedDate, string.Empty);
         }
 
         private const int MaxRetries = 5;
@@ -381,11 +385,11 @@ namespace OpenLiveWriter.BlogClient.Clients
             var recentPostsRequest = GetService().Posts.List(blogId);
             if (now.HasValue)
             {
-                recentPostsRequest.EndDate = now.Value;
+                recentPostsRequest.EndDate = now.Value.ToString("o"); // ISO 8601 format
             }
             recentPostsRequest.FetchImages = false;
             recentPostsRequest.MaxResults = maxPosts;
-            recentPostsRequest.OrderBy = PostsResource.ListRequest.OrderByEnum.Published;
+            recentPostsRequest.OrderBy = PostsResource.ListRequest.OrderByEnum.PUBLISHED;
             recentPostsRequest.Status = status;
             recentPostsRequest.PageToken = previousPage?.NextPageToken;
 
@@ -416,9 +420,9 @@ namespace OpenLiveWriter.BlogClient.Clients
             //       calls to ListRecentPosts() will return 0 results and we need to stop making requests.
             do
             {
-                draftRecentPostsList = ListRecentPosts(blogId, maxResultsPerRequest, now, PostsResource.ListRequest.StatusEnum.Draft, draftRecentPostsList);
-                liveRecentPostsList = ListRecentPosts(blogId, maxResultsPerRequest, now, PostsResource.ListRequest.StatusEnum.Live, liveRecentPostsList);
-                scheduledRecentPostsList = ListRecentPosts(blogId, maxResultsPerRequest, now, PostsResource.ListRequest.StatusEnum.Scheduled, scheduledRecentPostsList);
+                draftRecentPostsList = ListRecentPosts(blogId, maxResultsPerRequest, now, PostsResource.ListRequest.StatusEnum.DRAFT, draftRecentPostsList);
+                liveRecentPostsList = ListRecentPosts(blogId, maxResultsPerRequest, now, PostsResource.ListRequest.StatusEnum.LIVE, liveRecentPostsList);
+                scheduledRecentPostsList = ListRecentPosts(blogId, maxResultsPerRequest, now, PostsResource.ListRequest.StatusEnum.SCHEDULED, scheduledRecentPostsList);
 
                 draftRecentPosts = draftRecentPostsList?.Items ?? new List<Post>();
                 liveRecentPosts = liveRecentPostsList?.Items ?? new List<Post>();
@@ -531,8 +535,8 @@ namespace OpenLiveWriter.BlogClient.Clients
             //       calls to ListPages() will return 0 results and we need to stop making requests.
             do
             {
-                draftPagesList = ListPages(blogId, maxPages, PagesResource.ListRequest.StatusEnum.Draft, draftPagesList);
-                livePagesList = ListPages(blogId, maxPages, PagesResource.ListRequest.StatusEnum.Live, livePagesList);
+                draftPagesList = ListPages(blogId, maxPages, PagesResource.ListRequest.StatusEnum.DRAFT, draftPagesList);
+                livePagesList = ListPages(blogId, maxPages, PagesResource.ListRequest.StatusEnum.LIVE, livePagesList);
 
                 draftPages = draftPagesList?.Items ?? new List<Page>();
                 livePages = livePagesList?.Items ?? new List<Page>();
@@ -658,76 +662,107 @@ namespace OpenLiveWriter.BlogClient.Clients
             throw new NotImplementedException();
         }
 
-        #region Google Drive image uploading, heavily adapted from Picasa image uploading - stolen from BloggerAtomClient
+        #region Google Drive image uploading
 
-        private List<GoogleDriveData.File> GetAllFolders(DriveService drive)
+        /// <summary>
+        /// Gets the MIME type for a file based on its extension.
+        /// </summary>
+        private static string GetMimeTypeFromExtension(string extension)
         {
-            // Navigate GDrive pagination and return a list of all the user's top level folders
-            var folders = new List<GoogleDriveData.File>();
-            GoogleDriveData.FileList fileList;
-            string pageToken = null;
-            do
+            return extension?.ToLowerInvariant() switch
             {
-                var listRequest = drive.Files.List();
-                listRequest.Q = "mimeType='application/vnd.google-apps.folder'";
-                fileList = listRequest.Execute();
-
-                if (fileList.Files != null) foreach (var folder in fileList.Files) folders.Add(folder);
-                pageToken = fileList.NextPageToken;
-            } while (pageToken != null);
-            return folders;
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
+                ".webp" => "image/webp",
+                ".svg" => "image/svg+xml",
+                ".ico" => "image/x-icon",
+                ".tiff" or ".tif" => "image/tiff",
+                _ => "application/octet-stream"
+            };
         }
 
+        /// <summary>
+        /// Gets all folders accessible by the authenticated user in Google Drive.
+        /// </summary>
+        private IList<GoogleDriveData.File> GetAllFolders(DriveService drive)
+        {
+            var listRequest = drive.Files.List();
+            listRequest.Q = "mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+            listRequest.Fields = "files(id, name)";
+            var result = listRequest.Execute();
+            return result.Files ?? new List<GoogleDriveData.File>();
+        }
+
+        /// <summary>
+        /// Gets or creates a folder for blog images in Google Drive.
+        /// </summary>
         private GoogleDriveData.File GetBlogImagesFolder(DriveService drive, string folderName)
         {
-            // Get the ID of the Google Drive 'Open Live Writer' folder, creating it if it doesn't exist
-            var matchingFolders = GetAllFolders(drive).Where(folder => folder.Name == folderName);
-            if (matchingFolders.Count() > 0) return matchingFolders.First();
+            // First, try to find an existing folder with this name
+            var folders = GetAllFolders(drive);
+            var existingFolder = folders.FirstOrDefault(f => f.Name.Equals(folderName, StringComparison.OrdinalIgnoreCase));
+            if (existingFolder != null)
+            {
+                return existingFolder;
+            }
 
-            // Attempt to create and return the folder as it does not exist
-            return drive.Files.Create(new GoogleDriveData.File()
+            // Create a new folder if it doesn't exist
+            var folderMetadata = new GoogleDriveData.File()
             {
                 Name = folderName,
                 MimeType = "application/vnd.google-apps.folder"
-            }).Execute();
+            };
+            var createRequest = drive.Files.Create(folderMetadata);
+            createRequest.Fields = "id, name, webViewLink";
+            return createRequest.Execute();
         }
 
+        /// <summary>
+        /// Uploads an image to Google Drive and returns its publicly accessible URL.
+        /// </summary>
         private string PostNewImage(string imagesFolderName, string filename)
         {
             var drive = GetDriveService();
-            var imagesFolder = GetBlogImagesFolder(drive, imagesFolderName);
-            FilesResource.CreateMediaUpload uploadReq;
+            var folder = GetBlogImagesFolder(drive, imagesFolderName);
 
-            // Create a FileStream for the image to upload
-            using (var imageFileStream = new System.IO.FileStream(filename, System.IO.FileMode.Open, System.IO.FileAccess.Read)) {
-                // Detect mime type for file based on extension
-                var imageMime = MimeMapping.GetMimeMapping(filename);
-                // Upload the image to the images folder, naming it with a GUID to prevent clashes
-                uploadReq = drive.Files.Create(new GoogleDriveData.File()
-                {
-                    Name = Guid.NewGuid().ToString(),
-                    Parents = new string[] { imagesFolder.Id },
-                    OriginalFilename = Path.GetFileName(filename)
-                }, imageFileStream, imageMime);
-                uploadReq.Fields = "id,webContentLink"; // Retrieve Id and WebContentLink fields
-                var uploadRes = uploadReq.Upload();
-                if (uploadRes.Status != Google.Apis.Upload.UploadStatus.Completed)
-                    throw new BlogClientFileTransferException(
-                        String.Format(Res.Get(StringId.BCEFileTransferTransferringFile), Path.GetFileName(filename)), 
-                        "BloggerDriveError",
-                        $"Google Drive image upload for {Path.GetFileName(filename)} failed.\nDetails: {uploadRes.Exception}");
-            }
-
-            // Make the uploaded file public
-            var imageFile = uploadReq.ResponseBody;
-            drive.Permissions.Create(new GoogleDriveData.Permission()
+            // Create file metadata
+            var fileMetadata = new GoogleDriveData.File()
             {
-                Type = "anyone",
-                Role = "reader"
-            }, imageFile.Id).Execute();
-            
-            // Retrieve the appropiate URL for inlining the image, splitting off the download parameter
-            return imageFile.WebContentLink.Split('&').First();
+                Name = Path.GetFileName(filename),
+                Parents = new List<string> { folder.Id }
+            };
+
+            // Upload the file
+            using (var stream = new FileStream(filename, FileMode.Open, FileAccess.Read))
+            {
+                var mimeType = GetMimeTypeFromExtension(Path.GetExtension(filename));
+                var createRequest = drive.Files.Create(fileMetadata, stream, mimeType);
+                createRequest.Fields = "id, webContentLink, webViewLink";
+                var uploadProgress = createRequest.Upload();
+
+                if (uploadProgress.Status == Google.Apis.Upload.UploadStatus.Failed)
+                {
+                    throw new BlogClientException(
+                        "Upload Failed",
+                        uploadProgress.Exception?.Message ?? "Failed to upload image to Google Drive");
+                }
+
+                var uploadedFile = createRequest.ResponseBody;
+
+                // Make the file publicly accessible for embedding in blog posts
+                var permission = new GoogleDriveData.Permission()
+                {
+                    Type = "anyone",
+                    Role = "reader"
+                };
+                drive.Permissions.Create(permission, uploadedFile.Id).Execute();
+
+                // Return the direct link for embedding
+                // The webContentLink provides a direct download link which works for images
+                return uploadedFile.WebContentLink ?? $"https://drive.google.com/uc?id={uploadedFile.Id}";
+            }
         }
         #endregion
 

@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -70,7 +70,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             this.Text = "You have posted this weblog entry as a draft.{0}{0}Do you want to publish it now?" +
                 "";
             this.Title = "Publish Entry";
-            this.Type = DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion

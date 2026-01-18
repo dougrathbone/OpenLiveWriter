@@ -9,32 +9,40 @@ using System.Text;
 using System.Xml;
 using OpenLiveWriter.CoreServices;
 using OpenLiveWriter.Extensibility.BlogClient;
+using OpenLiveWriter.BlogClient.Providers;
 
 namespace OpenLiveWriter.BlogClient.Clients
 {
-    [BlogClient("SixApartAtom")]
+    /// <summary>
+    /// Client for SixApart Atom API (TypePad, Vox, etc.)
+    /// Uses WSSE authentication with Atom 0.3 protocol.
+    /// </summary>
+    [BlogClient("SixApartAtom", "Atom")]
     public class SixApartAtomClient : AtomClient
     {
-        public SixApartAtomClient(Uri postApiUrl, IBlogCredentialsAccessor credentials, PostFormatOptions postFormatOptions)
-            : base(AtomProtocolVersion.V03, postApiUrl, credentials, postFormatOptions)
+        public SixApartAtomClient(Uri postApiUrl, IBlogCredentialsAccessor credentials)
+            : base(AtomProtocolVersion.V03, postApiUrl, credentials)
         {
         }
 
-        public override bool VerifyCredentials()
+        protected override void ConfigureClientOptions(BlogClientOptions clientOptions)
         {
-            // TODO
-            return true;
+            base.ConfigureClientOptions(clientOptions);
+            clientOptions.SupportsCategories = true;
+            clientOptions.SupportsMultipleCategories = true;
         }
 
-        public override BlogClientCapabilities Capabilities { get { return BlogClientCapabilities.Categories | BlogClientCapabilities.MultipleCategories; } }
+        protected override void VerifyCredentials(TransientCredentials tc)
+        {
+            // WSSE authentication is handled in the request filter
+            // No additional verification needed
+        }
 
         public override BlogPostCategory[] GetCategories(string blogId)
         {
-/*
-            // get the introspection doc that will lead us to the categories URI
-            XmlDocument insDoc = xmlRestRequestHelper.Get("http://www.typepad.com/t/atom/weblog", RequestFilter);
-*/
-            throw new NotImplementedException();
+            // TODO: Implement category retrieval
+            // The introspection doc at http://www.typepad.com/t/atom/weblog contains category URI
+            throw new NotImplementedException("Category retrieval not implemented for SixApart Atom");
         }
 
         protected override HttpRequestFilter RequestFilter
@@ -45,22 +53,20 @@ namespace OpenLiveWriter.BlogClient.Clients
             }
         }
 
-        protected override void Populate(BlogPost post, XmlNode node)
-        {
-            base.Populate(post, node);
-            XmlElement catEl = _atomVer.CreateCategoryElement(node.OwnerDocument, "flimflam");
-            node.AppendChild(catEl);
-        }
-
+        /// <summary>
+        /// Applies WSSE (Web Services Security) authentication to the request.
+        /// </summary>
         private void WsseFilter(HttpWebRequest request)
         {
-            string username = "joe@unknown.com";//Credentials.Username;
-            string password = "abc123";//Credentials.Password;
+            // Get credentials from the base class
+            TransientCredentials tc = Login();
+            string username = tc?.Username ?? string.Empty;
+            string password = tc?.Password ?? string.Empty;
 
             string nonce = Guid.NewGuid().ToString("d");
             string created = DateTimeHelper.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", DateTimeFormatInfo.InvariantInfo);
             byte[] stringToHash = Encoding.UTF8.GetBytes(nonce + created + password);
-            byte[] bytes = SHA1Managed.Create().ComputeHash(stringToHash);
+            byte[] bytes = SHA1.Create().ComputeHash(stringToHash);
             string digest = Convert.ToBase64String(bytes);
 
             string headerValue = string.Format("UsernameToken Username=\"{0}\", PasswordDigest=\"{1}\", Created=\"{2}\", Nonce=\"{3}\"",
@@ -68,18 +74,15 @@ namespace OpenLiveWriter.BlogClient.Clients
                 digest,
                 created,
                 nonce);
-            if (headerValue.IndexOfAny(new char[] {'\r', '\n'}) >= 0)
+            if (headerValue.IndexOfAny(new char[] { '\r', '\n' }) >= 0)
                 throw new BlogClientAuthenticationException("ProtocolViolation", "Protocol violation, EOL characters are not allowed in WSSE headers");
             request.Headers.Add("X-WSSE", headerValue);
         }
 
-        protected override void EnsureLoggedIn()
-        {
-        }
-
         public override BlogInfo[] GetUsersBlogs()
         {
-            throw new NotImplementedException();
+            // TODO: Implement blog discovery
+            throw new NotImplementedException("Blog discovery not implemented for SixApart Atom");
         }
     }
 }

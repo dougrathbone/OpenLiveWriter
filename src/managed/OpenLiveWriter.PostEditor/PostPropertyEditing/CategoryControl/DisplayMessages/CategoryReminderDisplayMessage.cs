@@ -20,7 +20,7 @@ namespace OpenLiveWriter.PostEditor.PostPropertyEditing.CategoryControl.DisplayM
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -62,7 +62,7 @@ namespace OpenLiveWriter.PostEditor.PostPropertyEditing.CategoryControl.DisplayM
             this.DefaultButton = System.Windows.Forms.MessageBoxDefaultButton.Button2 ;
             this.Text = "You have not specified categories for this post.{0}Do you still want to continue with publishing?";
             this.Title = "Category Reminder";
-            this.Type = DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion

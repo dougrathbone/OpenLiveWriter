@@ -71,6 +71,33 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing.ImageEditing.Decorators
             : base(0.1f)
         {
         }
+
+        /// <summary>
+        /// Settings class for the WarmDecorator.
+        /// Stores warmth position in the image decorator settings.
+        /// </summary>
+        public class WarmDecoratorSettings
+        {
+            public WarmDecoratorSettings(OpenLiveWriter.Api.IProperties settings)
+            {
+                _settings = settings;
+            }
+            private readonly OpenLiveWriter.Api.IProperties _settings;
+
+            public float WarmthPosition
+            {
+                get
+                {
+                    return _settings.GetFloat(WARMTHPOSITION, 0f);
+                }
+                set
+                {
+                    _settings.SetFloat(WARMTHPOSITION, value);
+                }
+            }
+
+            private const string WARMTHPOSITION = "WarmthPosition";
+        }
     }
 
     public class WarmestDecorator : TemperatureDecorator

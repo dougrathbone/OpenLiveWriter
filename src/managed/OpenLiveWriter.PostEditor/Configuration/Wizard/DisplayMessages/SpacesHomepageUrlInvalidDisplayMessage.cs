@@ -19,7 +19,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -61,7 +61,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             this.Text = "The specified URL does not appear to be valid Spaces homepage.\r\nPlease enter a va" +
                 "lid Spaces URL or set up a Windows Live Space before continuing.";
             this.Title = "Invalid Spaces URL Found";
-            this.Type = OpenLiveWriter.Controls.DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

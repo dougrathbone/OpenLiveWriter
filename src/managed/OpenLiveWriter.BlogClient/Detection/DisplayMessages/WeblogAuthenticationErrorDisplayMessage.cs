@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
@@ -69,9 +70,10 @@ namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
             this.Text = "The weblog account could not be accessed using the specified username and p" +
                 "assword.{0}Please ensure that these values are correct before proceeding.";
             this.Title = "Invalid Username or Password";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = MessageBoxIcon.Warning;
 
         }
         #endregion
     }
 }
+

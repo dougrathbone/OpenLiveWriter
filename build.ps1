@@ -1,6 +1,11 @@
 # Cause powershell to fail on errors rather than keep going
 $ErrorActionPreference = "Stop";
 
+# Build script for Open Live Writer
+# Requirements:
+#   - .NET 10 SDK (for managed projects)
+#   - Visual Studio 2022/2026 with C++ build tools (for Ribbon project, optional)
+#
 # Supported Visual Studio versions: VS2017, VS2019, VS2022, VS2026
 # To override the C++ platform toolset, pass: /p:PlatformToolset=v142 (or v141, v143, v144)
 
@@ -22,76 +27,27 @@ if (-Not (Test-Path "$solutionFile" -PathType Leaf))
 @"
 
 =======================================================
- Fetching MSBuild location
+ Check .NET SDK
 =======================================================
 "@
 
-# Use vswhere to find the latest Visual Studio installation
-$vswherePath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-if (Test-Path $vswherePath) {
-    $visualStudioLocation = & $vswherePath -latest -property installationPath
-} else {
-    # Fallback: try VSSetup module
-    Install-Module VSSetup -Scope CurrentUser -Force
-    $visualStudioLocation = (Get-VSSetupInstance | Select-VSSetupInstance -Latest).InstallationPath
+# Check for dotnet CLI
+$dotnetExe = Get-Command dotnet -ErrorAction SilentlyContinue
+if (-Not $dotnetExe) {
+    "dotnet CLI not found. Please install .NET 10 SDK from https://dotnet.microsoft.com/download"
+    exit 102
 }
 
-# Try "Current" path first (VS2019/VS2022/VS2026+), then fall back to versioned paths
-$msBuildExe = $visualStudioLocation + "\MSBuild\Current\Bin\msbuild.exe"
-IF (-Not (Test-Path -LiteralPath "$msBuildExe" -PathType Leaf))
-{
-    # Try VS2017 path
-    $msBuildExe = $visualStudioLocation + "\MSBuild\15.0\Bin\msbuild.exe"
-}
-IF (-Not (Test-Path -LiteralPath "$msBuildExe" -PathType Leaf))
-{
-	"MSBuild not found at '$msBuildExe'"
-	"In order to build OpenLiveWriter, Visual Studio 2017 or later must be installed."
-	"Supported versions: VS2017, VS2019, VS2022, VS2026"
-	"These can be downloaded from https://visualstudio.microsoft.com/downloads/"
-	exit 101
-}
+$dotnetVersion = & dotnet --version
+"dotnet CLI found, version: $dotnetVersion"
 
-"MSBuild.exe found at: '$msBuildExe'"
-
-@"
-
-=======================================================
- Ensureing nuget.exe exists
-=======================================================
-"@
-
-$nugetPath = "$env:LocalAppData\NuGet"
-$nugetExe = "$nugetPath\NuGet.exe"
-if (-Not (Test-Path -LiteralPath "$nugetExe" -PathType Leaf))
-{
-	if (-Not (Test-Path -LiteralPath "$nugetPath" -PathType Container))
-	{
-		"Creating Directory '$nugetPath'"
-		New-Item "$nugetPath" -Type Directory
-	}
-	"Downloading nuget.exe"
-	Invoke-WebRequest 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' -OutFile "$nugetExe"
-}
-
-"Nuget.exe found at: '$nugetExe'"
-
-@"
-
-=======================================================
- Ensure nuget packages exist
-=======================================================
-"@
-
-$packageFolder = "$PSSCRIPTROOT\src\managed\packages"
-if (Test-Path -LiteralPath $packageFolder)
-{
-    "Packages found at '$packageFolder'"
-}
-else
-{
-	"Running nuget restore"
-	& $nugetExe restore $solutionFile
+# Check if .NET 10 SDK is available
+$sdks = & dotnet --list-sdks
+if (-Not ($sdks -match "10\.")) {
+    "Warning: .NET 10 SDK not found. This project targets .NET 10."
+    "Available SDKs:"
+    $sdks
+    "Download .NET 10 SDK from https://dotnet.microsoft.com/download"
 }
 
 @"
@@ -103,7 +59,7 @@ else
 
 if (-Not (Test-Path env:OLW_CONFIG))
 {
-    "Environment variable OWL_CONFIG not set, setting to 'Debug'"
+    "Environment variable OLW_CONFIG not set, setting to 'Debug'"
 	$env:OLW_CONFIG = 'Debug'
 }
 
@@ -112,10 +68,46 @@ if (-Not (Test-Path env:OLW_CONFIG))
 @"
 
 =======================================================
- Starting build
+ Building managed projects with dotnet msbuild
 =======================================================
 "@
 Get-Date
-$buildCommand = "`"$msBuildExe`" $solutionFile /nologo /maxcpucount /verbosity:minimal /p:Configuration=$env:OLW_CONFIG $ARGS"
-"Running build command '$buildCommand'"
+
+# Use dotnet msbuild for managed projects (uses .NET SDK's MSBuild which supports .NET 10)
+$buildCommand = "dotnet msbuild `"$solutionFile`" /nologo /maxcpucount /verbosity:minimal /p:Configuration=$env:OLW_CONFIG $ARGS"
+"Running build command: $buildCommand"
 Invoke-Expression "& $buildCommand"
+$managedBuildResult = $LASTEXITCODE
+
+if ($managedBuildResult -ne 0) {
+    @"
+
+=======================================================
+ Build completed with errors
+=======================================================
+"@
+    "Managed build exit code: $managedBuildResult"
+    
+    # Check if only the C++ project failed
+    if ($managedBuildResult -eq 1) {
+        @"
+
+Note: If only the OpenLiveWriter.Ribbon (C++) project failed:
+  - The C++ Ribbon project requires Visual Studio C++ build tools
+  - Install via VS Installer: 'MSVC v143 - VS 2022 C++ x64/x86 build tools'
+  - All managed (.NET) projects may have built successfully
+  
+To build only managed projects, you can also run:
+  dotnet build src\managed\writer.sln
+"@
+    }
+    exit $managedBuildResult
+}
+
+@"
+
+=======================================================
+ Build completed successfully!
+=======================================================
+"@
+Get-Date

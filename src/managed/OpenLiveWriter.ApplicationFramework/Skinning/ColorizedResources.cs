@@ -314,6 +314,47 @@ namespace OpenLiveWriter.ApplicationFramework.Skinning
             get { return _borderAppFrameOutline; }
         }
 
+        /// <summary>
+        /// Alias for AppOutlineBorder for backward compatibility.
+        /// </summary>
+        public BorderPaint AppBodyFrameBorder
+        {
+            get { return _borderAppFrameOutline; }
+        }
+
+        /// <summary>
+        /// Gripper image for resize handles.
+        /// </summary>
+        private Bitmap _imgGripper;
+
+        public Bitmap GripperImage
+        {
+            get
+            {
+                if (_imgGripper == null)
+                {
+                    // Create a small gripper bitmap (15x15 with diagonal dots)
+                    _imgGripper = new Bitmap(15, 15);
+                    using (Graphics g = Graphics.FromImage(_imgGripper))
+                    {
+                        g.Clear(Color.Transparent);
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(128, Color.Gray)))
+                        {
+                            // Draw gripper dots
+                            for (int i = 0; i < 3; i++)
+                            {
+                                for (int j = 0; j <= i; j++)
+                                {
+                                    g.FillRectangle(brush, 12 - i * 4, 12 - j * 4, 2, 2);
+                                }
+                            }
+                        }
+                    }
+                }
+                return _imgGripper;
+            }
+        }
+
         public BorderPaint AppFooterBackground
         {
             get { return _borderFooterBackground; }

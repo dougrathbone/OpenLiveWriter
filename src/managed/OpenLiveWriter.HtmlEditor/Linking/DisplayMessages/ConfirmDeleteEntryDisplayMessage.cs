@@ -3,6 +3,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.HtmlEditor.Linking.DisplayMessages
@@ -63,9 +64,10 @@ namespace OpenLiveWriter.HtmlEditor.Linking.DisplayMessages
             this.Buttons = System.Windows.Forms.MessageBoxButtons.YesNo;
             this.Text = "Are you sure that you want to delete the selected glossary entry?";
             this.Title = "Confirm Delete";
-            this.Type = DisplayMessageType.Question;
+            this.Type = MessageBoxIcon.Question;
 
         }
         #endregion
     }
 }
+

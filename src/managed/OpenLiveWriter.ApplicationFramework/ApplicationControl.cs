@@ -8,8 +8,24 @@ using System.Drawing;
 using System.Data;
 using System.Windows.Forms;
 
-namespace Project31.ApplicationFramework
+namespace OpenLiveWriter.ApplicationFramework
 {
+    /// <summary>
+    /// Interface for selectable objects.
+    /// </summary>
+    public interface ISelectableObject
+    {
+    }
+
+    /// <summary>
+    /// Interface for selection management.
+    /// </summary>
+    public interface ISelectionManager
+    {
+        void SetSelection(ISelectableObject selectableObject);
+        void SetSelection(ISelectableObject[] selectableObjects);
+    }
+
     /// <summary>
     /// Application control.
     /// </summary>
@@ -69,6 +85,55 @@ namespace Project31.ApplicationFramework
             components = new System.ComponentModel.Container();
         }
         #endregion
+
+        ///	<interface>ICommandManager</interface>
+        /// <summary>
+        /// Activates the specified command.
+        /// </summary>
+        /// <param name="command">The Command to activate.</param>
+        public void ActivateCommand(Command command)
+        {
+            if (command != null && !commandTable.ContainsKey(command.Identifier))
+                commandTable.Add(command.Identifier, command);
+        }
+
+        ///	<interface>ICommandManager</interface>
+        /// <summary>
+        /// Deactivates the specified command.
+        /// </summary>
+        /// <param name="command">The Command to deactivate.</param>
+        public void DeactivateCommand(Command command)
+        {
+            if (command != null)
+                commandTable.Remove(command.Identifier);
+        }
+
+        ///	<interface>ICommandManager</interface>
+        /// <summary>
+        /// Gets the command with the specified command identifier.
+        /// </summary>
+        /// <param name="commandIdentifier">The command identifier of the command to get.</param>
+        /// <returns>The command, or null if a command with the specified command identifier cannot be found.</returns>
+        public Command GetCommand(string commandIdentifier)
+        {
+            return commandTable[commandIdentifier] as Command;
+        }
+
+        ///	<interface>ICommandManager</interface>
+        /// <summary>
+        /// Gets the command with the specified shortcut.
+        /// </summary>
+        /// <param name="shortcut">The shortcut of the command to get.</param>
+        /// <returns>The command, or null if a command with the specified shortcut cannot be found.</returns>
+        public Command GetCommand(Shortcut shortcut)
+        {
+            foreach (Command command in commandTable.Values)
+            {
+                if (command.Shortcut == shortcut)
+                    return command;
+            }
+            return null;
+        }
 
         ///	<interface>ICommandManager</interface>
         /// <summary>

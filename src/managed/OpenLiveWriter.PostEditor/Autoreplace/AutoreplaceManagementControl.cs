@@ -8,7 +8,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Text;
-using System.Web.UI.WebControls;
 using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 using OpenLiveWriter.CoreServices;

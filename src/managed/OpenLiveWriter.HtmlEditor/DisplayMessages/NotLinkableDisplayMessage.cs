@@ -61,7 +61,7 @@ namespace OpenLiveWriter.HtmlEditor.DisplayMessages
             //
             // NotLinkableDisplayMessage
             //
-            this.Type = DisplayMessageType.Information;
+            this.Type = MessageBoxIcon.Information;
             this.Buttons = MessageBoxButtons.OK;
             this.Text = "Your selection cannot be hyperlinked. Please select text, or click on an image.";
             this.Title = "Cannot Add Link to Selection";
@@ -70,3 +70,4 @@ namespace OpenLiveWriter.HtmlEditor.DisplayMessages
         #endregion
     }
 }
+

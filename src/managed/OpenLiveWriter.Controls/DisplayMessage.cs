@@ -17,7 +17,7 @@ namespace OpenLiveWriter.Controls
     /// <summary>
     /// DisplayMessage component.
     /// </summary>
-    public sealed class DisplayMessage : Component
+    public class DisplayMessage : Component
     {
         /// <summary>
         /// The display message type.
@@ -159,6 +159,14 @@ namespace OpenLiveWriter.Controls
         /// Required designer variable.
         /// </summary>
         private Container components = null;
+
+        /// <summary>
+        /// Parameterless constructor for designer support and derived classes.
+        /// </summary>
+        public DisplayMessage()
+        {
+            InitializeComponent();
+        }
 
         public DisplayMessage(MessageId messageId)
         {

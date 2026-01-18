@@ -6,18 +6,18 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
+using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Web;
 using System.Windows.Forms;
 using System.Xml;
 using OpenLiveWriter.Api;
 using OpenLiveWriter.CoreServices;
 using OpenLiveWriter.CoreServices.Progress;
 using OpenLiveWriter.Extensibility.BlogClient;
-using OpenLiveWriter.FileDestinations;
 using OpenLiveWriter.Interop.Windows;
 
 namespace OpenLiveWriter.BlogClient.Clients
@@ -381,51 +381,134 @@ namespace OpenLiveWriter.BlogClient.Clients
     }
 
     /// <summary>
-    /// SOAP Wrapper for Sharepoint List webservice based on auto-generated VS Web Service Reference code.
+    /// Modern HTTP-based SOAP client for SharePoint Lists web service.
+    /// Replaces the legacy System.Web.Services.Protocols.SoapHttpClientProtocol which is not available in .NET 10.
     /// </summary>
-    [System.Diagnostics.DebuggerStepThroughAttribute()]
-    [System.ComponentModel.DesignerCategoryAttribute("code")]
-    [System.Web.Services.WebServiceBindingAttribute(Name = "ListsSoap", Namespace = "http://schemas.microsoft.com/sharepoint/soap/")]
-    public class SharePointListsService : System.Web.Services.Protocols.SoapHttpClientProtocol
+    public class SharePointListsService : IDisposable
     {
+        private const string SoapNamespace = "http://schemas.microsoft.com/sharepoint/soap/";
+        private const string SoapEnvelopeNamespace = "http://schemas.xmlsoap.org/soap/envelope/";
+        
+        private readonly string _url;
+        private readonly HttpClient _httpClient;
+        private bool _disposed;
 
-        /// <remarks/>
+        public ICredentials Credentials { get; set; }
+
         public SharePointListsService(string url)
         {
-            this.Url = url;
-            this.UserAgent = SharePointClient.USER_AGENT;
+            _url = url;
+            var handler = new HttpClientHandler
+            {
+                UseDefaultCredentials = true
+            };
+            _httpClient = new HttpClient(handler);
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", SharePointClient.USER_AGENT);
         }
 
-        /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://schemas.microsoft.com/sharepoint/soap/AddAttachment", RequestNamespace = "http://schemas.microsoft.com/sharepoint/soap/", ResponseNamespace = "http://schemas.microsoft.com/sharepoint/soap/", Use = System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle = System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        /// <summary>
+        /// Adds an attachment to a list item.
+        /// </summary>
         public string AddAttachment(string listName, string listItemID, string fileName, string attachment)
         {
-            object[] results = this.Invoke("AddAttachment", new object[] {
-                                                                             listName,
-                                                                             listItemID,
-                                                                             fileName,
-                                                                             attachment});
-            return ((string)(results[0]));
+            var soapBody = $@"<AddAttachment xmlns=""{SoapNamespace}"">
+                <listName>{SecurityElement.Escape(listName)}</listName>
+                <listItemID>{SecurityElement.Escape(listItemID)}</listItemID>
+                <fileName>{SecurityElement.Escape(fileName)}</fileName>
+                <attachment>{attachment}</attachment>
+            </AddAttachment>";
+
+            var response = SendSoapRequest("http://schemas.microsoft.com/sharepoint/soap/AddAttachment", soapBody);
+            
+            // Parse the response to get the attachment URL
+            var doc = new XmlDocument();
+            doc.LoadXml(response);
+            var nsmgr = new XmlNamespaceManager(doc.NameTable);
+            nsmgr.AddNamespace("soap", SoapNamespace);
+            var resultNode = doc.SelectSingleNode("//AddAttachmentResult", nsmgr) 
+                          ?? doc.SelectSingleNode("//*[local-name()='AddAttachmentResult']");
+            return resultNode?.InnerText ?? string.Empty;
         }
 
-        /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://schemas.microsoft.com/sharepoint/soap/DeleteAttachment", RequestNamespace = "http://schemas.microsoft.com/sharepoint/soap/", ResponseNamespace = "http://schemas.microsoft.com/sharepoint/soap/", Use = System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle = System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        /// <summary>
+        /// Deletes an attachment from a list item.
+        /// </summary>
         public void DeleteAttachment(string listName, string listItemID, string url)
         {
-            this.Invoke("DeleteAttachment", new object[] {
-                                                             listName,
-                                                             listItemID,
-                                                             url});
+            var soapBody = $@"<DeleteAttachment xmlns=""{SoapNamespace}"">
+                <listName>{SecurityElement.Escape(listName)}</listName>
+                <listItemID>{SecurityElement.Escape(listItemID)}</listItemID>
+                <url>{SecurityElement.Escape(url)}</url>
+            </DeleteAttachment>";
+
+            SendSoapRequest("http://schemas.microsoft.com/sharepoint/soap/DeleteAttachment", soapBody);
         }
 
-        /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://schemas.microsoft.com/sharepoint/soap/GetAttachmentCollection", RequestNamespace = "http://schemas.microsoft.com/sharepoint/soap/", ResponseNamespace = "http://schemas.microsoft.com/sharepoint/soap/", Use = System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle = System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
-        public System.Xml.XmlNode GetAttachmentCollection(string listName, string listItemID)
+        /// <summary>
+        /// Gets the collection of attachments for a list item.
+        /// </summary>
+        public XmlNode GetAttachmentCollection(string listName, string listItemID)
         {
-            object[] results = this.Invoke("GetAttachmentCollection", new object[] {
-                                                                                       listName,
-                                                                                       listItemID});
-            return ((System.Xml.XmlNode)(results[0]));
+            var soapBody = $@"<GetAttachmentCollection xmlns=""{SoapNamespace}"">
+                <listName>{SecurityElement.Escape(listName)}</listName>
+                <listItemID>{SecurityElement.Escape(listItemID)}</listItemID>
+            </GetAttachmentCollection>";
+
+            var response = SendSoapRequest("http://schemas.microsoft.com/sharepoint/soap/GetAttachmentCollection", soapBody);
+            
+            var doc = new XmlDocument();
+            doc.LoadXml(response);
+            var resultNode = doc.SelectSingleNode("//*[local-name()='GetAttachmentCollectionResult']");
+            return resultNode;
+        }
+
+        private string SendSoapRequest(string soapAction, string soapBody)
+        {
+            var soapEnvelope = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""{SoapEnvelopeNamespace}"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
+    <soap:Body>
+        {soapBody}
+    </soap:Body>
+</soap:Envelope>";
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, _url);
+            request.Content = new StringContent(soapEnvelope, Encoding.UTF8, "text/xml");
+            request.Headers.Add("SOAPAction", soapAction);
+
+            // Apply credentials if set
+            if (Credentials != null && Credentials != CredentialCache.DefaultCredentials)
+            {
+                var networkCred = Credentials.GetCredential(new Uri(_url), "NTLM") 
+                               ?? Credentials.GetCredential(new Uri(_url), "Basic");
+                if (networkCred != null && !string.IsNullOrEmpty(networkCred.UserName))
+                {
+                    var authValue = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{networkCred.UserName}:{networkCred.Password}"));
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authValue);
+                }
+            }
+
+            var response = _httpClient.SendAsync(request).GetAwaiter().GetResult();
+            var responseContent = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new WebException($"SOAP request failed with status {response.StatusCode}: {responseContent}");
+            }
+
+            // Extract the SOAP body from the response
+            var responseDoc = new XmlDocument();
+            responseDoc.LoadXml(responseContent);
+            var bodyNode = responseDoc.SelectSingleNode("//*[local-name()='Body']");
+            return bodyNode?.InnerXml ?? responseContent;
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _httpClient?.Dispose();
+                _disposed = true;
+            }
         }
     }
 }

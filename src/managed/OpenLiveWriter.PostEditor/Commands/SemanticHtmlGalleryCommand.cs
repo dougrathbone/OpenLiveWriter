@@ -175,7 +175,7 @@ namespace OpenLiveWriter.PostEditor.Commands
 
         internal class BlogPreviewInfo
         {
-            [ThreadStatic]
+            // Removed [ThreadStatic] - it only works with static fields
             private Dictionary<string, Bitmap> _bitmaps;
 
             internal BlogPreviewInfo(string blogId, string[] elementIds, bool isRtl, TemplateHtmlDelegate templateHtmlDelegate, string postBodyHtml)

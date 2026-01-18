@@ -149,7 +149,7 @@ namespace OpenLiveWriter.Controls
                 _subClasser.Install();
             }
 
-            public IntPtr WndProc( IntPtr hWnd, uint uMsg, UIntPtr wParam, IntPtr lParam )
+            public IntPtr WndProc( IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam )
             {
                 // detect the dialog's creation and record its window handle
                 if ( uMsg == WM_ENTERIDLE && wParam == MSGF_DIALOGBOX )
@@ -186,7 +186,7 @@ namespace OpenLiveWriter.Controls
             private IntPtr _dialogHandle = IntPtr.Zero ;
 
             private const int WM_ENTERIDLE = 0x0121 ;
-            private static readonly UIntPtr MSGF_DIALOGBOX = UIntPtr.Zero ;
+            private static readonly IntPtr MSGF_DIALOGBOX = IntPtr.Zero ;
         }
 
     }

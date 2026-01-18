@@ -3,6 +3,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.HtmlEditor.Linking.DisplayMessages
@@ -63,9 +64,10 @@ namespace OpenLiveWriter.HtmlEditor.Linking.DisplayMessages
             this.Buttons = System.Windows.Forms.MessageBoxButtons.YesNo;
             this.Text = "Found a matching entry with link text {0} and URL {1}. \r\n\r\nDo you want to use this link information?";
             this.Title = "Entry Found";
-            this.Type = DisplayMessageType.Question;
+            this.Type = MessageBoxIcon.Question;
 
         }
         #endregion
     }
 }
+

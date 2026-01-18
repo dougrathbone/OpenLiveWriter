@@ -19,7 +19,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -60,7 +60,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             //
             this.Text = "Please enter a username and password to continue.";
             this.Title = "Username and Password Required";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

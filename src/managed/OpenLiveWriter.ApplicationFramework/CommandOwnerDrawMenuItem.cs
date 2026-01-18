@@ -31,6 +31,13 @@ namespace OpenLiveWriter.ApplicationFramework
         }
 
         /// <summary>
+        /// Initializes a new instance of the CommandOwnerDrawMenuItem class with the command's menu text.
+        /// </summary>
+        public CommandOwnerDrawMenuItem(Command command) : this(MenuType.Context, command, command?.MenuText ?? string.Empty)
+        {
+        }
+
+        /// <summary>
         /// Initializes a new instance of the CommandOwnerDrawMenuItem class.
         /// </summary>
         public CommandOwnerDrawMenuItem(MenuType menuType, Command command, string text) : base(menuType, text)

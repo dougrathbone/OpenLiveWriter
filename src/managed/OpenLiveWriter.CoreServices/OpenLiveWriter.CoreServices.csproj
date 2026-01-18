@@ -11,6 +11,19 @@
     <Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
   </ItemGroup>
 
+  <!-- Exclude legacy/obsolete files that use unavailable .NET Framework APIs -->
+  <ItemGroup>
+    <Compile Remove="AppIconCache.cs" />
+    <Compile Remove="HTML\WebPageDownloader.cs" />
+    <Compile Remove="HTML\AsyncPageDownload.cs" />
+    <!-- InternetShortCut.cs re-enabled - simple COM interop -->
+    <Compile Remove="WebRequest\MultiThreadedPageDownloader.cs" />
+    <Compile Remove="WebRequest\CloseTrackingHttpWebRequest.cs" />
+    <Compile Remove="DataObject\SearchReferrerChain.cs" />
+    <Compile Remove="ComponentRootDesigner.cs" />
+    <Compile Remove="Diagnostics\UnexpectedErrorMessageDesigner.cs" />
+  </ItemGroup>
+
   <!-- Embedded resources -->
   <ItemGroup>
     <EmbeddedResource Include="Images\*.ico" />

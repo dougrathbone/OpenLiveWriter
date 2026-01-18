@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Accounts.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -62,7 +62,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Accounts.DisplayMessages
             this.Buttons = System.Windows.Forms.MessageBoxButtons.YesNo;
             this.Text = "Are you sure that you want to delete the selected weblog?";
             this.Title = "Confirm Delete";
-            this.Type = DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion

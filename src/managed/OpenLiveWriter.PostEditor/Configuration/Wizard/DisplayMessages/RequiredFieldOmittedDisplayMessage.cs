@@ -23,7 +23,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -71,7 +71,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             this.Text = "You must enter a value for the {0} field in order{1}to configure weblog publishin" +
                 "g.";
             this.Title = "Required Field Missing";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

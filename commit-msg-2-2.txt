@@ -1,0 +1,45 @@
+feat(dot net 10): fix code compatibility for .NET 10 (Commit 2.2)
+
+This mega-commit includes all code compatibility fixes required for .NET 10:
+
+Project31 Namespace Migration:
+- Renamed Project31 namespaces to OpenLiveWriter throughout
+- Fixed using statements in ApplicationFramework, Controls, CoreServices
+
+File Exclusions and Restorations:
+- Excluded legacy files with unavailable .NET Framework APIs
+- Restored HtmlEditor files with appropriate fixes
+- Restored WebPublishMessages with modern patterns
+- Restored Google Drive support for image uploading
+- Restored SharePoint client with HTTP-based SOAP implementation
+- Restored Image Editing support with stub tab controls
+- Restored SixApartAtomClient for TypePad/Vox support
+- Restored InternetShortCut.cs for .url file generation
+
+ApplicationFramework/Command/Controls Fixes:
+- Fixed ambiguous type references between Interop.Com and mshtml
+- Fixed CloseTrackingHttpWebRequest and SendRequest compatibility
+- Fixed System.Data.SqlClient security vulnerability
+- Added temporary warning suppressions (to be fixed later)
+- Fixed Controls project compilation issues
+- Removed duplicate VerticalSplitterStyle enum
+- Fixed CommandInstance class
+- Added ISelectionManager, ISelectableObject interfaces
+- Unsealed DisplayMessage class for inheritance
+- Added Obsolete attribute to OnClosed override
+- Removed ComponentRootDesigner attribute
+- Added IDisposable to Command class
+- Added GutterLightweightControl stub
+- Implemented IFrameManager.Frameless property
+- Added ApplicationStyle font and color properties
+- Added LayoutMargin, EnabledChanged, ContextMenuPath properties
+- Restored menuBitmapEnabled field
+- Removed container.Add(this) calls
+- Fixed IntPtr for MSGF_DIALOGBOX
+- Fixed key.snk path in Directory.Build.props
+- Fixed Font caching resource leak
+- Fixed core project and PostEditor compilation errors
+
+Build System:
+- Updated build.ps1 to use dotnet msbuild
+- Updated test projects for SDK-style and NUnit 4

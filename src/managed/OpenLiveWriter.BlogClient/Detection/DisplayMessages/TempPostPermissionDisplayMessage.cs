@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
@@ -75,9 +76,10 @@ needs to create and delete a temporary post on your weblog.
 Would you like Writer to publish a temporary post to detect your
 weblog's style?";
             this.Title = "Allow Writer to Create a Temporary Post?";
-            this.Type = OpenLiveWriter.Controls.DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion
     }
 }
+

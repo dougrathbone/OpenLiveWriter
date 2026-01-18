@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -69,7 +69,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             this.Buttons = System.Windows.Forms.MessageBoxButtons.YesNo;
             this.Text = "The spell check was cancelled.{0}Do you still want to publish this post?";
             this.Title = "Spell Check Cancelled";
-            this.Type = DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion

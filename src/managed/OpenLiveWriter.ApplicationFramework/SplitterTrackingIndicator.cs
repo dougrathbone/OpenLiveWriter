@@ -10,9 +10,9 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Diagnostics;
-using Project31.CoreServices;
+using OpenLiveWriter.CoreServices;
 
-namespace Project31.ApplicationFramework
+namespace OpenLiveWriter.ApplicationFramework
 {
     /// <summary>
     /// Provides a "tracking indicator" for use in splitter bars.

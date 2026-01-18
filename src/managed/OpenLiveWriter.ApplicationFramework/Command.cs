@@ -56,8 +56,39 @@ namespace OpenLiveWriter.ApplicationFramework
         string Keytip { get; set; }
     }
 
-    public class Command : ICommandTextDisplayProperties, IComparable
+    public class Command : ICommandTextDisplayProperties, IComparable, IDisposable
     {
+        #region IDisposable Support
+
+        private bool _disposed = false;
+
+        /// <summary>
+        /// Releases the unmanaged resources used by the Command and optionally releases the managed resources.
+        /// </summary>
+        /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                }
+                _disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Releases all resources used by the Command.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        #endregion
+
         #region Private Member Variables
 
         /// <summary>
@@ -123,6 +154,16 @@ namespace OpenLiveWriter.ApplicationFramework
         /// is the merge level.
         /// </summary>
         private string mainMenuPath = string.Empty;
+
+        /// <summary>
+        /// The context menu path of the command.
+        /// </summary>
+        private string contextMenuPath = string.Empty;
+
+        /// <summary>
+        /// The description of the command.
+        /// </summary>
+        private string description = string.Empty;
 
         private bool suppressMenuBitmap;
 
@@ -247,6 +288,40 @@ namespace OpenLiveWriter.ApplicationFramework
             {
                 Events.RemoveHandler(ExecuteEventKey, value);
             }
+        }
+
+        /// <summary>
+        /// The EnabledChanged event key.
+        /// </summary>
+        private static readonly object EnabledChangedEventKey = new object();
+
+        /// <summary>
+        /// Occurs when the Enabled property changes.
+        /// </summary>
+        [
+            Category("Property Changed"),
+                Description("Occurs when the Enabled property changes.")
+        ]
+        public event EventHandler EnabledChanged
+        {
+            add
+            {
+                Events.AddHandler(EnabledChangedEventKey, value);
+            }
+            remove
+            {
+                Events.RemoveHandler(EnabledChangedEventKey, value);
+            }
+        }
+
+        /// <summary>
+        /// Raises the EnabledChanged event.
+        /// </summary>
+        protected virtual void OnEnabledChanged(EventArgs e)
+        {
+            EventHandler handler = (EventHandler)Events[EnabledChangedEventKey];
+            if (handler != null)
+                handler(this, e);
         }
 
         /// <summary>
@@ -845,6 +920,36 @@ namespace OpenLiveWriter.ApplicationFramework
             set
             {
                 mainMenuPath = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the context menu path of the command.
+        /// </summary>
+        public string ContextMenuPath
+        {
+            get
+            {
+                return contextMenuPath;
+            }
+            set
+            {
+                contextMenuPath = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the description of the command.
+        /// </summary>
+        public string Description
+        {
+            get
+            {
+                return description;
+            }
+            set
+            {
+                description = value;
             }
         }
 
@@ -1568,6 +1673,7 @@ namespace OpenLiveWriter.ApplicationFramework
 
                     //	Fire the state changed event.
                     OnStateChanged(EventArgs.Empty);
+                    OnEnabledChanged(EventArgs.Empty);
                 }
             }
         }

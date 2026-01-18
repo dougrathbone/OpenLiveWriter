@@ -19,7 +19,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -61,7 +61,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             this.Text = "{0} could not locate a Windows Live Space for this user.\r\nPlease set up a Wind" +
                 "ows Live Space before continuing.";
             this.Title = "No Space Found";
-            this.Type = OpenLiveWriter.Controls.DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

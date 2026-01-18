@@ -1,4 +1,4 @@
-ï»¿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
@@ -41,7 +41,7 @@ namespace OpenLiveWriter.PostEditor.Emoticons
             new Emoticon(new List<string> { ":-$", ":$" },                              Res.Get(StringId.EmoticonEmbarrassedSmile),             bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-embarrassedsmile",          ".png"),
             new Emoticon(new List<string> { ":-S", ":-s", ":S", ":s" },                 Res.Get(StringId.EmoticonConfusedSmile),                bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-confusedsmile",             ".png"),
             new Emoticon(new List<string> { ":-(", ":(", ":<", ":-<" },                 Res.Get(StringId.EmoticonSadSmile),                     bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-sadsmile",                  ".png"),
-            new Emoticon(new List<string> { ":'(", ":â€™(" },                             Res.Get(StringId.EmoticonCryingFace),                   bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-cryingface",                ".png"),
+            new Emoticon(new List<string> { ":'(", ":’(" },                             Res.Get(StringId.EmoticonCryingFace),                   bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-cryingface",                ".png"),
             new Emoticon(new List<string> { ":-|", ":|" },                              Res.Get(StringId.EmoticonDisappointedSmile),            bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-disappointedsmile",         ".png"),
             new Emoticon(new List<string> { "(6)" },                                    Res.Get(StringId.EmoticonDevil),                        bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-devil",                     ".png"),
             new Emoticon(new List<string> { "(A)", "(a)" },                             Res.Get(StringId.EmoticonAngel),                        bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-angel",                     ".png"),
@@ -69,7 +69,7 @@ namespace OpenLiveWriter.PostEditor.Emoticons
             new Emoticon(new List<string> { ":8)" },                                    Res.Get(StringId.EmoticonAlien),                        bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-alien",                     ".png"),
             new Emoticon(new List<string> { "(ff)" },                                   Res.Get(StringId.EmoticonFlirtFemale),                  bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-flirtfemale",               ".png"),
             new Emoticon(new List<string> { "(fm)" },                                   Res.Get(StringId.EmoticonFlirtMale),                    bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-flirtmale",                 ".png"),
-            new Emoticon(new List<string> { ":'-|", ":â€™-|", ":'|", ":â€™|" },             Res.Get(StringId.EmoticonFreezing),                     bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-freezing",                  ".png"),
+            new Emoticon(new List<string> { ":'-|", ":’-|", ":'|", ":’|" },             Res.Get(StringId.EmoticonFreezing),                     bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-freezing",                  ".png"),
             new Emoticon(new List<string> { ":-]", ":]" },                              Res.Get(StringId.EmoticonInLove),                       bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-Inlove",                    ".png"),
             new Emoticon(new List<string> { ":-}", ":}" },                              Res.Get(StringId.EmoticonPrincess),                     bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-princess",                  ".png"),
             new Emoticon(new List<string> { "(BOO)" },                                  Res.Get(StringId.EmoticonGhost),                        bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-ghost",                     ".png"),
@@ -128,7 +128,7 @@ namespace OpenLiveWriter.PostEditor.Emoticons
             new Emoticon(new List<string> { "(bah)" },                                  Res.Get(StringId.EmoticonBlackSheep),                   bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-blacksheep",                ".png"),
             new Emoticon(new List<string> { "(li)" },                                   Res.Get(StringId.EmoticonLightning),                    bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-lightning",                 ".png"),
             new Emoticon(new List<string> { "(wo)" },                                   Res.Get(StringId.EmoticonWork),                         bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-work",                      ".png"),
-            new Emoticon(new List<string> { "('.')", "(â€™.â€™)" },                         Res.Get(StringId.EmoticonBunny),                        bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-bunny",                     ".png"),
+            new Emoticon(new List<string> { "('.')", "(’.’)" },                         Res.Get(StringId.EmoticonBunny),                        bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-bunny",                     ".png"),
             new Emoticon(new List<string> { "(bus)" },                                  Res.Get(StringId.EmoticonSchoolBus),                    bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-schoolbus",                 ".png"),
             new Emoticon(new List<string> { "*p*" },                                    Res.Get(StringId.EmoticonPeace),                        bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-peace",                     ".png"),
             new Emoticon(new List<string> { "*s*" },                                    Res.Get(StringId.EmoticonSchool),                       bitmapStrip, nextIndex++, Emoticon.CLASS_NAME + "-school",                    ".png")

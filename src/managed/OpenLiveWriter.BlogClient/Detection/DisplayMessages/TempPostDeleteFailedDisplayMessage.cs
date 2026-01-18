@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
@@ -69,9 +70,10 @@ namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
             this.Text = "The temporary post made to your blog to aid in style detection could not be deleted.\n\n" +
                 "You will need to delete this post manually.";
             this.Title = "Unable to Delete Style Detection Post";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = MessageBoxIcon.Warning;
 
         }
         #endregion
     }
 }
+

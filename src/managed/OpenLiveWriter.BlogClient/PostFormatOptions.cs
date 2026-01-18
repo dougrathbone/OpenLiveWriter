@@ -29,14 +29,14 @@ namespace OpenLiveWriter.BlogClient
         {
         }
 
-        public PostFormatOptions(IBlogProviderOptions blogProviderOptions)
+        public PostFormatOptions(IBlogClientOptions blogClientOptions)
         {
-            DateFormatOverride = blogProviderOptions.PostDateFormat ;
-            SupportsCustomDate = blogProviderOptions.SupportsCustomDate ;
-            UseLocalTime = blogProviderOptions.UseLocalTime ;
-            UnescapedTitles = blogProviderOptions.UnescapedTitles ;
-            AllowPostAsDraft = blogProviderOptions.SupportsPostAsDraft != SupportsFeature.No;
-            ContentFilter = blogProviderOptions.ContentFilter;
+            DateFormatOverride = blogClientOptions.PostDateFormat;
+            SupportsCustomDate = blogClientOptions.SupportsCustomDate ? SupportsFeature.Yes : SupportsFeature.No;
+            UseLocalTime = blogClientOptions.UseLocalTime;
+            UnescapedTitles = !blogClientOptions.RequiresHtmlTitles;
+            AllowPostAsDraft = blogClientOptions.SupportsPostAsDraft;
+            ContentFilter = blogClientOptions.ContentFilter;
         }
 
         public string DateFormatOverride

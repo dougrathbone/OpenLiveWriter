@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.ImageInsertion.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -62,7 +62,7 @@ namespace OpenLiveWriter.PostEditor.ImageInsertion.DisplayMessages
             this.Buttons = System.Windows.Forms.MessageBoxButtons.OK;
             this.Text = "Preview is currently unavailable. Please check the entered URL and your network connection.";
             this.Title = "Preview Unavailable";
-            this.Type = DisplayMessageType.Information;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Information;
 
         }
         #endregion

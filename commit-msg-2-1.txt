@@ -1,0 +1,16 @@
+feat(dot net 10): add SupportedOSPlatform attributes to P/Invoke (Commit 2.1)
+
+Adds [SupportedOSPlatform("windows")] attributes to P/Invoke classes for documentation:
+- OpenLiveWriter.Interop/Windows/*.cs (User32, Kernel32, Shell32, Gdi32, etc.)
+- OpenLiveWriter.Interop/Com/Ole32.cs, Ole32Storage.cs, ImageLoader.cs
+- OpenLiveWriter.Interop/Windows/TaskDialog/*.cs
+- OpenLiveWriter.CoreServices/*.cs (PluginLoader, PathHelper, DisplayHelper, etc.)
+- OpenLiveWriter.ApplicationFramework/*TrackingIndicator.cs
+- OpenLiveWriter.Localization/CultureHelper.cs, BidiGraphics.cs
+
+Also addresses obsolete API and code quality warnings:
+- SHA1Managed -> SHA1.HashData()
+- RNGCryptoServiceProvider -> RandomNumberGenerator.Fill()
+- Exception re-throwing fixes
+
+Note: CA1416 warnings are suppressed globally since the entire app targets net10.0-windows.

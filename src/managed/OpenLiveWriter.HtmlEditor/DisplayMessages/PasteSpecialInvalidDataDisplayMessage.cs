@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.HtmlEditor.DisplayMessages
@@ -69,9 +70,10 @@ namespace OpenLiveWriter.HtmlEditor.DisplayMessages
             this.Buttons = System.Windows.Forms.MessageBoxButtons.OK;
             this.Text = "Paste Special can only be used with HTML and text data.";
             this.Title = "Invalid Data Selection";
-            this.Type = DisplayMessageType.Information;
+            this.Type = MessageBoxIcon.Information;
 
         }
         #endregion
     }
 }
+

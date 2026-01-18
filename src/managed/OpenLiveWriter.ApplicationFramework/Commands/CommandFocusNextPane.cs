@@ -17,15 +17,8 @@ namespace OpenLiveWriter.ApplicationFramework.Commands
 
         public CommandFocusNextPane(IContainer container)
         {
-            ///
-            /// Required for Windows.Forms Class Composition Designer support
-            ///
-            container.Add(this);
+            // Note: Command no longer implements IComponent, container.Add not needed
             InitializeComponent();
-
-            //
-            //
-            //
         }
 
         public CommandFocusNextPane()

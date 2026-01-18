@@ -5,8 +5,7 @@ using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
-using OpenLiveWriter.Api.Sidebar;
-using OpenLiveWriter.Api.ImageEditing;
+using OpenLiveWriter.Extensibility.ImageEditing;
 using OpenLiveWriter.PostEditor.PostHtmlEditing.Commands;
 using OpenLiveWriter.PostEditor.PostHtmlEditing.ImageEditing.Decorators;
 using OpenLiveWriter.ApplicationFramework;
@@ -32,6 +31,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
         private ImageTabPageUploadControl imageTabPageUpload;
 
         public ImagePropertyEditorControl()
+            : base(ApplicationManager.CommandManager)
         {
             // This call is required by the Windows.Forms Form Designer.
             InitializeComponent();
@@ -49,7 +49,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             tabLightweightControl.SmallTabs = true ;
         }
 
-        public void Init(IBlogPostImageDataContext dataContext)
+        public void Init(IBlogPostImageEditingContext dataContext)
         {
 
             _imageDataContext = dataContext;
@@ -89,7 +89,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             RightColumn.Visible = false;
             ResumeLayout() ;
         }
-        IBlogPostImageDataContext _imageDataContext;
+        IBlogPostImageEditingContext _imageDataContext;
 
         private void InitializeCommands()
         {
@@ -265,7 +265,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         private void commandImageRotate_Execute(object sender, EventArgs e)
         {
-            ImageInfo.ImageRotation = ImageDecoratorUtils.GetFlipTypeRotated90(ImageInfo.ImageRotation);
+            ImageInfo.ImageRotation = ImageDecoratorUtils.GetFlipTypeRotatedCW(ImageInfo.ImageRotation);
             ApplyImageDecorations();
         }
 

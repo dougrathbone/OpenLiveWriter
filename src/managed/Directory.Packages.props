@@ -12,11 +12,13 @@
 
   <ItemGroup>
     <!-- Google APIs for Blogger integration - Updated for .NET 10 compatibility -->
-    <PackageVersion Include="Google.Apis" Version="1.68.0" />
-    <PackageVersion Include="Google.Apis.Auth" Version="1.68.0" />
-    <PackageVersion Include="Google.Apis.Blogger.v3" Version="1.68.0.3420" />
-    <PackageVersion Include="Google.Apis.Core" Version="1.68.0" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.68.0.3572" />
+    <!-- Note: Drive v3 requires Google.Apis 1.70.0+, but Blogger v3 only has 1.69.x -->
+    <!-- Until Google publishes Blogger 1.70.x, we accept the version warning -->
+    <PackageVersion Include="Google.Apis" Version="1.70.0" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.70.0" />
+    <PackageVersion Include="Google.Apis.Blogger.v3" Version="1.69.0.3796" />
+    <PackageVersion Include="Google.Apis.Core" Version="1.70.0" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.70.0.3834" />
     
     <!-- JSON serialization - Latest stable for .NET 10 -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
@@ -42,6 +44,9 @@
     <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageVersion Include="ApprovalTests" Version="6.0.0" />
     <PackageVersion Include="ApprovalUtilities" Version="6.0.0" />
+    
+    <!-- Security fix: Override vulnerable transitive dependency -->
+    <PackageVersion Include="System.Data.SqlClient" Version="4.8.6" />
     
     <!-- 
       NOTE: The following packages are NOT included because they are built into .NET 10:

@@ -155,7 +155,16 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
             try
             {
-                _templateFile = BlogTemplateDetector.DetectTemplate(this, settings ) ;
+                // TODO: BlogEditingTemplateDetector.DetectTemplate has a different signature now
+                // For now, use a file browser instead
+                using (var openFileDialog = new OpenFileDialog())
+                {
+                    openFileDialog.Filter = "HTML files (*.htm, *.html)|*.htm;*.html";
+                    if (openFileDialog.ShowDialog() == DialogResult.OK)
+                        _templateFile = openFileDialog.FileName;
+                    else
+                        throw new OperationCancelledException();
+                }
 
                 using(TextReader reader = new StreamReader(_templateFile, Encoding.UTF8))
                     textBoxTemplate.Text = reader.ReadToEnd();

@@ -21,9 +21,7 @@ namespace OpenLiveWriter.HtmlEditor.Commands
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
             InitializeComponent();
-
         }
 
         public CommandSpellCheck()

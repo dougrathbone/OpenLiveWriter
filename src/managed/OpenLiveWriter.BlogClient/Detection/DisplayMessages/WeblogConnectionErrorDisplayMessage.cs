@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
@@ -70,9 +71,10 @@ namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
             this.Text = "An error occured while attempting to connect to your weblog:{0}{1}{0}You must cor" +
                 "rect this error before proceeding.";
             this.Title = "Error Connecting to Weblog";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = MessageBoxIcon.Warning;
 
         }
         #endregion
     }
 }
+

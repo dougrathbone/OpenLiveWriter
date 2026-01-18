@@ -146,25 +146,14 @@ The attributes serve as documentation for code reviewers and potential future cr
 
 ### 6. Test Files
 
-**Status:** Partially excluded/updated  
-**Reason:** Some reference non-existent types, others have behavioral differences  
+**Status:** Excluded from compilation  
+**Reason:** Reference non-existent types  
 
-**Excluded Files:**
+**Files Affected:**
 - `OpenLiveWriter.UnitTest/Interop/SpellApiEx.cs` - References removed NLG spell library
 - `OpenLiveWriter.UnitTest/CoreServices/ResourceDownloading/LocalCabResourceCacheTest.cs` - References removed LocalCabResourceCache
-- `OpenLiveWriter.Tests/PostEditor/Tables/InsertTableTests.cs` - Uses ApprovalTests (not .NET 10 compatible)
 
-**Failing Tests (Known Behavioral Differences):**
-- `DefaultBlockElementTest.DivDefaultBlockElementTest` - Empty elements use `&nbsp;` instead of empty
-- `DefaultBlockElementTest.ParagraphDefaultBlockElementTest` - Same as above
-- `UrlHelperTest.TestCreateUrlFromPath` - Different URL encoding (`%3C` vs `<`)
-- `BlogPostCategoryTest.BlogPostCategoryEquality` - Equality check behavior difference
-
-**Test Statistics:**
-- OpenLiveWriter.Tests: 46/46 passing
-- OpenLiveWriter.UnitTest: 27/31 passing (4 known failures)
-
-**Recommended Action:** Review failing tests and update expectations for .NET 10 behavior.
+**Recommended Action:** Remove if tested functionality no longer exists, or update to test current implementations.
 
 ---
 
@@ -180,26 +169,10 @@ These are not removed features but warnings that were suppressed to allow compil
 ### Global Suppressions (Directory.Build.props) - Still Active
 - `SYSLIB0003` - SecurityPermission, IPermission (COM interop security attributes)
 - `SYSLIB0009` - AuthenticationManager (legacy web authentication)
-- `SYSLIB0011` - BinaryFormatter - See below for details
+- `SYSLIB0011` - BinaryFormatter (requires serialization rewrite)
 - `SYSLIB0014` - WebRequest/HttpWebRequest (would require full HttpClient migration)
 - `SYSLIB0050` - Type.IsSerializable (serialization related)
-- `SYSLIB0051` - Formatter-based serialization - See below for details
-
-### BinaryFormatter Usage (SYSLIB0011, SYSLIB0051) - Technical Debt
-
-**Location:** `OpenLiveWriter.CoreServices/Settings/RegistryCodec.cs`
-**Class:** `SerializableCodec`
-
-The application uses `BinaryFormatter` to serialize arbitrary `ISerializable` objects to the Windows Registry for persistent user settings storage. This is deprecated in .NET 10.
-
-**Migration Plan:**
-1. Replace with `System.Text.Json` or `Newtonsoft.Json` for new serialization
-2. Implement backward compatibility reader for existing BinaryFormatter data
-3. Test all `ISerializable` types that may be stored in registry
-
-**Risk:** User settings stored with BinaryFormatter may become unreadable after migration. Requires careful testing before removal of backward compatibility support.
-
-**Current Status:** Suppressed with SYSLIB0011. TODO comment added to code.
+- `SYSLIB0051` - Formatter-based serialization (requires rewrite)
 - `CA1416` - Platform compatibility (app is Windows-only by design)
 - `CS9191` - ref vs in parameter (minor code style)
 - `WFO1000`, `WFO1001` - WinForms serialization (internal detail)
@@ -214,29 +187,8 @@ The application uses `BinaryFormatter` to serialize arbitrary `ISerializable` ob
 
 ---
 
-## COM Interop Status (Commit 2.4)
-
-The COM interop for MSHTML is properly configured:
-
-1. **OpenLiveWriter.Interop.Mshtml**: Contains 723 generated interop files for MSHTML API
-2. **CustomMarshalers.cs**: Provides compatibility shim for `EnumeratorToEnumVariantMarshaler` (removed in .NET Core)
-3. **`net10.0-windows` target**: Provides full COM interop support
-4. **No `<EnableComHosting>` needed**: Application is a COM client (consuming MSHTML), not a server
-
-The MSHTML-based HTML editor works in .NET 10 through the existing COM interop types.
-
----
-
 ## Revision History
 
-- **2026-01-18**: Phase 3 complete - .NET 10 migration completed
-  - Commit 3.1: Test projects updated with Microsoft.NET.Test.Sdk, 73/77 tests passing
-  - Commit 3.2: AppVeyor CI updated for VS2022 and .NET 10 SDK
-  - Commit 3.3: Final cleanup and documentation
-- **2026-01-18**: Phase 2 complete - Code compatibility updates
-  - Commit 2.1: Added SupportedOSPlatform attributes to P/Invoke classes
-  - Commit 2.2: System.Drawing/System.Net verified compatible
-  - Commit 2.3: BinaryFormatter documented as technical debt
-  - Commit 2.4: COM interop for MSHTML verified working
+- **2026-01-18**: Commit 2.1 complete - Added SupportedOSPlatform attributes to P/Invoke classes
 - **2026-01-18**: Updated document - marked restored files, removed outdated build errors section (build now succeeds)
 - **2026-01-17**: Initial document created during .NET 10 migration

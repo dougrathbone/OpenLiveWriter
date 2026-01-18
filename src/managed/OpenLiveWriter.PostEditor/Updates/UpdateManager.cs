@@ -3,7 +3,6 @@
 
 using OpenLiveWriter.CoreServices;
 using OpenLiveWriter.CoreServices.ResourceDownloading;
-using Squirrel;
 using System;
 using System.Collections;
 using System.Diagnostics;
@@ -14,54 +13,21 @@ using System.Xml;
 
 namespace OpenLiveWriter.PostEditor.Updates
 {
+    /// <summary>
+    /// Application update manager.
+    /// TODO: Migrate from Squirrel.Windows to Velopack for .NET 10 compatibility.
+    /// See: https://docs.velopack.io/migrating/squirrel
+    /// </summary>
     public class UpdateManager
     {
         public static DateTime Expires = DateTime.MaxValue;
         
         public static void CheckforUpdates(bool forceCheck = false)
         {
-#if !DesktopUWP
-            // Update using Squirrel if not a Desktop UWP package
-            var checkNow = forceCheck || UpdateSettings.AutoUpdate;
-            var downloadUrl = UpdateSettings.CheckForBetaUpdates ?
-                UpdateSettings.BetaUpdateDownloadUrl : UpdateSettings.UpdateDownloadUrl;
-
-            // Schedule Open Live Writer 10 seconds after the launch
-            var delayUpdate = new DelayUpdateHelper(UpdateOpenLiveWriter(downloadUrl, checkNow), UPDATELAUNCHDELAY);
-            delayUpdate.StartBackgroundUpdate("Background OpenLiveWriter application update");
-#endif
-        }
-
-        private static ThreadStart UpdateOpenLiveWriter(string downloadUrl, bool checkNow)
-        {
-            return async () =>
-            {
-                if (checkNow)
-                {
-                    try
-                    {
-                        using (var manager = new Squirrel.UpdateManager(downloadUrl))
-                        {
-                            var update = await manager.CheckForUpdate();
-
-                            if(update != null && 
-                               update.ReleasesToApply.Count > 0 && 
-                               update.FutureReleaseEntry.Version < update.CurrentlyInstalledVersion.Version)
-                            {
-                                Trace.WriteLine("Update is older than currently running version, not installing.");
-                                Trace.WriteLine($"Current: {update.CurrentlyInstalledVersion.Version} Update: {update.FutureReleaseEntry.Version}");
-                                return;
-                            }
-
-                            await manager.UpdateApp();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine("Unexpected error while updating Open Live Writer. " + ex);
-                    }
-                }
-            };
+            // TODO: Implement Velopack-based updates
+            // Squirrel.Windows is not compatible with .NET 10
+            // For now, auto-update is disabled
+            Trace.WriteLine("Auto-update is currently disabled. Migrate to Velopack for .NET 10 support.");
         }
 
         private const int UPDATELAUNCHDELAY = 10000;

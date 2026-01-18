@@ -19,7 +19,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -60,7 +60,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             //
             this.Text = "An error occurred while attempting to connect to the remote server.";
             this.Title = "Error Connecting";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

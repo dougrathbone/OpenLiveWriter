@@ -580,9 +580,7 @@ namespace OpenLiveWriter.BlogClient.Detection
         /// <returns></returns>
         private static bool VerifyCredentialsAndDetectAuthScheme(string postApiUrl, IBlogCredentials blogCredentials, IBlogCredentialsAccessor credentials)
         {
-            BlogClientAttribute blogClientAttr = (BlogClientAttribute)typeof(SharePointClient).GetCustomAttributes(typeof(BlogClientAttribute), false)[0];
-            SharePointClient client = (SharePointClient)BlogClientManager.CreateClient(blogClientAttr.TypeName, postApiUrl, credentials);
-
+            SharePointClient client = new SharePointClient(new Uri(postApiUrl), credentials);
             return SharePointClient.VerifyCredentialsAndDetectAuthScheme(blogCredentials, client);
         }
     }

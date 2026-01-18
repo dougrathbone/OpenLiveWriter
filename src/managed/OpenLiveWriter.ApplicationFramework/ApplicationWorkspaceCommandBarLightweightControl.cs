@@ -9,7 +9,7 @@ using System.Drawing.Drawing2D;
 using System.Data;
 using System.Windows.Forms;
 
-namespace Project31.ApplicationFramework
+namespace OpenLiveWriter.ApplicationFramework
 {
     /// <summary>
     /// ApplicationCommandBar lightweight control.  Provides the CommandBarLightweightControl for
@@ -21,6 +21,11 @@ namespace Project31.ApplicationFramework
         /// Required designer variable.
         /// </summary>
         private System.ComponentModel.Container components = null;
+
+        /// <summary>
+        /// Gets or sets the layout margin.
+        /// </summary>
+        public Size LayoutMargin { get; set; } = new Size(2, 2);
 
         /// <summary>
         /// Initializes a new instance of the ApplicationCommandBarLightweightControl class.

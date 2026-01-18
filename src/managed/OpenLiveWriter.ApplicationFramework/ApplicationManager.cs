@@ -20,6 +20,12 @@ namespace OpenLiveWriter.ApplicationFramework
         private static ApplicationStyle applicationStyle;
 
         /// <summary>
+        /// The CommandManager instance for managing commands.
+        /// </summary>
+        [ThreadStatic]
+        private static CommandManager commandManager;
+
+        /// <summary>
         /// Gets or sets the ApplicationStyle object
         /// </summary>
         public static ApplicationStyle ApplicationStyle
@@ -33,6 +39,19 @@ namespace OpenLiveWriter.ApplicationFramework
             set
             {
                 applicationStyle = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets the CommandManager instance.
+        /// </summary>
+        public static CommandManager CommandManager
+        {
+            get
+            {
+                if (commandManager == null)
+                    commandManager = new CommandManager();
+                return commandManager;
             }
         }
 

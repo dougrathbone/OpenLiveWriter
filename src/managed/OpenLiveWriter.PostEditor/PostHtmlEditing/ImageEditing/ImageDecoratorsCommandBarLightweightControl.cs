@@ -27,7 +27,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //

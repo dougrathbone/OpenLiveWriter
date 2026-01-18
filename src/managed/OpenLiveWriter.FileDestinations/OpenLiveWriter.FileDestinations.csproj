@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
+    <!-- Exclude designer file that uses unavailable LocalizationExtenderProvider -->
+    <Compile Remove="WebPublish\WebPublishMessageDesigner.cs" />
   </ItemGroup>
 
   <!-- Project References -->

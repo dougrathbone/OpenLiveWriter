@@ -43,6 +43,15 @@ namespace OpenLiveWriter.PostEditor.ContentSources.Common
             _blogId = blogId;
         }
 
+        /// <summary>
+        /// Parameterless Init for backwards compatibility.
+        /// Uses BlogId property if already set.
+        /// </summary>
+        public virtual void Init()
+        {
+            // BlogId should already be set via property
+        }
+
         public event EventHandler MediaSelected;
 
         public string BlogId

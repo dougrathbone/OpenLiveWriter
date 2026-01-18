@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
         }
@@ -63,7 +63,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard.DisplayMessages
                 "s were not customized:{0}{0}{1}{0}{0}Please change these values to whatever is " +
                 "appropriate for{0}your weblog server.";
             this.Title = "Weblog API URL Requires Customization";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

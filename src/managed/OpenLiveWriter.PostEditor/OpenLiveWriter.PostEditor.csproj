@@ -6,10 +6,20 @@
     <ProjectGuid>{D6C9A393-E0B8-4548-B84B-F8B6FE2A5645}</ProjectGuid>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>$(DefineConstants);CODE_ANALYSIS;WIN32</DefineConstants>
+    <!-- Suppress obsolete override warnings (OnClosing/OnClosed), hiding warnings, and unused field warnings -->
+    <NoWarn>$(NoWarn);CS0672;CS0108;CS0414</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
+  </ItemGroup>
+
+  <!-- Legacy code exclusions -->
+  <ItemGroup>
+    <!-- ImageEditingPropertyForm uses MainFrameSatelliteWindow which doesn't exist -->
+    <Compile Remove="PostHtmlEditing\ImageEditing\ImageEditingPropertyForm.cs" />
+    <!-- Exclude ambiguous interface definition - using SpellChecker version instead -->
+    <Compile Remove="PostHtmlEditing\IBlogPostSpellCheckingContext.cs" />
   </ItemGroup>
 
   <!-- Embedded Resources - images -->
@@ -27,16 +37,14 @@
 
   <!-- NuGet Package References -->
   <ItemGroup>
-    <PackageReference Include="DeltaCompressionDotNet" />
+    <!-- Removed DeltaCompressionDotNet, Mono.Cecil - only used by Squirrel -->
+    <!-- Removed Splat, squirrel.windows - causes type conflicts with System.Drawing -->
+    <!-- TODO: Migrate to Velopack for auto-update functionality -->
     <PackageReference Include="Google.Apis" />
     <PackageReference Include="Google.Apis.Auth" />
     <PackageReference Include="Google.Apis.Blogger.v3" />
     <PackageReference Include="Google.Apis.Core" />
     <PackageReference Include="Newtonsoft.Json" />
-    <PackageReference Include="Mono.Cecil" />
-    <PackageReference Include="Splat" />
-    <PackageReference Include="squirrel.windows" />
-    <PackageReference Include="Zlib.Portable.Signed" />
   </ItemGroup>
 
   <!-- Project References -->

@@ -8,12 +8,12 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Windows.Forms;
 using System.Diagnostics;
-using Project31.MindShare.CoreServices;
+// Note: MindShare.CoreServices was a legacy namespace that has been removed
 
-namespace Project31.ApplicationFramework
+namespace OpenLiveWriter.ApplicationFramework
 {
     /// <summary>
-    /// Represents a command in the Project31.ApplicationFramework.
+    /// Represents a command in the OpenLiveWriter.ApplicationFramework.
     /// </summary>
     [
     DesignTimeVisible(false),
@@ -29,7 +29,7 @@ namespace Project31.ApplicationFramework
         /// <summary>
         /// Menu bitmap for the enabled state.
         /// </summary>
-        private CommandDefinition commandDefinition;
+        private Bitmap menuBitmapEnabled;
 
         /// <summary>
         /// Gets or sets the menu bitmap for the enabled state.
@@ -367,26 +367,22 @@ namespace Project31.ApplicationFramework
         public event EventHandler EnabledChanged;
 
         /// <summary>
-        /// Initializes a new instance of the Command class.
+        /// Initializes a new instance of the CommandInstance class.
         /// </summary>
         /// <param name="container"></param>
-        public CommandDefinition(System.ComponentModel.IContainer container)
+        public CommandInstance(System.ComponentModel.IContainer container)
         {
-            /// <summary>
-            /// Required for Windows.Forms Class Composition Designer support
-            /// </summary>
+            // Required for Windows.Forms Class Composition Designer support
             container.Add(this);
             InitializeComponent();
         }
 
         /// <summary>
-        /// Initializes a new instance of the Command class.
+        /// Initializes a new instance of the CommandInstance class.
         /// </summary>
-        public CommandDefinition()
+        public CommandInstance()
         {
-            /// <summary>
-            /// Required for Windows.Forms Class Composition Designer support
-            /// </summary>
+            // Required for Windows.Forms Class Composition Designer support
             InitializeComponent();
         }
 
@@ -415,10 +411,7 @@ namespace Project31.ApplicationFramework
         /// </summary>
         protected void OnExecute(EventArgs e)
         {
-            if (Execute != null)
-                Execute(this, e);
-            else
-                UnderConstructionForm.Show();
+            Execute?.Invoke(this, e);
         }
 
         /// <summary>

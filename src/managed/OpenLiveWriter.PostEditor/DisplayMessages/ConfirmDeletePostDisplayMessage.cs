@@ -18,7 +18,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -66,7 +66,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             this.Buttons = System.Windows.Forms.MessageBoxButtons.YesNo;
             this.Text = "Are you sure you want to delete the {0} \"{1}\"?";
             this.Title = "Confirm Delete";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

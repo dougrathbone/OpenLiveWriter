@@ -277,5 +277,12 @@ namespace OpenLiveWriter.ApplicationFramework.Skinning
         {
         }
 
+        /// <summary>
+        /// Gets whether the frame is frameless.
+        /// </summary>
+        public bool Frameless
+        {
+            get { return false; }
+        }
     }
 }

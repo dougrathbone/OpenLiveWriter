@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.Tables.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -65,7 +65,7 @@ namespace OpenLiveWriter.PostEditor.Tables.DisplayMessages
         {
             this.Text = "A table cannot have a width larger than the width of its container\n(this table's container is {0} pixels wide).";
             this.Title = "Table Width Exceeds Maximum";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Warning;
 
         }
         #endregion

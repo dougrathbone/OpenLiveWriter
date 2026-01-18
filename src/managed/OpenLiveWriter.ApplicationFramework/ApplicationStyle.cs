@@ -55,11 +55,137 @@ namespace OpenLiveWriter.ApplicationFramework
             }
         }
 
+        private Font normalApplicationFont;
+
         public virtual Font NormalApplicationFont
         {
             get
             {
-                return Res.DefaultFont;
+                return normalApplicationFont ?? Res.DefaultFont;
+            }
+            set
+            {
+                normalApplicationFont = value;
+                OnChanged(EventArgs.Empty);
+            }
+        }
+
+        private Font boldApplicationFont;
+        private bool boldApplicationFontOwned;
+
+        public virtual Font BoldApplicationFont
+        {
+            get
+            {
+                if (boldApplicationFont == null)
+                {
+                    boldApplicationFont = new Font(NormalApplicationFont, FontStyle.Bold);
+                    boldApplicationFontOwned = true;
+                }
+                return boldApplicationFont;
+            }
+            set
+            {
+                if (boldApplicationFontOwned)
+                {
+                    boldApplicationFont?.Dispose();
+                    boldApplicationFontOwned = false;
+                }
+                boldApplicationFont = value;
+                OnChanged(EventArgs.Empty);
+            }
+        }
+
+        private Font italicApplicationFont;
+        private bool italicApplicationFontOwned;
+
+        public virtual Font ItalicApplicationFont
+        {
+            get
+            {
+                if (italicApplicationFont == null)
+                {
+                    italicApplicationFont = new Font(NormalApplicationFont, FontStyle.Italic);
+                    italicApplicationFontOwned = true;
+                }
+                return italicApplicationFont;
+            }
+            set
+            {
+                if (italicApplicationFontOwned)
+                {
+                    italicApplicationFont?.Dispose();
+                    italicApplicationFontOwned = false;
+                }
+                italicApplicationFont = value;
+                OnChanged(EventArgs.Empty);
+            }
+        }
+
+        private Font linkApplicationFont;
+        private bool linkApplicationFontOwned;
+
+        public virtual Font LinkApplicationFont
+        {
+            get
+            {
+                if (linkApplicationFont == null)
+                {
+                    linkApplicationFont = new Font(NormalApplicationFont, FontStyle.Underline);
+                    linkApplicationFontOwned = true;
+                }
+                return linkApplicationFont;
+            }
+            set
+            {
+                if (linkApplicationFontOwned)
+                {
+                    linkApplicationFont?.Dispose();
+                    linkApplicationFontOwned = false;
+                }
+                linkApplicationFont = value;
+                OnChanged(EventArgs.Empty);
+            }
+        }
+
+        private Font smallApplicationFont;
+        private bool smallApplicationFontOwned;
+
+        public virtual Font SmallApplicationFont
+        {
+            get
+            {
+                if (smallApplicationFont == null)
+                {
+                    smallApplicationFont = new Font(NormalApplicationFont.FontFamily, NormalApplicationFont.Size - 1.5f);
+                    smallApplicationFontOwned = true;
+                }
+                return smallApplicationFont;
+            }
+            set
+            {
+                if (smallApplicationFontOwned)
+                {
+                    smallApplicationFont?.Dispose();
+                    smallApplicationFontOwned = false;
+                }
+                smallApplicationFont = value;
+                OnChanged(EventArgs.Empty);
+            }
+        }
+
+        private Font toolWindowTitleBarFont;
+
+        public virtual Font ToolWindowTitleBarFont
+        {
+            get
+            {
+                return toolWindowTitleBarFont ?? BoldApplicationFont;
+            }
+            set
+            {
+                toolWindowTitleBarFont = value;
+                OnChanged(EventArgs.Empty);
             }
         }
 
@@ -1252,9 +1378,217 @@ namespace OpenLiveWriter.ApplicationFramework
                 {
                     components.Dispose();
                 }
+
+                // Dispose fonts that we created internally
+                if (boldApplicationFontOwned)
+                {
+                    boldApplicationFont?.Dispose();
+                    boldApplicationFont = null;
+                    boldApplicationFontOwned = false;
+                }
+                if (italicApplicationFontOwned)
+                {
+                    italicApplicationFont?.Dispose();
+                    italicApplicationFont = null;
+                    italicApplicationFontOwned = false;
+                }
+                if (linkApplicationFontOwned)
+                {
+                    linkApplicationFont?.Dispose();
+                    linkApplicationFont = null;
+                    linkApplicationFontOwned = false;
+                }
+                if (smallApplicationFontOwned)
+                {
+                    smallApplicationFont?.Dispose();
+                    smallApplicationFont = null;
+                    smallApplicationFontOwned = false;
+                }
             }
             base.Dispose(disposing);
         }
+
+        #region ApplicationWorkspace Colors
+
+        private Color applicationWorkspaceTopColor = SystemColors.AppWorkspace;
+
+        public virtual Color ApplicationWorkspaceTopColor
+        {
+            get { return applicationWorkspaceTopColor; }
+            set
+            {
+                if (applicationWorkspaceTopColor != value)
+                {
+                    applicationWorkspaceTopColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        private Color applicationWorkspaceBottomColor = SystemColors.AppWorkspace;
+
+        public virtual Color ApplicationWorkspaceBottomColor
+        {
+            get { return applicationWorkspaceBottomColor; }
+            set
+            {
+                if (applicationWorkspaceBottomColor != value)
+                {
+                    applicationWorkspaceBottomColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        private Color applicationWorkspaceCommandBarTopColor = SystemColors.Control;
+
+        public virtual Color ApplicationWorkspaceCommandBarTopColor
+        {
+            get { return applicationWorkspaceCommandBarTopColor; }
+            set
+            {
+                if (applicationWorkspaceCommandBarTopColor != value)
+                {
+                    applicationWorkspaceCommandBarTopColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        private Color applicationWorkspaceCommandBarBottomColor = SystemColors.Control;
+
+        public virtual Color ApplicationWorkspaceCommandBarBottomColor
+        {
+            get { return applicationWorkspaceCommandBarBottomColor; }
+            set
+            {
+                if (applicationWorkspaceCommandBarBottomColor != value)
+                {
+                    applicationWorkspaceCommandBarBottomColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        private Color applicationWorkspaceCommandBarTopBevelFirstLineColor = Color.Transparent;
+
+        public virtual Color ApplicationWorkspaceCommandBarTopBevelFirstLineColor
+        {
+            get { return applicationWorkspaceCommandBarTopBevelFirstLineColor; }
+            set
+            {
+                if (applicationWorkspaceCommandBarTopBevelFirstLineColor != value)
+                {
+                    applicationWorkspaceCommandBarTopBevelFirstLineColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        private Color applicationWorkspaceCommandBarTopBevelSecondLineColor = Color.Transparent;
+
+        public virtual Color ApplicationWorkspaceCommandBarTopBevelSecondLineColor
+        {
+            get { return applicationWorkspaceCommandBarTopBevelSecondLineColor; }
+            set
+            {
+                if (applicationWorkspaceCommandBarTopBevelSecondLineColor != value)
+                {
+                    applicationWorkspaceCommandBarTopBevelSecondLineColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        private Color applicationWorkspaceCommandBarBottomBevelFirstLineColor = Color.Transparent;
+
+        public virtual Color ApplicationWorkspaceCommandBarBottomBevelFirstLineColor
+        {
+            get { return applicationWorkspaceCommandBarBottomBevelFirstLineColor; }
+            set
+            {
+                if (applicationWorkspaceCommandBarBottomBevelFirstLineColor != value)
+                {
+                    applicationWorkspaceCommandBarBottomBevelFirstLineColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        private Color applicationWorkspaceCommandBarBottomBevelSecondLineColor = Color.Transparent;
+
+        public virtual Color ApplicationWorkspaceCommandBarBottomBevelSecondLineColor
+        {
+            get { return applicationWorkspaceCommandBarBottomBevelSecondLineColor; }
+            set
+            {
+                if (applicationWorkspaceCommandBarBottomBevelSecondLineColor != value)
+                {
+                    applicationWorkspaceCommandBarBottomBevelSecondLineColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        // TabPage command bar colors
+        private Color tabPageCommandBarTopColor = SystemColors.Control;
+        private Color tabPageCommandBarBottomColor = SystemColors.ControlDark;
+        private Color tabPageCommandBarHighlightColor = SystemColors.ControlLightLight;
+        private Color tabPageCommandBarLowlightColor = SystemColors.ControlDarkDark;
+
+        public virtual Color TabPageCommandBarTopColor
+        {
+            get { return tabPageCommandBarTopColor; }
+            set
+            {
+                if (tabPageCommandBarTopColor != value)
+                {
+                    tabPageCommandBarTopColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        public virtual Color TabPageCommandBarBottomColor
+        {
+            get { return tabPageCommandBarBottomColor; }
+            set
+            {
+                if (tabPageCommandBarBottomColor != value)
+                {
+                    tabPageCommandBarBottomColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        public virtual Color TabPageCommandBarHighlightColor
+        {
+            get { return tabPageCommandBarHighlightColor; }
+            set
+            {
+                if (tabPageCommandBarHighlightColor != value)
+                {
+                    tabPageCommandBarHighlightColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        public virtual Color TabPageCommandBarLowlightColor
+        {
+            get { return tabPageCommandBarLowlightColor; }
+            set
+            {
+                if (tabPageCommandBarLowlightColor != value)
+                {
+                    tabPageCommandBarLowlightColor = value;
+                    OnChanged(EventArgs.Empty);
+                }
+            }
+        }
+
+        #endregion
 
         #region Component Designer generated code
 

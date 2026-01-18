@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
@@ -69,9 +70,10 @@ namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
             this.Text = "The server has reported that the following URL could not be found:{0}{1}{0}Pleas" +
                 "e ensure that you have specified a valid and reachable URL.";
             this.Title = "Weblog URL Not Found";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = MessageBoxIcon.Warning;
 
         }
         #endregion
     }
 }
+

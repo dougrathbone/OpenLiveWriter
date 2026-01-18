@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
@@ -69,9 +70,10 @@ namespace OpenLiveWriter.BlogClient.Detection.DisplayMessages
             this.Text = "The style template used for editing your weblog\nposts could not be downloaded.\n\n" +
                 "You will be able to post to this Weblog, but the editor\nwill not use your blog's style.";
             this.Title = "Unable to Download Template";
-            this.Type = DisplayMessageType.Warning;
+            this.Type = MessageBoxIcon.Warning;
 
         }
         #endregion
     }
 }
+

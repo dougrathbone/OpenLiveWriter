@@ -21,7 +21,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             ///
             /// Required for Windows.Forms Class Composition Designer support
             ///
-            container.Add(this);
+            // container.Add(this); - removed: not an IComponent
             InitializeComponent();
 
             //
@@ -70,7 +70,7 @@ namespace OpenLiveWriter.PostEditor.DisplayMessages
             this.Text = "There are unsaved changes to this post.{0}Do you want to save the changes before " +
                 "proceeding?";
             this.Title = "Save Changes";
-            this.Type = DisplayMessageType.Question;
+            this.Type = System.Windows.Forms.MessageBoxIcon.Question;
 
         }
         #endregion

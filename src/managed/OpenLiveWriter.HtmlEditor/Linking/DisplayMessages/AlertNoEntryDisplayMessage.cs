@@ -3,6 +3,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Windows.Forms;
 using OpenLiveWriter.Controls;
 
 namespace OpenLiveWriter.HtmlEditor.Linking.DisplayMessages
@@ -63,9 +64,10 @@ namespace OpenLiveWriter.HtmlEditor.Linking.DisplayMessages
             this.Buttons = System.Windows.Forms.MessageBoxButtons.OK;
             this.Text = "There is no glossary entry for that link term.";
             this.Title = "No Entry Found";
-            this.Type = DisplayMessageType.Information;
+            this.Type = MessageBoxIcon.Information;
 
         }
         #endregion
     }
 }
+
