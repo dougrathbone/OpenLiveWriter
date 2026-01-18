@@ -3,11 +3,13 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
 
 namespace OpenLiveWriter.Interop.Windows
 {
 
+    [SupportedOSPlatform("windows")]
     public class Advapi32
     {
         [DllImport("Advapi32.dll", CharSet = CharSet.Auto, SetLastError = true)]

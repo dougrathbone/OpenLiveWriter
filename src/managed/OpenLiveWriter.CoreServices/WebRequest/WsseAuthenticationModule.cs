@@ -51,22 +51,12 @@ namespace OpenLiveWriter.CoreServices
         private static string GeneratePasswordDigest(string password, out string created, out string nonce)
         {
             byte[] nonceBytes = new byte[30];
-            lock (rng)
-            {
-                rng.GetBytes(nonceBytes);
-            }
+            RandomNumberGenerator.Fill(nonceBytes);
             nonce = Convert.ToBase64String(nonceBytes);
             created = DateTimeHelper.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
 
-            byte[] hashBytes;
-            lock (sha1)
-            {
-                hashBytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(nonce + created + password));
-            }
+            byte[] hashBytes = SHA1.HashData(Encoding.UTF8.GetBytes(nonce + created + password));
             return Convert.ToBase64String(hashBytes);
         }
-
-        private static RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-        private static SHA1Managed sha1 = new SHA1Managed();
     }
 }

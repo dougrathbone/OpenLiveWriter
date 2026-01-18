@@ -8,12 +8,14 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Windows.Forms;
 
 namespace OpenLiveWriter.CoreServices
 {
 
+    [SupportedOSPlatform("windows")]
     public sealed class DisplayHelper
     {
         const int DEFAULT_DPI = 96;

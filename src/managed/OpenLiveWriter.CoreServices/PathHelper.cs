@@ -6,6 +6,7 @@ using System.Collections;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using OpenLiveWriter.Interop.Windows;
 
@@ -14,6 +15,7 @@ namespace OpenLiveWriter.CoreServices
     /// <summary>
     /// Class providing utilities for dealing with Paths.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class PathHelper
     {
         /// <summary>

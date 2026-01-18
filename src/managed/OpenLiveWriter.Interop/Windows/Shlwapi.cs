@@ -4,6 +4,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.Versioning;
 using System.Text;
 using OpenLiveWriter.Interop.Com;
 
@@ -12,6 +13,7 @@ namespace OpenLiveWriter.Interop.Windows
     /// <summary>
     /// Summary description for Shlwapi.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class Shlwapi
     {
         /// <summary>

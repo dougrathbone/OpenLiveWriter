@@ -2,8 +2,9 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
-using OpenLiveWriter.Interop.Com;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using OpenLiveWriter.Interop.Com;
 
 namespace OpenLiveWriter.PostEditor
 {
@@ -64,6 +65,7 @@ namespace OpenLiveWriter.PostEditor
             p2 = 0;
         }
 
+        [SupportedOSPlatform("windows")]
         private static class UnsafeNativeMethods
         {
             [DllImport("Ole32.dll", PreserveSig = false, EntryPoint = "PropVariantCopy")]

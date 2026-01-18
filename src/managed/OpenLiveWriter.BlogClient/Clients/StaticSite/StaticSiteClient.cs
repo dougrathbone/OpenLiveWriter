@@ -298,12 +298,12 @@ namespace OpenLiveWriter.BlogClient.Clients.StaticSite
 
                 return newPostId;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Clean up our output file
                 File.Delete(item.FilePathBySlug);
                 // Throw the exception up
-                throw ex;
+                throw;
             }
 
         }
@@ -352,7 +352,7 @@ namespace OpenLiveWriter.BlogClient.Clients.StaticSite
 
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Clean up the failed output
                 if (renameOccurred)
@@ -373,7 +373,7 @@ namespace OpenLiveWriter.BlogClient.Clients.StaticSite
                 File.Delete(backupFileName);
 
                 // Throw the exception up
-                throw ex;
+                throw;
             }
         }
 
@@ -396,13 +396,13 @@ namespace OpenLiveWriter.BlogClient.Clients.StaticSite
                 // Publish the site
                 DoSitePublish();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 File.Copy(backupFileName, item.FilePathById, overwrite: true);
                 File.Delete(backupFileName);
 
                 // Throw the exception up
-                throw ex;
+                throw;
             }
         }
 

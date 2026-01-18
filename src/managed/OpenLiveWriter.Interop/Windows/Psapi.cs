@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 
 namespace OpenLiveWriter.Interop.Windows
@@ -10,6 +11,7 @@ namespace OpenLiveWriter.Interop.Windows
     /// <summary>
     /// Imports from Psapi.dll
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class Psapi
     {
         /// <summary>

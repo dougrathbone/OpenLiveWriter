@@ -4,9 +4,11 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
+    [SupportedOSPlatform("windows")]
     public class Mpr
     {
         public const int UNIVERSAL_NAME_INFO_LEVEL =   0x00000001;

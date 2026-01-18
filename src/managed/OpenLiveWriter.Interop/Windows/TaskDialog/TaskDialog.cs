@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
@@ -15,6 +16,7 @@ namespace OpenLiveWriter.Interop.Windows.TaskDialog
     /// Managed wrapper for the Windows Task Dialog API.
     /// http://msdn.microsoft.com/en-us/library/bb787471(VS.85).aspx
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class TaskDialog
     {
         private TASKDIALOGCONFIG config;

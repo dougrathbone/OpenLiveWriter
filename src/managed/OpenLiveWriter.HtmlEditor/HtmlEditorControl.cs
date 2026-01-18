@@ -2961,7 +2961,7 @@ namespace OpenLiveWriter.HtmlEditor
                 catch (Exception e)
                 {
                     Trace.Fail("error while deleting selection: " + e.Message, e.StackTrace);
-                    throw e;
+                    throw;
                 }
 
                 undo.Commit();

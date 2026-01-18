@@ -4,12 +4,14 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Com.StructuredStorage
 {
     /// <summary>
     /// Provides marshalling layer for the creation of Ole 'DocFile'
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class Ole32Storage
     {
         /// <summary>

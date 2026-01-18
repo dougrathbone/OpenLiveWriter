@@ -4,9 +4,11 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Com.Ribbon
 {
+    [SupportedOSPlatform("windows")]
     internal static class ImageLoader
     {
         //

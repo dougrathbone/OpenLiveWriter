@@ -9,9 +9,11 @@ using OpenLiveWriter.Mshtml;
 using OpenLiveWriter.PostEditor;
 using OpenLiveWriter.Interop.Com;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Test
 {
+    [SupportedOSPlatform("windows")]
     public partial class CanvasForm : Form
     {
         private readonly ContentEditorFactory factory;

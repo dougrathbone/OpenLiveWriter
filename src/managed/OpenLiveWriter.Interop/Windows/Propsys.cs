@@ -3,10 +3,12 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using OpenLiveWriter.Interop.Com;
 
 namespace OpenLiveWriter.Interop.Windows
 {
+    [SupportedOSPlatform("windows")]
     internal static class Propsys
     {
         [DllImport("propsys.dll", CharSet = CharSet.Unicode, SetLastError = true)]

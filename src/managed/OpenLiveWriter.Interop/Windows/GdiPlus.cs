@@ -3,12 +3,14 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
     /// <summary>
     /// Summary description for GdiPlus.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class GdiPlus
     {
         [DllImport("gdiplus.dll", CharSet = CharSet.Auto)]

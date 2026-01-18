@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Windows.Forms;
 using OpenLiveWriter.CoreServices.Threading;
@@ -108,10 +109,9 @@ namespace OpenLiveWriter.Api
                 if (e != null)
                 {
                     Trace.WriteLine(e.ToString());
-                    throw e;
+                    ExceptionDispatchInfo.Capture(e).Throw();
                 }
-                else
-                    return result;
+                return result;
             }
             else
             {

@@ -485,7 +485,7 @@ namespace OpenLiveWriter.FileDestinations
                             if (errorHandler != null)
                                 errorHandler(ex);
                             else
-                                throw ex;
+                                throw;
                         }
                     }
                 }

@@ -3,12 +3,14 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
     /// <summary>
     /// Imports from ComCtl32.dll
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class ComCtl32
     {
         /// <summary>

@@ -3,12 +3,14 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
     /// <summary>
     /// Imports from uxtheme.dll.  Just enough to get the theme border color for now.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class Uxtheme
     {
         public static string CLASS_EDIT = "Edit";

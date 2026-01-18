@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 
 namespace OpenLiveWriter.Interop.Windows
@@ -12,6 +13,7 @@ namespace OpenLiveWriter.Interop.Windows
     /// <summary>
     /// Summary description for WinInet.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class WinInet
     {
         /// <summary>

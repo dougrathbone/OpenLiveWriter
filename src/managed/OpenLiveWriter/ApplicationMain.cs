@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Security.Principal;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -22,6 +23,7 @@ using Squirrel;
 
 namespace OpenLiveWriter
 {
+    [SupportedOSPlatform("windows")]
     public class
         ApplicationMain
     {

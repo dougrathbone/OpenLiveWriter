@@ -4,6 +4,7 @@
 using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 
 namespace OpenLiveWriter.Interop.Windows
@@ -12,6 +13,7 @@ namespace OpenLiveWriter.Interop.Windows
     /// <summary>
     /// Imports from User32.dll
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class User32
     {
         [DllImport("user32.dll", ExactSpelling = true)]

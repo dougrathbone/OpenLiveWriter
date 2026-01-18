@@ -9,11 +9,13 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Windows.Forms;
 
 namespace OpenLiveWriter.Localization.Bidi
 {
+    [SupportedOSPlatform("windows")]
     public class BidiGraphics
     {
         private readonly Graphics g;

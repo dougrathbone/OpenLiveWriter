@@ -2,12 +2,14 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
     /// <summary>
     /// Summary description for WinMm.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class WinMm
     {
 

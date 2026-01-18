@@ -4,9 +4,11 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Com
 {
+    [SupportedOSPlatform("windows")]
     public class Ole32
     {
         [DllImport("Ole32.dll")]

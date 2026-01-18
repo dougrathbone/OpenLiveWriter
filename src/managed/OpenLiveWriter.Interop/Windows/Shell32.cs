@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using OpenLiveWriter.Interop.Com;
 
@@ -12,6 +13,7 @@ namespace OpenLiveWriter.Interop.Windows
     /// <summary>
     /// Imports from Shell32.dll
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class Shell32
     {
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]

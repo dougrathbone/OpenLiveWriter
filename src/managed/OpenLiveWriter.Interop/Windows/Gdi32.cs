@@ -4,6 +4,7 @@
 using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
@@ -11,6 +12,7 @@ namespace OpenLiveWriter.Interop.Windows
     /// <summary>
     /// Imports from Gdi32.dll
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class Gdi32
     {
         [DllImport("gdi32.dll")]

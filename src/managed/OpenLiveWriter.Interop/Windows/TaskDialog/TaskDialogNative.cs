@@ -5,9 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows.TaskDialog
 {
+    [SupportedOSPlatform("windows")]
     internal static class TaskDialogNative
     {
         /// <summary>

@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
@@ -10,6 +11,7 @@ namespace OpenLiveWriter.Interop.Windows
     /// <summary>
     /// Imports from DbgHelp.dll
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class DbgHelp
     {
         public enum MINIDUMP_TYPE

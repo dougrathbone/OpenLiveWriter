@@ -3,12 +3,14 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
     /// <summary>
     /// Summary description for Mapi32.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class Mapi32
     {
         // Mapi functions, structures, and constants (based on declarations found

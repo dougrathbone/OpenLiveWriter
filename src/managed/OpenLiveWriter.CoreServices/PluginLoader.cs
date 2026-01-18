@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -17,6 +18,7 @@ namespace OpenLiveWriter.CoreServices
     /// <summary>
     /// Summary description for PluginLoader.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class PluginLoader
     {
         private readonly AssemblyName _apiAssemblyName;

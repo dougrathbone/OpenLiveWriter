@@ -150,7 +150,7 @@ namespace OpenLiveWriter.CoreServices
                 catch(Exception ex)
                 {
                     Trace.Fail("Exception while checking path encoding. Original path: " + path + " url from Shlwapi: " + url);
-                    throw ex;
+                    throw;
                 }
                 return url;
             }

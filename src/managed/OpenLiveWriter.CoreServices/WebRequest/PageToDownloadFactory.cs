@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Windows.Forms;
 using OpenLiveWriter.CoreServices.Progress;
@@ -417,7 +418,7 @@ namespace OpenLiveWriter.CoreServices
         private void HandleException(Exception e)
         {
             if (_context.ThrowOnFailure)
-                throw e;
+                ExceptionDispatchInfo.Capture(e).Throw();
             else
                 Errors.Add(e);
         }

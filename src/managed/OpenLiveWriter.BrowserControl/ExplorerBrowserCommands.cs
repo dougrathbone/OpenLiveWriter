@@ -523,12 +523,12 @@ namespace OpenLiveWriter.BrowserControl
                         ref input,
                         ref output);
                 }
-                catch (COMException e)
+                catch (COMException)
                 {
                     // The InternetOptions command throws a spurious exception
                     // every time it is invoked -- ignore it.
                     if (m_cmdID != InternetOptions)
-                        throw e;
+                        throw;
                 }
             }
             // should never try to execute a command if there is no target!

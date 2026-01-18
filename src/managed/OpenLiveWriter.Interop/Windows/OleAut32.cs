@@ -3,9 +3,11 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
+    [SupportedOSPlatform("windows")]
     internal static class OleAut32
     {
         [DllImport("OleAut32.dll", PreserveSig = true)] // psa is actually returned, not hresult

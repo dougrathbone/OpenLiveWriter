@@ -4,6 +4,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.Versioning;
 using OpenLiveWriter.Interop.Com;
 
 namespace OpenLiveWriter.Interop.Windows
@@ -11,6 +12,7 @@ namespace OpenLiveWriter.Interop.Windows
     /// <summary>
     /// Imports from UrlMon.dll
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public class UrlMon
     {
         [DllImport("urlmon.dll")]

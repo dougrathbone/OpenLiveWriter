@@ -5,12 +5,14 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace OpenLiveWriter.Interop.Windows
 {
     /// <summary>
     /// Crypto API Interop
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public sealed class Crypt32
     {
 

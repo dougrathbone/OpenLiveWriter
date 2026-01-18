@@ -5,12 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using OpenLiveWriter.Interop.Com;
 using OpenLiveWriter.Interop.Windows;
 
 namespace OpenLiveWriter.CoreServices
 {
+    [SupportedOSPlatform("windows")]
     public class CabinetFileExtractor
     {
         public CabinetFileExtractor(string cabinetFilePath, string targetDirectory)

@@ -6,6 +6,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -218,7 +219,7 @@ namespace OpenLiveWriter.CoreServices
             if (_throwOnFailure || null != (e as OperationCancelledException))
             {
                 Trace.Fail("PageAndReferenceDownloader: " + e.ToString());
-                throw e;
+                ExceptionDispatchInfo.Capture(e).Throw();
             }
             else
                 Errors.Add(e);

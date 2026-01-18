@@ -63,59 +63,31 @@ namespace OpenLiveWriter.FileDestinations
         {
             // parse out extended error info for use in error message construction
             string message = e.Message;
-            if (e is SiteDestinationException && (e as SiteDestinationException).DestinationExtendedMessage != null)
+            if (e is SiteDestinationException siteEx && siteEx.DestinationExtendedMessage != null)
             {
-                message = (e as SiteDestinationException).DestinationExtendedMessage;
+                message = siteEx.DestinationExtendedMessage;
             }
             else if (e.InnerException != null)
             {
                 message = e.InnerException.Message;
             }
-            else
-            {
-                message = e.Message;
-            }
 
             // trace for diagnostics
             Trace.WriteLine(e.ToString());
 
-            // re-throw the exception so we can do normal processing
-            try
+            // Convert exception to appropriate message using pattern matching
+            return e switch
             {
-                throw e;
-            }
-            catch (LoginException)
-            {
-                return new WebPublishMessage(MessageId.LoginFailed);
-            }
-            catch (NoSuchDirectoryException ex)
-            {
-                WebPublishMessage msg = new WebPublishMessage(MessageId.NoSuchPublishFolder, ex.Path);
-                return msg;
-            }
-            catch (SiteDestinationException ex)
-            {
-                if (ex.DestinationErrorCode == ERROR_INTERNET.NAME_NOT_RESOLVED)
-                {
-                    return new WebPublishMessage(MessageId.InvalidHostname);
-                }
-                else if (ex.DestinationErrorCode == ERROR_INTERNET.CANNOT_CONNECT)
-                {
-                    return new WebPublishMessage(MessageId.FtpServerUnavailable);
-                }
-                else if (ex.DestinationErrorCode == ERROR_INTERNET.TIMEOUT)
-                {
-                    return new WebPublishMessage(MessageId.ConnectionTimeout);
-                }
-                else
-                {
-                    return new WebPublishMessage(MessageId.PublishFailed, message);
-                }
-            }
-            catch (Exception)
-            {
-                return new WebPublishMessage(MessageId.PublishFailed, message);
-            }
+                LoginException => new WebPublishMessage(MessageId.LoginFailed),
+                NoSuchDirectoryException noSuchDir => new WebPublishMessage(MessageId.NoSuchPublishFolder, noSuchDir.Path),
+                SiteDestinationException site when site.DestinationErrorCode == ERROR_INTERNET.NAME_NOT_RESOLVED
+                    => new WebPublishMessage(MessageId.InvalidHostname),
+                SiteDestinationException site when site.DestinationErrorCode == ERROR_INTERNET.CANNOT_CONNECT
+                    => new WebPublishMessage(MessageId.FtpServerUnavailable),
+                SiteDestinationException site when site.DestinationErrorCode == ERROR_INTERNET.TIMEOUT
+                    => new WebPublishMessage(MessageId.ConnectionTimeout),
+                _ => new WebPublishMessage(MessageId.PublishFailed, message)
+            };
         }
     }
 }

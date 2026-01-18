@@ -433,10 +433,10 @@ namespace OpenLiveWriter.CoreServices
                 {
                     File.Move(filePathFrom, filePathTo);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     File.Move(filePathWork, filePathTo);
-                    throw e;
+                    throw;
                 }
 
                 //	Delete the work file.

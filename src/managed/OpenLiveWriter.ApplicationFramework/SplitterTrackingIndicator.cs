@@ -8,6 +8,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Diagnostics;
 using Project31.CoreServices;
 
@@ -16,6 +17,7 @@ namespace Project31.ApplicationFramework
     /// <summary>
     /// Provides a "tracking indicator" for use in splitter bars.
     /// </summary>
+    [SupportedOSPlatform("windows")]
     internal class SplitterTrackingIndicator
     {
         /// <summary>
