@@ -78,17 +78,21 @@ namespace OpenLiveWriter.BlogClient.Clients
 
         public override BlogInfo[] GetUsersBlogs()
         {
+            Debug.WriteLine("[OLW-DEBUG] BloggerCompatibleClient.GetUsersBlogs() called");
             TransientCredentials tc = Login();
+            Debug.WriteLine($"[OLW-DEBUG] BloggerCompatibleClient.GetUsersBlogs() - Login returned, tc null: {tc == null}");
             return GetUsersBlogs(tc.Username, tc.Password);
         }
 
         private BlogInfo[] GetUsersBlogs(string username, string password)
         {
+            Debug.WriteLine($"[OLW-DEBUG] BloggerCompatibleClient.GetUsersBlogs(username, password) - Calling blogger.getUsersBlogs");
             // call method
             XmlNode result = CallMethod("blogger.getUsersBlogs",
                 new XmlRpcString(APP_KEY),
                 new XmlRpcString(username),
                 new XmlRpcString(password, true));
+            Debug.WriteLine($"[OLW-DEBUG] BloggerCompatibleClient.GetUsersBlogs - CallMethod returned, result null: {result == null}");
 
             try
             {

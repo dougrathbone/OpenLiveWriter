@@ -47,11 +47,14 @@ namespace OpenLiveWriter.CoreServices
         /// <exception cref="Exception">allows all exceptions to propagate out of the method</exception>
         public XmlRpcMethodResponse CallMethod(string methodName, params XmlRpcValue[] parameters)
         {
+            Debug.WriteLine($"[OLW-DEBUG] XmlRpcClient.CallMethod() - methodName: {methodName}, hostname: {_hostname}");
+            
             //select the encoding
             Encoding encodingToUse = StringHelper.GetEncoding(_transportEncoding, new UTF8Encoding(false, false));
 
             // build the XmlRpc packet
             byte[] requestBytes = GetRequestBytes(encodingToUse, methodName, parameters, false);
+            Debug.WriteLine($"[OLW-DEBUG] XmlRpcClient.CallMethod() - Request bytes length: {requestBytes.Length}");
 
             if (ApplicationDiagnostics.VerboseLogging)
             {
@@ -62,19 +65,33 @@ namespace OpenLiveWriter.CoreServices
             HttpWebResponse response;
             try
             {
+                Debug.WriteLine("[OLW-DEBUG] XmlRpcClient.CallMethod() - Calling HttpRequestHelper.SendRequest");
                 response = HttpRequestHelper.SendRequest(_hostname, delegate (HttpWebRequest request)
                 {
+                    Debug.WriteLine($"[OLW-DEBUG] XmlRpcClient.CallMethod() - Configuring request to {request.RequestUri}");
                     request.Method = "POST";
                     request.AllowAutoRedirect = false;
                     request.ContentType = String.Format(CultureInfo.InvariantCulture, "{0};charset={1}", MimeHelper.TEXT_XML, encodingToUse.WebName);
                     if (_requestFilter != null)
                         _requestFilter(request);
+                    Debug.WriteLine("[OLW-DEBUG] XmlRpcClient.CallMethod() - Getting request stream");
                     using (Stream requestStream = request.GetRequestStream())
+                    {
+                        Debug.WriteLine("[OLW-DEBUG] XmlRpcClient.CallMethod() - Writing request data");
                         StreamHelper.Transfer(new MemoryStream(requestBytes), requestStream);
+                    }
+                    Debug.WriteLine("[OLW-DEBUG] XmlRpcClient.CallMethod() - Request data written");
                 });
+                Debug.WriteLine($"[OLW-DEBUG] XmlRpcClient.CallMethod() - Got response, StatusCode: {response?.StatusCode}");
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"[OLW-DEBUG] XmlRpcClient.CallMethod() - Exception during request: {ex.GetType().Name} - {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"[OLW-DEBUG] XmlRpcClient.CallMethod() - InnerException: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
+                }
+                
                 if (!ApplicationDiagnostics.VerboseLogging)  // if test mode, request has already been logged
                 {
                     LogXmlRpcRequest(encodingToUse, methodName, parameters);

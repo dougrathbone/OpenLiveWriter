@@ -38,6 +38,7 @@
     <Compile Include="AxWebBrowser.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="BrowserControlFactory.cs" />
     <Compile Include="ExplorerBrowserCommands.cs" />
     <Compile Include="ExplorerBrowserControl.cs">
       <SubType>UserControl</SubType>
