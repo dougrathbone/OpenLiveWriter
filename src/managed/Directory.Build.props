@@ -37,8 +37,8 @@
     <NoWarn>$(NoWarn);NU1701</NoWarn>    <!-- .NET Framework-only packages used (PlatformSpellCheck, etc.) -->
     <NoWarn>$(NoWarn);NU1603</NoWarn>    <!-- Package version substitution -->
     <NoWarn>$(NoWarn);NU1605</NoWarn>    <!-- Package downgrade warnings -->
-    <NoWarn>$(NoWarn);SYSLIB0009</NoWarn> <!-- AuthenticationManager obsolete -->
-    <NoWarn>$(NoWarn);SYSLIB0014</NoWarn> <!-- WebRequest obsolete - migration needed -->
+    <!-- SYSLIB0009 (AuthenticationManager) - Localized to HttpRequestHelper.cs for WSSE support -->
+    <!-- SYSLIB0014 (WebRequest) - Localized to specific files; HttpClientService provides modern alternative -->
     <NoWarn>$(NoWarn);SYSLIB0050</NoWarn> <!-- Type.IsSerializable obsolete -->
     <NoWarn>$(NoWarn);WFDEV004</NoWarn>  <!-- Form.Closed obsolete -->
     <NoWarn>$(NoWarn);WFO1001</NoWarn>   <!-- ITypedDataObject not implemented -->

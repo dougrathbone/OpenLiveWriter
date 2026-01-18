@@ -110,7 +110,9 @@ namespace OpenLiveWriter.BlogClient.Clients
             {
                 byte[] byteformParams = UTF8Encoding.UTF8.GetBytes(formData.ToString());
 
+                #pragma warning disable SYSLIB0014 // WebRequest is obsolete
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
+                #pragma warning restore SYSLIB0014
                 request.Method = "POST";
                 request.ContentType = "application/x-www-form-urlencoded; charset=UTF-8";
                 request.ContentLength = byteformParams.Length;
@@ -141,7 +143,9 @@ namespace OpenLiveWriter.BlogClient.Clients
                 string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
                 byte[] boundarybytes = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\n");
 
+                #pragma warning disable SYSLIB0014 // WebRequest is obsolete
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
+                #pragma warning restore SYSLIB0014
                 request.Method = "POST";
                 request.KeepAlive = true;
                 request.ContentType = "multipart/form-data; boundary=" + boundary;
@@ -248,7 +252,9 @@ namespace OpenLiveWriter.BlogClient.Clients
                 //    return true;
                 //};
 
+                #pragma warning disable SYSLIB0014 // WebRequest is obsolete
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://www.tistory.com/auth/login");
+                #pragma warning restore SYSLIB0014
                 request.Method = "POST";
                 request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8";
                 request.ContentType = "application/x-www-form-urlencoded; charset=UTF-8";//"application/x-www-form-urlencoded";

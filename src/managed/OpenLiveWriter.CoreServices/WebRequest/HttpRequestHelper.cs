@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Cache;
+using System.Net.Http;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -24,19 +25,26 @@ namespace OpenLiveWriter.CoreServices
     public delegate void HttpRequestFilter(HttpWebRequest request);
 
     /// <summary>
-    /// Utility class for doing HTTP requests -- uses the Feeds Proxy settings (if any) for requests
+    /// Utility class for doing HTTP requests -- uses the Feeds Proxy settings (if any) for requests.
+    /// Note: New code should prefer HttpClientService for modern HttpClient-based requests.
+    /// This class is maintained for backward compatibility with existing code.
     /// </summary>
     public class HttpRequestHelper
     {
         static HttpRequestHelper()
         {
-            // This is necessary to avoid problems connecting to Blogger server from behind a proxy.
+            // Note: ServicePointManager settings don't affect HttpClient.
+            // These are kept for backward compatibility with legacy WebRequest code.
+            #pragma warning disable SYSLIB0014
             ServicePointManager.Expect100Continue = false;
+            #pragma warning restore SYSLIB0014
 
             try
             {
-                // Add WSSE support everywhere.
+                // Add WSSE support for legacy WebRequest code.
+                #pragma warning disable SYSLIB0009 // AuthenticationManager is obsolete
                 AuthenticationManager.Register(new WsseAuthenticationModule());
+                #pragma warning restore SYSLIB0009
             }
             catch (InvalidOperationException)
             {
@@ -46,8 +54,9 @@ namespace OpenLiveWriter.CoreServices
 
             if (ApplicationDiagnostics.AllowUnsafeCertificates)
             {
+                #pragma warning disable SYSLIB0014
                 ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(CheckValidationResult);
-
+                #pragma warning restore SYSLIB0014
             }
         }
 
@@ -247,7 +256,9 @@ namespace OpenLiveWriter.CoreServices
 
         public static HttpWebRequest CreateHttpWebRequest(string requestUri, bool allowAutoRedirect, int? connectTimeoutMs, int? readWriteTimeoutMs)
         {
+            #pragma warning disable SYSLIB0014 // WebRequest is obsolete - maintained for backward compatibility
             HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(requestUri);
+            #pragma warning restore SYSLIB0014
             TrackResponseClosing(ref request);
 
             // Set Accept to */* to stop Bad Behavior plugin for WordPress from

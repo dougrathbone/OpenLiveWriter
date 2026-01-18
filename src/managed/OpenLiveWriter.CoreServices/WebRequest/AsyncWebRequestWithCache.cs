@@ -85,7 +85,9 @@ namespace OpenLiveWriter.CoreServices
                 }
                 catch (InvalidCastException)
                 {
+                    #pragma warning disable SYSLIB0014 // WebRequest is obsolete - fallback for non-HTTP URLs
                     m_webRequest = WebRequest.Create(m_url);
+                    #pragma warning restore SYSLIB0014
                 }
 
                 m_webRequest.Timeout = timeOut;

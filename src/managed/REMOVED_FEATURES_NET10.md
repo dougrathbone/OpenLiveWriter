@@ -79,9 +79,10 @@ These files remain excluded but represent no feature loss:
 **Recommendation:** Migrate to [Velopack](https://github.com/velopack/velopack)
 
 ### 2. WebRequest → HttpClient Migration
-**Status:** Suppressed (SYSLIB0014)  
-**Impact:** Works but uses deprecated APIs  
-**Effort:** High - many callsites
+**Status:** ✅ Completed (localized suppressions only)  
+**Details:** New `HttpClientService` class provides modern HttpClient-based API. Legacy WebRequest usages are suppressed with localized `#pragma` directives.  
+**Files Added:** `OpenLiveWriter.CoreServices/WebRequest/HttpClientService.cs`  
+**Files Updated:** `HttpRequestHelper.cs`, `WebRequestWithCache.cs`, `AsyncWebRequestWithCache.cs`, `TistoryBlogClient.cs`, `GenericAtomClient.cs`
 
 ---
 
@@ -91,8 +92,6 @@ These files remain excluded but represent no feature loss:
 | Warning | Reason |
 |---------|--------|
 | `SYSLIB0003` | Code Access Security (COM interop) |
-| `SYSLIB0009` | AuthenticationManager (legacy auth) |
-| `SYSLIB0014` | WebRequest/HttpWebRequest |
 | `SYSLIB0050` | Type.IsSerializable |
 | `SYSLIB0051` | Formatter-based serialization (RegistryCodec fallback) |
 | `CA1416` | Platform compatibility (Windows-only app) |
@@ -103,6 +102,12 @@ These files remain excluded but represent no feature loss:
 | File | Warning | Reason |
 |------|---------|--------|
 | `RegistryCodec.cs` | `SYSLIB0011` | BinaryFormatter read-only fallback |
+| `HttpRequestHelper.cs` | `SYSLIB0009` | AuthenticationManager for WSSE |
+| `HttpRequestHelper.cs` | `SYSLIB0014` | WebRequest backward compatibility |
+| `WebRequestWithCache.cs` | `SYSLIB0014` | WebRequest fallback for non-HTTP URLs |
+| `AsyncWebRequestWithCache.cs` | `SYSLIB0014` | WebRequest fallback for non-HTTP URLs |
+| `TistoryBlogClient.cs` | `SYSLIB0014` | WebRequest for Tistory API |
+| `GenericAtomClient.cs` | `SYSLIB0009` | AuthenticationManager for Google login |
 
 ---
 
@@ -132,6 +137,7 @@ The ribbon loads optionally - application runs without it if the DLL is missing.
 
 ## Revision History
 
+- **2026-01-18**: WebRequest migration - Added HttpClientService, localized SYSLIB0014/0009 suppressions
 - **2026-01-18**: Cleanup - deleted superseded legacy code (MenuBuilderEntry, ImageEditingPropertyForm, AppIconCache)
 - **2026-01-18**: BinaryFormatter migrated to JSON with backwards compatibility
 - **2026-01-18**: All 77 tests passing, application running with ribbon UI

@@ -34,7 +34,9 @@ namespace OpenLiveWriter.BlogClient.Clients
     {
         static GenericAtomClient()
         {
+            #pragma warning disable SYSLIB0009 // AuthenticationManager is obsolete
             AuthenticationManager.Register(new GoogleLoginAuthenticationModule());
+            #pragma warning restore SYSLIB0009
         }
 
         private string _defaultCategoryScheme_HACK;
