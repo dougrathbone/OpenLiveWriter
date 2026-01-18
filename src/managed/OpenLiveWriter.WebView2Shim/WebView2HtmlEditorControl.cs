@@ -60,17 +60,16 @@ namespace OpenLiveWriter.WebView2Shim
                 // Set background color after initialization
                 _webView.DefaultBackgroundColor = System.Drawing.Color.White;
                 
+                // Mark as initialized once CoreWebView2 is ready - we can now navigate
+                _isInitialized = true;
+                
                 _webView.CoreWebView2.NavigationCompleted += (s, e) =>
                 {
-                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] NavigationCompleted - IsSuccess: {e.IsSuccess}");
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] NavigationCompleted - IsSuccess: {e.IsSuccess}, URL: {_webView.CoreWebView2.Source}");
                     if (e.IsSuccess)
                     {
-                        InitializeBridge();
-                        if (!string.IsNullOrEmpty(_pendingHtml))
-                        {
-                            SetEditorContent(_pendingHtml);
-                            _pendingHtml = null;
-                        }
+                        // Bridge init can fail on file:// URLs without our editor, that's OK
+                        try { InitializeBridge(); } catch { }
                     }
                 };
 
@@ -79,6 +78,7 @@ namespace OpenLiveWriter.WebView2Shim
                 {
                     System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Loading pending file: {_pendingFilePath}");
                     _webView.CoreWebView2.Navigate($"file:///{_pendingFilePath.Replace('\\', '/')}");
+                    _pendingFilePath = null;
                 }
                 else
                 {
@@ -101,13 +101,15 @@ namespace OpenLiveWriter.WebView2Shim
                 _bridge.Initialize();
                 _document = new WebView2Document(_bridge, _webView);
                 _commandSource.SetDocument(_document);
-                _isInitialized = true;
                 
-                // Set up content change monitoring
+                // Set up content change monitoring for olw-body element
                 _bridge.ExecuteScript(@"
-                    document.getElementById('olw-editor').addEventListener('input', function() {
-                        window.chrome.webview.postMessage(JSON.stringify({ type: 'contentChanged' }));
-                    });
+                    var body = document.getElementById('olw-body');
+                    if (body) {
+                        body.addEventListener('input', function() {
+                            window.chrome.webview.postMessage(JSON.stringify({ type: 'contentChanged' }));
+                        });
+                    }
                 ");
                 
                 _webView.CoreWebView2.WebMessageReceived += (s, e) =>

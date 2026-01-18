@@ -70,7 +70,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public void LoadHtmlFragment(string title, string postBodyHtml, string baseUrl, BlogEditingTemplate editingTemplate)
         {
-            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFragment called - title: {title?.Length ?? 0} chars, body: {postBodyHtml?.Length ?? 0} chars");
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFragment called - title: '{title}', body: {postBodyHtml?.Length ?? 0} chars");
             
             _title = title ?? "";
             _baseUrl = baseUrl ?? "";
@@ -118,9 +118,10 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 </body>
 </html>";
             
-            // Use temporary file approach for now
+            // Use temporary file approach - always update the pending path
             var tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"olw_edit_{Guid.NewGuid():N}.html");
             System.IO.File.WriteAllText(tempPath, html);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] LoadHtmlFragment - wrote {html.Length} chars to {tempPath}");
             _editor.LoadHtmlFile(tempPath);
         }
 
