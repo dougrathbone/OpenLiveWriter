@@ -9,8 +9,6 @@ using System.IO;
 using System.Net;
 using System.Net.Cache;
 using System.Net.Http;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -20,54 +18,50 @@ using OpenLiveWriter.CoreServices.HTML;
 namespace OpenLiveWriter.CoreServices
 {
     /// <summary>
-    /// Delegate for augmenting and HTTP request.
+    /// Delegate for augmenting an HTTP request.
     /// </summary>
     public delegate void HttpRequestFilter(HttpWebRequest request);
 
     /// <summary>
     /// Utility class for doing HTTP requests -- uses the Feeds Proxy settings (if any) for requests.
-    /// Note: New code should prefer HttpClientService for modern HttpClient-based requests.
-    /// This class is maintained for backward compatibility with existing code.
+    /// 
+    /// MIGRATION NOTE: New code should prefer HttpClientService for modern HttpClient-based requests.
+    /// This class is maintained for backward compatibility with existing code that uses HttpWebRequest.
+    /// The WebRequest APIs are deprecated in .NET 10 but still functional.
     /// </summary>
     public class HttpRequestHelper
     {
-        static HttpRequestHelper()
+        private static bool _initialized;
+        private static readonly object _initLock = new object();
+
+        /// <summary>
+        /// Ensures legacy WebRequest infrastructure is initialized.
+        /// Called lazily on first use of WebRequest-based methods.
+        /// </summary>
+        private static void EnsureInitialized()
         {
-            // Note: ServicePointManager settings don't affect HttpClient.
-            // These are kept for backward compatibility with legacy WebRequest code.
-            #pragma warning disable SYSLIB0014
-            ServicePointManager.Expect100Continue = false;
-            #pragma warning restore SYSLIB0014
-
-            try
+            if (_initialized) return;
+            lock (_initLock)
             {
-                // Add WSSE support for legacy WebRequest code.
-                #pragma warning disable SYSLIB0009 // AuthenticationManager is obsolete
-                AuthenticationManager.Register(new WsseAuthenticationModule());
-                #pragma warning restore SYSLIB0009
-            }
-            catch (InvalidOperationException)
-            {
-                // See http://blogs.msdn.com/shawnfa/archive/2005/05/16/417975.aspx
-                Trace.WriteLine("Warning: WSSE support disabled");
-            }
+                if (_initialized) return;
 
-            if (ApplicationDiagnostics.AllowUnsafeCertificates)
-            {
-                #pragma warning disable SYSLIB0014
-                ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(CheckValidationResult);
-                #pragma warning restore SYSLIB0014
-            }
-        }
+                try
+                {
+                    // Register WSSE authentication module for blog clients that require it
+                    // (e.g., SixApart/TypePad). This only affects WebRequest-based code.
+                    // SYSLIB0009: AuthenticationManager is obsolete but required for WSSE auth
+                    #pragma warning disable SYSLIB0009
+                    AuthenticationManager.Register(new WsseAuthenticationModule());
+                    #pragma warning restore SYSLIB0009
+                }
+                catch (InvalidOperationException)
+                {
+                    // Registration may fail in some environments
+                    Trace.WriteLine("Warning: WSSE authentication support disabled");
+                }
 
-        private static bool CheckValidationResult(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
-        {
-            if (sslPolicyErrors != SslPolicyErrors.None)
-            {
-                Trace.WriteLine("SSL Policy error " + sslPolicyErrors);
+                _initialized = true;
             }
-
-            return true;
         }
 
         public static void TrackResponseClosing(ref HttpWebRequest req)
@@ -256,6 +250,9 @@ namespace OpenLiveWriter.CoreServices
 
         public static HttpWebRequest CreateHttpWebRequest(string requestUri, bool allowAutoRedirect, int? connectTimeoutMs, int? readWriteTimeoutMs)
         {
+            // Ensure WSSE auth is registered for legacy blog client support
+            EnsureInitialized();
+
             #pragma warning disable SYSLIB0014 // WebRequest is obsolete - maintained for backward compatibility
             HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(requestUri);
             #pragma warning restore SYSLIB0014

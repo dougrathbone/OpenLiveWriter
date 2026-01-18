@@ -67,7 +67,11 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 | File | Warning | Reason |
 |------|---------|--------|
 | `RegistryCodec.cs` | `SYSLIB0011` | BinaryFormatter read-only fallback |
-| `HttpRequestHelper.cs` | `SYSLIB0009`, `SYSLIB0014` | Legacy WebRequest/AuthenticationManager |
+| `HttpRequestHelper.cs` | `SYSLIB0009` | WSSE auth for SixApart/TypePad blogs |
+| `HttpRequestHelper.cs` | `SYSLIB0014` | WebRequest factory (42 callers depend on it) |
 | `GenericAtomClient.cs` | `SYSLIB0009` | Google login auth |
 
-**Note:** `WebRequestWithCache.cs`, `AsyncWebRequestWithCache.cs`, and `TistoryBlogClient.cs` were migrated to use HttpClient and `File.OpenRead()` for file URLs - no longer require SYSLIB0014 suppressions.
+**Migration Notes:**
+- `WebRequestWithCache.cs`, `AsyncWebRequestWithCache.cs`, `TistoryBlogClient.cs` - Migrated to HttpClient
+- `HttpRequestHelper.cs` - Removed dead ServicePointManager code; WSSE auth uses lazy initialization
+- New code should use `HttpClientService` instead of `HttpRequestHelper`
