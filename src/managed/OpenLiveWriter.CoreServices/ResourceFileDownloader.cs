@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Xml;
@@ -252,29 +253,39 @@ namespace OpenLiveWriter.CoreServices
 
         private Stream SafeDownloadUrl(string url, string contentType, int timeoutMs)
         {
-            HttpWebResponse response = HttpRequestHelper.SafeSendRequest(url, delegate (HttpWebRequest request)
+            try
             {
-                request.Timeout = timeoutMs;
-                request.ReadWriteTimeout = timeoutMs * 5;
-            });
+                using var cts = new System.Threading.CancellationTokenSource(timeoutMs);
+                var response = HttpClientService.DefaultClient.GetAsync(url, cts.Token).GetAwaiter().GetResult();
 
-            if (response == null)
-                return null;
+                if (!response.IsSuccessStatusCode)
+                    return null;
 
-            string baseContentType = response.ContentType.Split(new char[] { ';' }, 2)[0].Trim();
+                string responseContentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+                string responseUri = response.RequestMessage?.RequestUri?.AbsoluteUri ?? url;
 
-            if (!UrlHelper.SafeToAbsoluteUri(response.ResponseUri).StartsWith("http://www.msn.com/", StringComparison.OrdinalIgnoreCase)) // This seems weird, but our g-links redirect to www.msn.com (rather than 404) if they aren't deployed. good times
-                Debug.Assert(baseContentType == contentType, "Mismatching content type on downloaded resource. Expected " + contentType + " and got " + baseContentType);
-            else
-                Trace.WriteLine(string.Format(CultureInfo.InvariantCulture, "The resource url at {0} appears not to be deployed.", url));
+                if (!responseUri.StartsWith("http://www.msn.com/", StringComparison.OrdinalIgnoreCase)) // This seems weird, but our g-links redirect to www.msn.com (rather than 404) if they aren't deployed. good times
+                    Debug.Assert(responseContentType == contentType, "Mismatching content type on downloaded resource. Expected " + contentType + " and got " + responseContentType);
+                else
+                    Trace.WriteLine(string.Format(CultureInfo.InvariantCulture, "The resource url at {0} appears not to be deployed.", url));
 
-            if (baseContentType == contentType)
-            {
-                return response.GetResponseStream();
+                if (responseContentType == contentType)
+                {
+                    // Copy to memory stream since we need to return a seekable stream
+                    var ms = new MemoryStream();
+                    response.Content.ReadAsStreamAsync().GetAwaiter().GetResult().CopyTo(ms);
+                    ms.Position = 0;
+                    return ms;
+                }
+                else
+                {
+                    return null;
+                }
             }
-            else
+            catch (Exception ex) when (ex is OperationCanceledException || ex is HttpRequestException)
             {
-                response.Close();
+                if (ApplicationDiagnostics.TestMode)
+                    Trace.WriteLine($"SafeDownloadUrl failed for {url}: {ex.Message}");
                 return null;
             }
         }
