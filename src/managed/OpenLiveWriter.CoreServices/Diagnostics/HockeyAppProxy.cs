@@ -5,6 +5,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -145,21 +146,19 @@ namespace OpenLiveWriter.CoreServices.Diagnostics
 
             string rawData = builder.ToString();
 
-            HttpWebResponse response = HttpRequestHelper.SafeSendRequest(endpoint.ToString(), (request) =>
+            try
             {
-                request.Method = "POST";
-                request.ContentType = "application/x-www-form-urlencoded";
-                request.Headers[HttpRequestHeader.UserAgent.ToString()] = ApplicationEnvironment.UserAgent;
+                using var request = new HttpRequestMessage(HttpMethod.Post, endpoint.ToString());
+                request.Content = new StringContent(rawData, Encoding.UTF8, "application/x-www-form-urlencoded");
+                request.Headers.TryAddWithoutValidation("User-Agent", ApplicationEnvironment.UserAgent);
 
-                using (Stream stream = request.GetRequestStream())
-                {
-                    byte[] byteArray = Encoding.UTF8.GetBytes(rawData);
-                    stream.Write(byteArray, 0, byteArray.Length);
-                    stream.Flush();
-                }
-
-            });
-            response.Close();
+                using var response = HttpClientService.DefaultClient.SendAsync(request).GetAwaiter().GetResult();
+                // Just ensure the request completes, don't require success
+            }
+            catch (HttpRequestException)
+            {
+                // Silently ignore failures to send crash reports
+            }
 
             return Task.FromResult(true);
         }
