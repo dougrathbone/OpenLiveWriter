@@ -203,8 +203,22 @@ The application uses `BinaryFormatter` to serialize arbitrary `ISerializable` ob
 
 ---
 
+## COM Interop Status (Commit 2.4)
+
+The COM interop for MSHTML is properly configured:
+
+1. **OpenLiveWriter.Interop.Mshtml**: Contains 723 generated interop files for MSHTML API
+2. **CustomMarshalers.cs**: Provides compatibility shim for `EnumeratorToEnumVariantMarshaler` (removed in .NET Core)
+3. **`net10.0-windows` target**: Provides full COM interop support
+4. **No `<EnableComHosting>` needed**: Application is a COM client (consuming MSHTML), not a server
+
+The MSHTML-based HTML editor works in .NET 10 through the existing COM interop types.
+
+---
+
 ## Revision History
 
+- **2026-01-18**: Commit 2.4 complete - Verified COM interop for MSHTML compatibility
 - **2026-01-18**: Commit 2.1 complete - Added SupportedOSPlatform attributes to P/Invoke classes
 - **2026-01-18**: Updated document - marked restored files, removed outdated build errors section (build now succeeds)
 - **2026-01-17**: Initial document created during .NET 10 migration
