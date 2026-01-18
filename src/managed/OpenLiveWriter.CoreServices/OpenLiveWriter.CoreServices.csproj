@@ -292,6 +292,7 @@
     <Compile Include="WebRequest\CloseTrackingHttpWebRequest.cs" />
     <Compile Include="WebRequest\ContentTypeHelper.cs" />
     <Compile Include="WebRequest\HTMLDocumentDownloader.cs" />
+    <Compile Include="WebRequest\HTMLDocumentDownloaderFactory.cs" />
     <Compile Include="WebRequest\HttpRequestHelper.cs" />
     <Compile Include="WebRequest\IBrowserBasedWebRequest.cs" />
     <Compile Include="WebRequest\PageAndReferenceDownloader.cs" />
