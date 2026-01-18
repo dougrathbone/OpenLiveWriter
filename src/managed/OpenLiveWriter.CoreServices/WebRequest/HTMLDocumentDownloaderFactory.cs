@@ -68,16 +68,27 @@ namespace OpenLiveWriter.CoreServices
     /// </summary>
     public static class HTMLDocumentDownloaderFactory
     {
+        // Temporarily unused - WebView2 page downloader has timing issues
+#pragma warning disable CS0169
         private static bool? _useWebView2;
+#pragma warning restore CS0169
 
         /// <summary>
         /// Gets whether to use WebView2 for downloading.
         /// Controlled by OLW_USE_WEBVIEW2 environment variable.
+        /// NOTE: Currently disabled - WebView2 page downloading has timing issues.
+        /// TODO: Fix async/threading issues in WebView2HTMLDocumentDownloader before enabling.
         /// </summary>
         public static bool UseWebView2
         {
             get
             {
+                // Temporarily disabled - WebView2 page downloader has timing issues
+                // that cause "document isn't fully loaded" errors during template detection.
+                // The WebView2 browser control (BrowserControlFactory) still works.
+                return false;
+                
+                /*
                 if (!_useWebView2.HasValue)
                 {
                     string envVar = Environment.GetEnvironmentVariable("OLW_USE_WEBVIEW2");
@@ -85,6 +96,7 @@ namespace OpenLiveWriter.CoreServices
                                    (envVar == "1" || envVar.Equals("true", StringComparison.OrdinalIgnoreCase));
                 }
                 return _useWebView2.Value;
+                */
             }
         }
 
