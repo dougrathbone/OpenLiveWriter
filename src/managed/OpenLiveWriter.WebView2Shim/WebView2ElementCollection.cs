@@ -3,14 +3,14 @@
 
 using System;
 using System.Collections;
-using mshtml;
 
 namespace OpenLiveWriter.WebView2Shim
 {
     /// <summary>
-    /// WebView2 implementation of IHTMLElementCollection.
+    /// WebView2 element collection - standalone class for now.
+    /// TODO: Implement IHTMLElementCollection once all members are added.
     /// </summary>
-    public class WebView2ElementCollection : IHTMLElementCollection
+    public class WebView2ElementCollection : IEnumerable
     {
         private readonly WebView2Bridge _bridge;
         private readonly string[] _elementIds;
@@ -23,7 +23,11 @@ namespace OpenLiveWriter.WebView2Shim
             _document = document;
         }
 
-        public int length => _elementIds.Length;
+        public int length
+        {
+            get => _elementIds.Length;
+            set { /* MSHTML allows setting but we ignore it */ }
+        }
 
         public object item(object name = null, object index = null)
         {
@@ -40,7 +44,7 @@ namespace OpenLiveWriter.WebView2Shim
                 foreach (var id in _elementIds)
                 {
                     var el = new WebView2Element(_bridge, id) { ParentDocument = _document };
-                    if (el.id == nameStr || el.getAttribute("name", 0)?.ToString() == nameStr)
+                    if (el.id == nameStr || el.GetAttribute("name")?.ToString() == nameStr)
                     {
                         if (matchCount == idx)
                             return el;
@@ -59,7 +63,7 @@ namespace OpenLiveWriter.WebView2Shim
                 foreach (var id in _elementIds)
                 {
                     var el = new WebView2Element(_bridge, id) { ParentDocument = _document };
-                    if (el.id == str || el.getAttribute("name", 0)?.ToString() == str)
+                    if (el.id == str || el.GetAttribute("name")?.ToString() == str)
                     {
                         if (firstMatch == null) firstMatch = el;
                         matchCount++;
@@ -74,7 +78,7 @@ namespace OpenLiveWriter.WebView2Shim
                 foreach (var id in _elementIds)
                 {
                     var el = new WebView2Element(_bridge, id) { ParentDocument = _document };
-                    if (el.id == str || el.getAttribute("name", 0)?.ToString() == str)
+                    if (el.id == str || el.GetAttribute("name")?.ToString() == str)
                     {
                         matchIds.Add(id);
                     }
@@ -156,9 +160,8 @@ namespace OpenLiveWriter.WebView2Shim
         // Indexer for convenience
         public WebView2Element this[int index] => GetElementAt(index);
 
-        public override string ToString()
-        {
-            return $"WebView2ElementCollection[{_elementIds.Length} elements]";
-        }
+        public string toString() => $"[object HTMLCollection]";
+
+        public override string ToString() => $"WebView2ElementCollection[{_elementIds.Length} elements]";
     }
 }

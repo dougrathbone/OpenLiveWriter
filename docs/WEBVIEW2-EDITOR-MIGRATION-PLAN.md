@@ -4,9 +4,26 @@
 
 This document details the strategy for replacing the MSHTML-based HTML editor in Open Live Writer with WebView2. This is the **critical blocker** for .NET 10 migration, as MSHTML's COM interop (specifically `EnumeratorToEnumVariantMarshaler`) was removed in .NET Core.
 
-**Estimated Effort:** 4-8 weeks for a senior developer  
-**Risk Level:** High - this is the core functionality of the application  
-**Recommendation:** Use an existing JavaScript editor library (TinyMCE) rather than building from scratch
+**Estimated Effort:** 2-4 weeks for a senior developer  
+**Risk Level:** Medium - core functionality, but paradigm is unchanged  
+**Recommendation:** Use native `contenteditable` + `execCommand` (NO external libraries)
+
+## Key Insight
+
+**The paradigm is the same.** We're just changing the interop mechanism:
+
+```
+MSHTML:   C# → COM interop → IHTMLDocument2.execCommand("bold")
+WebView2: C# → ExecuteScriptAsync → document.execCommand('bold')
+```
+
+Open Live Writer already has:
+- ✅ Full ribbon UI with all formatting buttons
+- ✅ Menu system
+- ✅ Paste cleaning logic
+- ✅ 15 years of edge case handling
+
+We do NOT need TinyMCE, CKEditor, or any external library. Those solve problems we don't have (cross-browser compatibility, building UI from scratch).
 
 ---
 
@@ -60,77 +77,63 @@ ContentEditor / PostEditorForm
 
 ---
 
-## Migration Strategies
+## Migration Strategy: Native contenteditable + execCommand
 
-### Option A: Custom contenteditable (NOT RECOMMENDED)
+### Why NOT Use TinyMCE/CKEditor
 
-Build our own editor using `<div contenteditable="true">` and custom JavaScript.
+1. **OLW already has the UI** - The ribbon provides all formatting buttons, menus, dialogs
+2. **We only target one browser** - WebView2/Edge. No cross-browser quirks.
+3. **OLW has existing logic** - Paste cleaning, image handling, etc. already written in C#
+4. **Adds complexity** - Would need to bridge TinyMCE's event model to OLW's
+5. **Different behavior** - TinyMCE has its own opinions about formatting that may conflict
 
-**Pros:**
-- Full control
-- No external dependencies
-- Can match existing behavior exactly
+### The Simple Truth
 
-**Cons:**
-- **Months of work** - contenteditable is notoriously buggy
-- Need to handle all edge cases (paste, undo, tables, etc.)
-- Browser quirks and cross-platform issues
-- Spell checking integration is complex
-- We'd be reinventing what TinyMCE/CKEditor spent years building
+The existing code does this:
+```csharp
+GetMshtmlCommand(IDM.BOLD).Execute();  // COM call to MSHTML
+```
 
-**Verdict:** ❌ Too risky and time-consuming
+We just need to change it to:
+```csharp
+await _webView.ExecuteScriptAsync("document.execCommand('bold')");
+```
 
----
+### Command Mapping (IDM → execCommand)
 
-### Option B: TinyMCE Integration (RECOMMENDED)
+| IDM Constant | Value | execCommand | Notes |
+|--------------|-------|-------------|-------|
+| `IDM.BOLD` | 52 | `bold` | Toggle bold |
+| `IDM.ITALIC` | 56 | `italic` | Toggle italic |
+| `IDM.UNDERLINE` | 63 | `underline` | Toggle underline |
+| `IDM.STRIKETHROUGH` | 91 | `strikeThrough` | Toggle strikethrough |
+| `IDM.JUSTIFYLEFT` | 59 | `justifyLeft` | Left align |
+| `IDM.JUSTIFYCENTER` | 57 | `justifyCenter` | Center align |
+| `IDM.JUSTIFYRIGHT` | 60 | `justifyRight` | Right align |
+| `IDM.JUSTIFYFULL` | 50 | `justifyFull` | Justify |
+| `IDM.INDENT` | - | `indent` | Increase indent |
+| `IDM.OUTDENT` | - | `outdent` | Decrease indent |
+| `IDM.FONTNAME` | 18 | `fontName` | Set font family |
+| `IDM.FONTSIZE` | 19 | `fontSize` | Set font size (1-7) |
+| `IDM.FORECOLOR` | 55 | `foreColor` | Text color |
+| `IDM.BACKCOLOR` | 51 | `backColor` | Background color |
+| `IDM.UNDO` | - | `undo` | Undo |
+| `IDM.REDO` | - | `redo` | Redo |
+| `IDM.COPY` | - | `copy` | Copy |
+| `IDM.CUT` | - | `cut` | Cut |
+| `IDM.DELETE` | 17 | `delete` | Delete selection |
+| `IDM.REMOVEFORMAT` | - | `removeFormat` | Clear formatting |
 
-Embed TinyMCE (MIT licensed) inside WebView2 and bridge to C#.
+### What WebView2 Provides Natively
 
-**Pros:**
-- Battle-tested editor with 15+ years of development
-- Handles all contenteditable quirks
-- Built-in paste cleaning, undo/redo, tables, formatting
-- Plugin architecture for extensibility
-- MIT license allows free commercial use
-- Active development and community
-- Works with local files (no CDN required)
-
-**Cons:**
-- Learning curve for customization
-- Some features may differ from original behavior
-- Bundle size (~1-2MB for full editor)
-
-**Verdict:** ✅ Best balance of effort vs. reliability
-
----
-
-### Option C: CKEditor 5 (ALTERNATIVE)
-
-Similar to TinyMCE but with different architecture.
-
-**Pros:**
-- Modern architecture
-- Strong collaboration features
-- Good documentation
-
-**Cons:**
-- GPL license for open source (compatible with OLW's MIT)
-- Steeper learning curve
-- Heavier than TinyMCE
-
-**Verdict:** ⚠️ Good alternative if TinyMCE doesn't work out
-
----
-
-### Option D: Quill (NOT RECOMMENDED)
-
-Lightweight modern editor.
-
-**Pros:**
-- Small and fast
-- Clean API
-
-**Cons:**
+1. **contenteditable** - Built-in editable div
+2. **execCommand** - All standard formatting commands (deprecated but works)
+3. **Selection API** - `window.getSelection()`, Range objects
+4. **Clipboard API** - Paste event interception
+5. **Spell check** - Browser's native spell checker
+6. **Undo/Redo** - Browser tracks edit history automatically
+7. **Context menu** - `ContextMenuRequested` event in WebView2
+8. **Keyboard handling** - Standard DOM events
 - Last major release was 2019
 - Missing features (tables, advanced formatting)
 - Less mature than TinyMCE/CKEditor
@@ -139,7 +142,7 @@ Lightweight modern editor.
 
 ---
 
-## Recommended Architecture (Option B)
+## Architecture
 
 ### Overview
 
@@ -147,104 +150,177 @@ Lightweight modern editor.
 ┌─────────────────────────────────────────────────────────────┐
 │                    C# WinForms Application                   │
 ├─────────────────────────────────────────────────────────────┤
-│  WebView2HtmlEditorControl : IHtmlEditor                    │
+│  WebView2HtmlEditorControl                                   │
 │  ├── WebView2 Control                                       │
-│  ├── EditorBridge (C# ↔ JS communication)                   │
-│  └── Command handlers                                       │
+│  ├── Command mapping (IDM → execCommand)                    │
+│  └── Event handlers                                         │
 ├─────────────────────────────────────────────────────────────┤
 │                         WebView2                             │
 ├─────────────────────────────────────────────────────────────┤
 │  editor.html                                                 │
-│  ├── TinyMCE instance                                       │
-│  ├── olw-bridge.js (message passing)                        │
-│  └── Custom plugins for OLW features                        │
+│  ├── <div contenteditable="true">                           │
+│  ├── olw-bridge.js (C# ↔ JS communication)                  │
+│  └── CSS from blog template                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### C# Side Components
+### Minimal editor.html
 
-#### 1. `WebView2HtmlEditorControl.cs`
-New implementation of `IHtmlEditor` using WebView2 + TinyMCE.
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="template.css"> <!-- Blog template styles -->
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; }
+        #editor { 
+            height: 100%; 
+            padding: 10px;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="editor" contenteditable="true" spellcheck="true"></div>
+    <script src="olw-bridge.js"></script>
+</body>
+</html>
+```
+
+### olw-bridge.js
+
+```javascript
+const OLW = {
+    // Get/set content
+    getContent: () => document.getElementById('editor').innerHTML,
+    setContent: (html) => { document.getElementById('editor').innerHTML = html; },
+    
+    // Execute formatting commands
+    exec: (cmd, value) => document.execCommand(cmd, false, value),
+    
+    // Query command state (for ribbon button highlighting)
+    queryState: (cmd) => document.queryCommandState(cmd),
+    queryValue: (cmd) => document.queryCommandValue(cmd),
+    
+    // Selection
+    getSelectedHtml: () => {
+        const sel = window.getSelection();
+        if (sel.rangeCount === 0) return '';
+        const range = sel.getRangeAt(0);
+        const div = document.createElement('div');
+        div.appendChild(range.cloneContents());
+        return div.innerHTML;
+    },
+    
+    getSelectedText: () => window.getSelection().toString(),
+    
+    // Insert HTML at cursor
+    insertHtml: (html) => {
+        document.execCommand('insertHTML', false, html);
+    }
+};
+
+// Notify C# of changes
+const editor = document.getElementById('editor');
+editor.addEventListener('input', () => {
+    window.chrome.webview.postMessage({ type: 'contentChanged' });
+});
+
+// Intercept paste for cleaning
+editor.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData('text/html') || e.clipboardData.getData('text/plain');
+    // Send to C# for cleaning
+    window.chrome.webview.postMessage({ type: 'paste', html: html });
+});
+
+// Handle keyboard shortcuts (optional - ribbon already handles these)
+editor.addEventListener('keydown', (e) => {
+    if (e.ctrlKey) {
+        switch(e.key.toLowerCase()) {
+            case 's': 
+                e.preventDefault();
+                window.chrome.webview.postMessage({ type: 'save' });
+                break;
+        }
+    }
+});
+```
+
+### C# WebView2HtmlEditorControl
 
 ```csharp
-public class WebView2HtmlEditorControl : UserControl, IHtmlEditor, IHtmlEditorCommandSource
+public class WebView2HtmlEditorControl : UserControl, IHtmlEditor
 {
     private WebView2 _webView;
-    private EditorBridge _bridge;
     private bool _isDirty;
     
     public async Task InitializeAsync()
     {
         await _webView.EnsureCoreWebView2Async(null);
-        
-        // Inject bridge object for JS→C# calls
-        _webView.CoreWebView2.AddHostObjectToScript("olwBridge", _bridge);
-        
-        // Handle JS→C# messages
         _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
         
-        // Load the editor HTML
-        _webView.CoreWebView2.Navigate("file:///editor/editor.html");
+        // Load editor HTML from resources
+        string editorPath = Path.Combine(Application.StartupPath, "Resources", "editor.html");
+        _webView.CoreWebView2.Navigate($"file:///{editorPath}");
     }
     
-    // IHtmlEditor implementation
-    public async Task<string> GetEditedHtml(bool preferWellFormed)
+    // Execute formatting command
+    public async Task ExecuteCommand(string command, object value = null)
     {
-        string html = await _webView.ExecuteScriptAsync("tinymce.activeEditor.getContent()");
-        return JsonUnquote(html);
+        string valueArg = value != null ? $", {JsonConvert.SerializeObject(value)}" : "";
+        await _webView.ExecuteScriptAsync($"OLW.exec('{command}'{valueArg})");
     }
     
-    public async Task InsertHtml(string content, HtmlInsertionOptions options)
+    // Ribbon calls these
+    public async Task Bold() => await ExecuteCommand("bold");
+    public async Task Italic() => await ExecuteCommand("italic");
+    public async Task Underline() => await ExecuteCommand("underline");
+    
+    // Query state for ribbon button highlighting
+    public async Task<bool> IsBold()
     {
-        string escapedContent = JsonEscape(content);
-        await _webView.ExecuteScriptAsync($"tinymce.activeEditor.insertContent({escapedContent})");
+        string result = await _webView.ExecuteScriptAsync("OLW.queryState('bold')");
+        return result == "true";
     }
     
-    // Commands
-    public async Task Bold() => await ExecuteCommand("Bold");
-    public async Task Italic() => await ExecuteCommand("Italic");
-    
-    private async Task ExecuteCommand(string command)
+    // Get edited HTML
+    public async Task<string> GetEditedHtml()
     {
-        await _webView.ExecuteScriptAsync($"tinymce.activeEditor.execCommand('{command}')");
+        string json = await _webView.ExecuteScriptAsync("OLW.getContent()");
+        return JsonUnquote(json);  // Remove JSON string encoding
+    }
+    
+    // Set HTML content
+    public async Task SetHtml(string html)
+    {
+        string escaped = JsonConvert.SerializeObject(html);
+        await _webView.ExecuteScriptAsync($"OLW.setContent({escaped})");
+    }
+    
+    // Handle messages from JavaScript
+    private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        var message = JsonConvert.DeserializeObject<dynamic>(e.WebMessageAsJson);
+        switch ((string)message.type)
+        {
+            case "contentChanged":
+                _isDirty = true;
+                IsDirtyEvent?.Invoke(this, EventArgs.Empty);
+                break;
+            case "paste":
+                // Clean HTML using existing OLW paste cleaning logic
+                string cleanHtml = PasteHandler.CleanHtml((string)message.html);
+                _ = ExecuteCommand("insertHTML", cleanHtml);
+                break;
+            case "save":
+                SaveRequested?.Invoke(this, EventArgs.Empty);
+                break;
+        }
     }
 }
 ```
-
-#### 2. `EditorBridge.cs`
-COM-visible object exposed to JavaScript for callbacks.
-
-```csharp
-[ComVisible(true)]
-public class EditorBridge
-{
-    public event EventHandler ContentChanged;
-    public event EventHandler<string> LinkClicked;
-    public event EventHandler<PasteEventArgs> PasteRequested;
-    
-    // Called from JavaScript
-    public void NotifyContentChanged()
-    {
-        ContentChanged?.Invoke(this, EventArgs.Empty);
-    }
-    
-    public void NotifyLinkClicked(string url)
-    {
-        LinkClicked?.Invoke(this, url);
-    }
-    
-    public string ProcessPaste(string html)
-    {
-        // Clean HTML, handle images, etc.
-        return CleanHtml(html);
-    }
-}
-```
-
-### JavaScript Side Components
-
-#### 1. `editor.html`
-Main editor page loaded in WebView2.
 
 ```html
 <!DOCTYPE html>

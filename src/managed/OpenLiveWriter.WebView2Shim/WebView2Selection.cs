@@ -1,14 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
-using mshtml;
-
 namespace OpenLiveWriter.WebView2Shim
 {
     /// <summary>
-    /// WebView2 implementation of IHTMLSelectionObject.
+    /// WebView2 selection wrapper - standalone class for now.
+    /// TODO: Implement IHTMLSelectionObject interface once all members are added.
     /// </summary>
-    public class WebView2Selection : IHTMLSelectionObject
+    public class WebView2Selection
     {
         private readonly WebView2Bridge _bridge;
         private readonly WebView2Document _document;
@@ -19,7 +18,7 @@ namespace OpenLiveWriter.WebView2Shim
             _document = document;
         }
 
-        public object createRange()
+        public WebView2TextRange createRange()
         {
             return new WebView2TextRange(_bridge, _document);
         }
