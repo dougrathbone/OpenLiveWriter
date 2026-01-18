@@ -84,27 +84,46 @@ namespace OpenLiveWriter.CoreServices
                 AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
             };
 
-            // Configure proxy
-            if (WebProxySettings.ProxyEnabled)
-            {
-                string proxyServerUrl = WebProxySettings.Hostname;
-                if (proxyServerUrl.IndexOf("://", StringComparison.OrdinalIgnoreCase) == -1)
-                    proxyServerUrl = "http://" + proxyServerUrl;
-                if (WebProxySettings.Port > 0)
-                    proxyServerUrl += ":" + WebProxySettings.Port;
+            int timeoutMs = 60000; // Default 60 seconds
 
-                handler.Proxy = new WebProxy(proxyServerUrl, false);
-                if (!string.IsNullOrEmpty(WebProxySettings.Username))
+            // Configure proxy (safely, in case ApplicationEnvironment is not initialized)
+            try
+            {
+                if (WebProxySettings.ProxyEnabled)
                 {
-                    handler.Proxy.Credentials = new NetworkCredential(WebProxySettings.Username, WebProxySettings.Password);
+                    string proxyServerUrl = WebProxySettings.Hostname;
+                    if (proxyServerUrl.IndexOf("://", StringComparison.OrdinalIgnoreCase) == -1)
+                        proxyServerUrl = "http://" + proxyServerUrl;
+                    if (WebProxySettings.Port > 0)
+                        proxyServerUrl += ":" + WebProxySettings.Port;
+
+                    handler.Proxy = new WebProxy(proxyServerUrl, false);
+                    if (!string.IsNullOrEmpty(WebProxySettings.Username))
+                    {
+                        handler.Proxy.Credentials = new NetworkCredential(WebProxySettings.Username, WebProxySettings.Password);
+                    }
+                    handler.UseProxy = true;
                 }
-                handler.UseProxy = true;
+                timeoutMs = WebProxySettings.HttpRequestTimeout;
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceWarning("Unable to configure proxy settings for HttpClient: " + ex.Message);
             }
 
             var client = new HttpClient(handler);
-            client.Timeout = TimeSpan.FromMilliseconds(WebProxySettings.HttpRequestTimeout);
+            client.Timeout = TimeSpan.FromMilliseconds(timeoutMs);
             client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationEnvironment.UserAgent);
+
+            // Set User-Agent (safely)
+            try
+            {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationEnvironment.UserAgent);
+            }
+            catch
+            {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("OpenLiveWriter/1.0");
+            }
 
             // Set Accept-Language
             string acceptLang = CultureInfo.CurrentUICulture.Name.Split('/')[0];
@@ -184,6 +203,53 @@ namespace OpenLiveWriter.CoreServices
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Gets a response, returning the response message with access to the final URI after redirects.
+        /// Caller is responsible for disposing the response.
+        /// </summary>
+        public static HttpResponseMessage GetResponse(string url)
+        {
+            var response = HttpClient.GetAsync(url).GetAwaiter().GetResult();
+            response.EnsureSuccessStatusCode();
+            return response;
+        }
+
+        /// <summary>
+        /// Gets a response as a stream with the final response URI.
+        /// </summary>
+        public static Stream GetResponseStream(string url, out Uri responseUri)
+        {
+            var response = GetResponse(url);
+            responseUri = response.RequestMessage?.RequestUri ?? new Uri(url);
+            return response.Content.ReadAsStream();
+        }
+
+        /// <summary>
+        /// Posts form data to a URL and returns the response.
+        /// Caller is responsible for disposing the response.
+        /// </summary>
+        public static HttpResponseMessage PostForm(string url, byte[] formData, string contentType = "application/x-www-form-urlencoded")
+        {
+            using var content = new ByteArrayContent(formData);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+            var response = HttpClient.PostAsync(url, content).GetAwaiter().GetResult();
+            response.EnsureSuccessStatusCode();
+            return response;
+        }
+
+        /// <summary>
+        /// Posts form data to a URL and returns the response stream with the final response URI.
+        /// </summary>
+        public static Stream PostFormStream(string url, byte[] formData, out Uri responseUri, string contentType = "application/x-www-form-urlencoded")
+        {
+            using var response = PostForm(url, formData, contentType);
+            responseUri = response.RequestMessage?.RequestUri ?? new Uri(url);
+            var stream = new MemoryStream();
+            response.Content.ReadAsStream().CopyTo(stream);
+            stream.Position = 0;
+            return stream;
         }
 
         #endregion

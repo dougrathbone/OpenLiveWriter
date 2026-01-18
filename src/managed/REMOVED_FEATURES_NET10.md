@@ -75,7 +75,13 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 - ✅ `WebRequestWithCache.cs`, `AsyncWebRequestWithCache.cs` - Migrated to use File.OpenRead for file:// URLs
 - ✅ `TistoryBlogClient.cs` - Fully migrated to HttpClient
 - ✅ `DestinationValidator.cs` - Migrated to use HttpRequestHelper.CheckUrlReachable
-- ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods (`HttpClient`, `SendRequestAsync`, `DownloadStream`, `CheckUrlReachable`)
-- ⏳ Blog client infrastructure (XmlRestRequestHelper, RedirectHelper, AtomClient, etc.) - Complex filter/multipart patterns require significant refactoring
+- ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods (`HttpClient`, `SendRequestAsync`, `DownloadStream`, `CheckUrlReachable`, `GetResponse`, `GetResponseStream`, `PostForm`, `PostFormStream`)
+- ✅ `HttpClientRedirectHelper.cs` - New HttpClient-based redirect helper (replaces RedirectHelper)
+- ✅ `HttpClientXmlRestRequestHelper.cs` - New HttpClient-based XML REST helper (replaces XmlRestRequestHelper)
+- ✅ `PostEditorMainControl.ValidateHtml` - Migrated to use HttpClient
+- ⏳ Blog client infrastructure (AtomClient, YouTube, etc.) - Legacy callers still use old patterns
 
-**For New Code:** Use `HttpRequestHelper.HttpClient` or the new HttpClient-based methods instead of `CreateHttpWebRequest`
+**For New Code:**
+- Use `HttpClientRedirectHelper` instead of `RedirectHelper`
+- Use `HttpClientXmlRestRequestHelper` instead of `XmlRestRequestHelper`
+- Use `HttpRequestHelper.HttpClient` or the new HttpClient-based methods instead of `CreateHttpWebRequest`

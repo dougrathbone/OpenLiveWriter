@@ -795,6 +795,7 @@ namespace OpenLiveWriter.PostEditor
 
             HtmlForm form;
             FormData data;
+            Uri validatorBaseUri;
 
             string html = string.Format(CultureInfo.InvariantCulture, xhtml ? XHTML_TEMPLATE : HTML_TEMPLATE, _htmlEditor.Body);
             if (xhtml)
@@ -802,57 +803,45 @@ namespace OpenLiveWriter.PostEditor
             else
                 html = HTML_DOCTYPE + html;
 
-            HttpWebResponse response = HttpRequestHelper.SendRequest(VALIDATOR_URL);
-            try
+            // Get the validator page using HttpClient
+            using (Stream s = HttpRequestHelper.GetResponseStream(VALIDATOR_URL, out validatorBaseUri))
             {
-                using (Stream s = response.GetResponseStream())
-                {
-                    FormFactory formFactory = new FormFactory(s);
-                    formFactory.NextForm();
-                    formFactory.NextForm();
-                    form = formFactory.NextForm();
-                    Textarea textarea = form.GetElementByIndex(0) as Textarea;
-                    if (textarea == null)
-                        throw new ArgumentException("Unexpected HTML: textarea element not found");
-                    textarea.Value = html;
-                    data = form.Submit(null);
-                }
-            }
-            finally
-            {
-                response.Close();
+                FormFactory formFactory = new FormFactory(s);
+                formFactory.NextForm();
+                formFactory.NextForm();
+                form = formFactory.NextForm();
+                Textarea textarea = form.GetElementByIndex(0) as Textarea;
+                if (textarea == null)
+                    throw new ArgumentException("Unexpected HTML: textarea element not found");
+                textarea.Value = html;
+                data = form.Submit(null);
             }
 
-            using (Stream formData = data.ToStream())
+            // Submit the form using HttpClient
+            string submitUrl = UrlHelper.EscapeRelativeURL(UrlHelper.SafeToAbsoluteUri(validatorBaseUri), form.Action);
+            using (Stream formDataStream = data.ToStream())
             {
-                HttpWebRequest request = HttpRequestHelper.CreateHttpWebRequest(UrlHelper.EscapeRelativeURL(UrlHelper.SafeToAbsoluteUri(response.ResponseUri), form.Action), false);
-                request.ContentType = "application/x-www-form-urlencoded";
-                request.ContentLength = formData.Length;
-                request.Method = form.Method.ToUpper(CultureInfo.InvariantCulture);
-                using (Stream requestStream = request.GetRequestStream())
-                    StreamHelper.Transfer(formData, requestStream);
-                HttpWebResponse response2 = (HttpWebResponse)request.GetResponse();
-                try
+                byte[] formBytes;
+                using (var ms = new MemoryStream())
                 {
-                    using (Stream s2 = response2.GetResponseStream())
+                    formDataStream.CopyTo(ms);
+                    formBytes = ms.ToArray();
+                }
+
+                using (Stream resultsStream = HttpRequestHelper.PostFormStream(submitUrl, formBytes, out Uri responseUri))
+                {
+                    string resultsHtml = StreamHelper.AsString(resultsStream, Encoding.UTF8);
+                    resultsHtml = resultsHtml.Replace("<head>",
+                                                      string.Format(CultureInfo.InvariantCulture, "<head><base href=\"{0}\"/>",
+                                                                    HtmlUtils.EscapeEntities(UrlHelper.SafeToAbsoluteUri(responseUri))));
+
+                    string tempFile = TempFileManager.Instance.CreateTempFile("results.htm");
+                    using (Stream fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write))
                     {
-                        string resultsHtml = StreamHelper.AsString(s2, Encoding.UTF8);
-                        resultsHtml = resultsHtml.Replace("<head>",
-                                                          string.Format(CultureInfo.InvariantCulture, "<head><base href=\"{0}\"/>",
-                                                                        HtmlUtils.EscapeEntities(UrlHelper.SafeToAbsoluteUri(response2.ResponseUri))));
-
-                        string tempFile = TempFileManager.Instance.CreateTempFile("results.htm");
-                        using (Stream fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write))
-                        {
-                            byte[] bytes = Encoding.UTF8.GetBytes(resultsHtml);
-                            fileStream.Write(bytes, 0, bytes.Length);
-                        }
-                        ShellHelper.LaunchUrl(tempFile);
+                        byte[] bytes = Encoding.UTF8.GetBytes(resultsHtml);
+                        fileStream.Write(bytes, 0, bytes.Length);
                     }
-                }
-                finally
-                {
-                    response2.Close();
+                    ShellHelper.LaunchUrl(tempFile);
                 }
             }
         }
