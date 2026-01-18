@@ -8,6 +8,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Windows.Forms;
 using OpenLiveWriter.CoreServices;
 using OpenLiveWriter.CoreServices.Layout;
@@ -204,9 +205,11 @@ namespace OpenLiveWriter.BlogClient.Clients
 
         public void ShowCaptcha()
         {
-            HttpWebResponse response = HttpRequestHelper.SendRequest(_imageUrl);
+            using var response = HttpClientService.DefaultClient.GetAsync(_imageUrl).GetAwaiter().GetResult();
+            response.EnsureSuccessStatusCode();
+
             Image image;
-            using (Stream s = response.GetResponseStream())
+            using (Stream s = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
             {
                 image = Bitmap.FromStream(new MemoryStream(StreamHelper.AsBytes(s)));
             }
