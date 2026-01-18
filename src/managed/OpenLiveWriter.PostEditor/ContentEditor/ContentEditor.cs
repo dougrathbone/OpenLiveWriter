@@ -37,6 +37,7 @@ using OpenLiveWriter.PostEditor.PostHtmlEditing.Sidebar;
 using OpenLiveWriter.PostEditor.Tagging;
 using OpenLiveWriter.SpellChecker;
 using OpenLiveWriter.InternalWriterPlugin;
+using OpenLiveWriter.WebView2Shim;
 using Timer = System.Windows.Forms.Timer;
 using OpenLiveWriter.PostEditor.WordCount;
 using OpenLiveWriter.PostEditor.Video;

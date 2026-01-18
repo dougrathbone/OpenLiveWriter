@@ -184,6 +184,11 @@
       <Project>{906BA039-467B-41AE-B805-BA1B837AB763}</Project>
       <Package>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</Package>
     </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.WebView2Shim\OpenLiveWriter.WebView2Shim.csproj">
+      <Name>OpenLiveWriter.WebView2Shim</Name>
+      <Project>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</Project>
+      <Package>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</Package>
+    </ProjectReference>
     <ProjectReference Include="..\OpenLiveWriter.InternalWriterPlugin\OpenLiveWriter.InternalWriterPlugin.csproj">
       <Name>OpenLiveWriter.WriterPlugin</Name>
       <Project>{699FB638-CE02-48D7-8078-30A7939C5BCB}</Project>

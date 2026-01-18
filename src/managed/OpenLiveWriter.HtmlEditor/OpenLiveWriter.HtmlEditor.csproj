@@ -84,6 +84,7 @@
     <Compile Include="HtmlSourceEditorFindTextForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="HtmlEditorFactory.cs" />
     <Compile Include="HtmlStyleHelper.cs" />
     <Compile Include="IHtmlEditor.cs" />
     <Compile Include="IHtmlEditorCommandSource.cs" />
