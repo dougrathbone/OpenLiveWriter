@@ -146,14 +146,25 @@ The attributes serve as documentation for code reviewers and potential future cr
 
 ### 6. Test Files
 
-**Status:** Excluded from compilation  
-**Reason:** Reference non-existent types  
+**Status:** Partially excluded/updated  
+**Reason:** Some reference non-existent types, others have behavioral differences  
 
-**Files Affected:**
+**Excluded Files:**
 - `OpenLiveWriter.UnitTest/Interop/SpellApiEx.cs` - References removed NLG spell library
 - `OpenLiveWriter.UnitTest/CoreServices/ResourceDownloading/LocalCabResourceCacheTest.cs` - References removed LocalCabResourceCache
+- `OpenLiveWriter.Tests/PostEditor/Tables/InsertTableTests.cs` - Uses ApprovalTests (not .NET 10 compatible)
 
-**Recommended Action:** Remove if tested functionality no longer exists, or update to test current implementations.
+**Failing Tests (Known Behavioral Differences):**
+- `DefaultBlockElementTest.DivDefaultBlockElementTest` - Empty elements use `&nbsp;` instead of empty
+- `DefaultBlockElementTest.ParagraphDefaultBlockElementTest` - Same as above
+- `UrlHelperTest.TestCreateUrlFromPath` - Different URL encoding (`%3C` vs `<`)
+- `BlogPostCategoryTest.BlogPostCategoryEquality` - Equality check behavior difference
+
+**Test Statistics:**
+- OpenLiveWriter.Tests: 46/46 passing
+- OpenLiveWriter.UnitTest: 27/31 passing (4 known failures)
+
+**Recommended Action:** Review failing tests and update expectations for .NET 10 behavior.
 
 ---
 

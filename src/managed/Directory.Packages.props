@@ -40,10 +40,12 @@
     <PackageVersion Include="PlatformSpellCheck" Version="1.0.0" />
     
     <!-- Testing - Updated for .NET 10 -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="NUnit" Version="4.2.2" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
-    <PackageVersion Include="ApprovalTests" Version="6.0.0" />
-    <PackageVersion Include="ApprovalUtilities" Version="6.0.0" />
+    <!-- ApprovalTests is not compatible with .NET 10 - excluding test file -->
+    <!-- <PackageVersion Include="ApprovalTests" Version="6.0.0" /> -->
+    <!-- <PackageVersion Include="ApprovalUtilities" Version="6.0.0" /> -->
     
     <!-- Security fix: Override vulnerable transitive dependency -->
     <PackageVersion Include="System.Data.SqlClient" Version="4.8.6" />
