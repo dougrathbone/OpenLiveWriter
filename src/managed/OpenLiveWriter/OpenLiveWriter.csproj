@@ -131,6 +131,11 @@
       <Project>{DF928A2F-38E3-4B1F-83CE-1FDFDE836D84}</Project>
       <Package>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</Package>
     </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.WebView2Shim\OpenLiveWriter.WebView2Shim.csproj">
+      <Name>OpenLiveWriter.WebView2Shim</Name>
+      <Project>{A6F5C121-0729-449C-A5FA-4B2DFBC8D6CA}</Project>
+      <Package>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</Package>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\GlobalAssemblyInfo.cs" />

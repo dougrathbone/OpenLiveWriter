@@ -72,11 +72,29 @@ namespace OpenLiveWriter.WebView2Shim
         }
         
         public string referrer => _bridge.ExecuteScript<string>("document.referrer || ''");
+
+        /// <summary>
+        /// Global setting for paragraph separator. When true, uses &lt;p&gt; tags (default).
+        /// When false, uses &lt;div&gt; tags (modern browser default).
+        /// </summary>
+        public static bool UseParagraphTags { get; set; } = true;
         
         public string designMode
         {
             get => _bridge.ExecuteScript<string>("document.designMode || 'off'");
-            set => _bridge.ExecuteScript("document.designMode = " + WebView2Bridge.JsonEncode(value ?? "off"));
+            set
+            {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2Document.designMode setter called with: {value}");
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] UseParagraphTags = {UseParagraphTags}");
+                _bridge.ExecuteScript("document.designMode = " + WebView2Bridge.JsonEncode(value ?? "off"));
+                // Set paragraph separator based on user preference
+                if (value?.ToLower() == "on")
+                {
+                    string separator = UseParagraphTags ? "p" : "div";
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Setting defaultParagraphSeparator to: {separator}");
+                    _bridge.ExecuteScript($"document.execCommand('defaultParagraphSeparator', false, '{separator}')");
+                }
+            }
         }
 
         public bool expando { get; set; } = true;

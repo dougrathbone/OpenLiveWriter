@@ -187,6 +187,17 @@ namespace OpenLiveWriter.PostEditor
         }
         private const string WEBLOG_POSTS_FOLDER = "PostsDirectory";
 
+        /// <summary>
+        /// Whether to use &lt;p&gt; tags for paragraphs instead of &lt;div&gt; tags.
+        /// Default is true (use &lt;p&gt; tags) to match traditional HTML behavior.
+        /// </summary>
+        public static bool UseParagraphTags
+        {
+            get { return SettingsKey.GetBoolean(USE_PARAGRAPH_TAGS, true); }
+            set { SettingsKey.SetBoolean(USE_PARAGRAPH_TAGS, value); }
+        }
+        private const string USE_PARAGRAPH_TAGS = "UseParagraphTags";
+
         internal static SettingsPersisterHelper SettingsKey = ApplicationEnvironment.PreferencesSettingsRoot.GetSubSettings("PostEditor");
         public static SettingsPersisterHelper RecentEmoticonsKey = SettingsKey.GetSubSettings("RecentEmoticons");
     }

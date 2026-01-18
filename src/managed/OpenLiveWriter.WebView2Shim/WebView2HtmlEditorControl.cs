@@ -199,6 +199,9 @@ namespace OpenLiveWriter.WebView2Shim
                         // Inject host object sync listeners after navigation completes
                         await SetupHostObjectListeners();
                         
+                        // Set paragraph separator based on user preference
+                        await ApplyParagraphSeparatorSetting();
+                        
                         // Notify command source that WebView2 is ready
                         _commandSource.SetWebView(_webView);
                         
@@ -400,6 +403,22 @@ namespace OpenLiveWriter.WebView2Shim
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} SetupHostObjectListeners error: {ex.Message}");
+            }
+        }
+
+        private async Task ApplyParagraphSeparatorSetting()
+        {
+            try
+            {
+                // Use <p> tags if UseParagraphTags is true, otherwise use <div> (Chromium default)
+                var separator = WebView2Document.UseParagraphTags ? "p" : "div";
+                var script = $"document.execCommand('defaultParagraphSeparator', false, '{separator}');";
+                await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} Set defaultParagraphSeparator to '{separator}'");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} ApplyParagraphSeparatorSetting error: {ex.Message}");
             }
         }
 

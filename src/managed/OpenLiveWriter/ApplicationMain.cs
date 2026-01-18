@@ -18,6 +18,7 @@ using OpenLiveWriter.Localization;
 using OpenLiveWriter.PostEditor;
 using OpenLiveWriter.PostEditor.JumpList;
 using OpenLiveWriter.PostEditor.Updates;
+using OpenLiveWriter.WebView2Shim;
 using Squirrel;
 
 namespace OpenLiveWriter
@@ -312,6 +313,9 @@ namespace OpenLiveWriter
                 // Make sure editor options are available before we launch the first instance.
                 GlobalEditorOptions.Init(new OpenLiveWriterContentTarget(), new OpenLiveWriterSettingsProvider());
                 System.Diagnostics.Debug.WriteLine("[OLW-DEBUG] GlobalEditorOptions.Init done");
+
+                // Initialize WebView2 settings from user preferences
+                WebView2Document.UseParagraphTags = PostEditorSettings.UseParagraphTags;
 
                 // register file associations
                 // Removing this call, as it causes exceptions in Vista
