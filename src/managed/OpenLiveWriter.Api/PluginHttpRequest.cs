@@ -5,6 +5,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Diagnostics;
@@ -179,37 +180,39 @@ namespace OpenLiveWriter.Api
             // the web as long as the user has requested we do this
             if (MakeRequest)
             {
-                HttpWebResponse response = HttpRequestHelper.SendRequest(_requestUrl, delegate (HttpWebRequest request)
-                {
-                    request.AllowAutoRedirect = AllowAutoRedirect;
-                    request.Timeout = timeoutMs;
-                    request.ContentType = ContentType;
-                    if (PostData != null)
-                    {
-                        request.Method = "POST";
-                        using (Stream requestStream = request.GetRequestStream())
-                            StreamHelper.Transfer(new MemoryStream(PostData), requestStream);
-                    }
-                });
+                using var cts = timeoutMs > 0 && timeoutMs != System.Threading.Timeout.Infinite
+                    ? new CancellationTokenSource(timeoutMs)
+                    : new CancellationTokenSource();
 
-                try
+                HttpMethod method = PostData != null ? HttpMethod.Post : HttpMethod.Get;
+                using var request = new HttpRequestMessage(method, _requestUrl);
+
+                if (PostData != null)
                 {
-                    Stream responseStream = response.GetResponseStream();
-                    if (responseStream != null)
-                    {
-                        if (WriteToCache)
-                            return WriteResponseToCache(responseStream);
-                        else
-                            return StreamHelper.CopyToMemoryStream(responseStream);
-                    }
-                    else
-                    {
-                        return null;
-                    }
+                    var content = new ByteArrayContent(PostData);
+                    if (!string.IsNullOrEmpty(ContentType))
+                        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ContentType);
+                    request.Content = content;
                 }
-                finally
+
+                var response = HttpClientService.DefaultClient.SendAsync(request, cts.Token).GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
+
+                Stream responseStream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+                if (responseStream != null)
                 {
-                    response.Close();
+                    // Copy to memory first since response stream may not be seekable
+                    var memStream = StreamHelper.CopyToMemoryStream(responseStream);
+                    memStream.Position = 0;
+
+                    if (WriteToCache)
+                        return WriteResponseToCache(memStream);
+                    else
+                        return memStream;
+                }
+                else
+                {
+                    return null;
                 }
             }
             else
