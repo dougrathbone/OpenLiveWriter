@@ -4,7 +4,9 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using OpenLiveWriter.Interop.Windows;
 
 namespace OpenLiveWriter.CoreServices
@@ -23,6 +25,7 @@ namespace OpenLiveWriter.CoreServices
 
         private readonly bool _isFileUrl;
         private readonly string _filePath;
+        private CancellationTokenSource _cts;
 
         /// <summary>
         /// Event called when an asynchronous request is completed.
@@ -102,6 +105,7 @@ namespace OpenLiveWriter.CoreServices
                 {
                     ResponseStream = new FileStream(cacheInfo.lpszLocalFileName, FileMode.Open, FileAccess.Read);
                     FireRequestComplete();
+                    return;
                 }
             }
 
@@ -110,37 +114,61 @@ namespace OpenLiveWriter.CoreServices
             {
                 try
                 {
-                    m_webRequest = HttpRequestHelper.CreateHttpWebRequest(m_url, true);
-                    m_webRequest.Timeout = timeOut;
-                    m_webRequest.BeginGetResponse(new AsyncCallback(RequestCompleteHandler), new object());
+                    _cts = new CancellationTokenSource(timeOut);
+                    _ = SendRequestAsync(_cts.Token);
                 }
-                catch (Exception ex) when (ex is InvalidCastException || ex is NotSupportedException)
+                catch (Exception ex)
                 {
-                    Trace.WriteLine($"AsyncWebRequestWithCache: Unable to create request for {m_url}: {ex.Message}");
+                    Trace.WriteLine($"AsyncWebRequestWithCache: Unable to start request for {m_url}: {ex.Message}");
                     FireRequestComplete();
                 }
             }
         }
 
-        /// <summary>
-        /// Cancels a running a synchronous request
-        /// </summary>
-        public void Cancel()
+        private async Task SendRequestAsync(CancellationToken cancellationToken)
         {
-            if (requestRunning)
-                m_webRequest.Abort();
+            try
+            {
+                var response = await HttpRequestHelper.HttpClient.GetAsync(m_url, cancellationToken).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    // Copy to memory stream so we own the data
+                    var memStream = new MemoryStream();
+                    await response.Content.CopyToAsync(memStream, cancellationToken).ConfigureAwait(false);
+                    memStream.Position = 0;
+                    ResponseStream = memStream;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Request was cancelled - that's OK
+            }
+            catch (HttpRequestException ex)
+            {
+                Trace.WriteLine($"AsyncWebRequestWithCache: Request failed for {m_url}: {ex.Message}");
+            }
+            finally
+            {
+                FireRequestComplete();
+            }
         }
 
         /// <summary>
-        /// Handles completed asynchronous webRequest
+        /// Cancels a running request
         /// </summary>
-        private void RequestCompleteHandler(
-            IAsyncResult ar
-            )
+        public void Cancel()
         {
-            WebResponse response = m_webRequest.EndGetResponse(ar);
-            ResponseStream = response.GetResponseStream();
-            FireRequestComplete();
+            if (requestRunning && _cts != null)
+            {
+                try
+                {
+                    _cts.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Already disposed
+                }
+            }
         }
 
         /// <summary>
@@ -150,12 +178,18 @@ namespace OpenLiveWriter.CoreServices
         {
             OnRequestComplete(EventArgs.Empty);
             requestRunning = false;
+            
+            // Clean up cancellation token
+            try
+            {
+                _cts?.Dispose();
+                _cts = null;
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
         }
-
-        /// <summary>
-        /// The web request
-        /// </summary>
-        private WebRequest m_webRequest;
 
         /// <summary>
         /// The url

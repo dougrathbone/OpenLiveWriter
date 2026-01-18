@@ -71,7 +71,9 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 | `GenericAtomClient.cs` | `SYSLIB0009` | Google login auth |
 
 **Migration Progress:**
-- ✅ `WebRequestWithCache.cs`, `AsyncWebRequestWithCache.cs` - Migrated to use File.OpenRead for file:// URLs
+- ✅ `WebRequestWithCache.cs` - Fully migrated to HttpClient
+- ✅ `AsyncWebRequestWithCache.cs` - Fully migrated to HttpClient
+- ✅ `ContentTypeHelper.cs` - Updated to use HttpResponseMessage
 - ✅ `TistoryBlogClient.cs` - Fully migrated to HttpClient
 - ✅ `DestinationValidator.cs` - Migrated to use HttpRequestHelper.CheckUrlReachable
 - ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods (`HttpClient`, `SendRequestAsync`, `DownloadStream`, `CheckUrlReachable`, `GetResponse`, `GetResponseStream`, `PostForm`, `PostFormStream`)

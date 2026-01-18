@@ -17,7 +17,7 @@
     <Compile Remove="HTML\AsyncPageDownload.cs" />
     <!-- InternetShortCut.cs re-enabled - simple COM interop -->
     <!-- MultiThreadedPageDownloader.cs re-enabled - namespace updated from Project31 to OpenLiveWriter -->
-    <Compile Remove="WebRequest\CloseTrackingHttpWebRequest.cs" />
+    <!-- CloseTrackingHttpWebRequest.cs re-enabled - rewritten without RealProxy for .NET 10 -->
     <Compile Remove="DataObject\SearchReferrerChain.cs" />
     <Compile Remove="ComponentRootDesigner.cs" />
     <Compile Remove="Diagnostics\UnexpectedErrorMessageDesigner.cs" />

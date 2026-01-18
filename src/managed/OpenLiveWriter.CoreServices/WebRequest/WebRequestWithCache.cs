@@ -5,6 +5,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Http;
+using System.Threading;
 using OpenLiveWriter.Interop.Windows;
 
 namespace OpenLiveWriter.CoreServices
@@ -44,12 +46,12 @@ namespace OpenLiveWriter.CoreServices
             return GetResponseStream(CacheSettings.CHECKCACHE);
         }
 
-        public WebResponse GetHeadOnly()
+        public HttpResponseMessage GetHeadOnly()
         {
             return GetHeadOnly(DEFAULT_TIMEOUT_MS);
         }
 
-        public WebResponse GetHeadOnly(int timeOut)
+        public HttpResponseMessage GetHeadOnly(int timeOut)
         {
             // For file:// URLs, we can't get "head only" - return null
             // The caller should check file existence directly
@@ -59,34 +61,41 @@ namespace OpenLiveWriter.CoreServices
             }
 
             // Note that in the event that the server returns a 403 for head, we try again using a get
-            WebResponse response = null;
-            if (WebRequest is HttpWebRequest)
+            try
             {
-                try
+                using var cts = new CancellationTokenSource(timeOut);
+                using var headRequest = new HttpRequestMessage(HttpMethod.Head, m_url);
+                var response = HttpRequestHelper.HttpClient.SendAsync(headRequest, cts.Token).GetAwaiter().GetResult();
+                
+                if (response.IsSuccessStatusCode)
                 {
-                    WebRequest.Method = "HEAD";
-                    WebRequest.Timeout = timeOut;
-                    response = WebRequest.GetResponse();
+                    return response;
                 }
-                catch (WebException e)
-                {
-                    if (e.Status == WebExceptionStatus.Timeout)
-                        return null;
-
-                    try
-                    {
-                        m_webRequest = null;
-                        WebRequest.Method = "GET";
-                        WebRequest.Timeout = timeOut;
-                        response = WebRequest.GetResponse();
-                    }
-                    catch (WebException we)
-                    {
-                        Trace.WriteLine("Error while finding WEB content type using " + WebRequest.Method + ": " + we.Message);
-                    }
-                }
+                
+                // Try GET as fallback
+                response.Dispose();
             }
-            return response;
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+            catch (HttpRequestException)
+            {
+                // Fall through to try GET
+            }
+
+            // Try GET as fallback
+            try
+            {
+                using var cts = new CancellationTokenSource(timeOut);
+                using var getRequest = new HttpRequestMessage(HttpMethod.Get, m_url);
+                return HttpRequestHelper.HttpClient.SendAsync(getRequest, HttpCompletionOption.ResponseHeadersRead, cts.Token).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine("Error while finding WEB content type using GET: " + ex.Message);
+                return null;
+            }
         }
 
         /// <summary>
@@ -145,45 +154,26 @@ namespace OpenLiveWriter.CoreServices
                 if (m_url == null)
                     return null;
 
-                if (WebRequest is HttpWebRequest thisRequest)
-                {
-                    thisRequest.Timeout = timeOut;
-                }
-
                 try
                 {
-                    stream = WebRequest.GetResponse().GetResponseStream();
+                    using var cts = new CancellationTokenSource(timeOut);
+                    var response = HttpRequestHelper.HttpClient.GetAsync(m_url, cts.Token).GetAwaiter().GetResult();
+                    if (response.IsSuccessStatusCode)
+                    {
+                        // Copy to memory stream so we own the data
+                        var memStream = new MemoryStream();
+                        response.Content.ReadAsStream().CopyTo(memStream);
+                        memStream.Position = 0;
+                        stream = memStream;
+                    }
                 }
-                catch (WebException)
+                catch (Exception ex) when (ex is HttpRequestException || ex is OperationCanceledException)
                 {
+                    Trace.WriteLine($"WebRequestWithCache: Request failed for {m_url}: {ex.Message}");
                 }
             }
             return stream;
         }
-
-        private WebRequest WebRequest
-        {
-            get
-            {
-                if (m_webRequest == null && !_isFileUrl)
-                {
-                    try
-                    {
-                        m_webRequest = HttpRequestHelper.CreateHttpWebRequest(m_url, true);
-                    }
-                    catch (Exception ex) when (ex is InvalidCastException || ex is NotSupportedException)
-                    {
-                        Trace.WriteLine($"WebRequestWithCache: Unable to create request for {m_url}: {ex.Message}");
-                    }
-                }
-                return m_webRequest;
-            }
-        }
-
-        /// <summary>
-        /// The web request
-        /// </summary>
-        private WebRequest m_webRequest;
 
         /// <summary>
         /// The url

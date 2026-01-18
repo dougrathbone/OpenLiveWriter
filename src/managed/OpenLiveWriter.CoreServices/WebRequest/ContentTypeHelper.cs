@@ -400,25 +400,22 @@ namespace OpenLiveWriter.CoreServices
             {
                 WebRequestWithCache webRequest = new WebRequestWithCache(url);
 
-                WebResponse response;
-                if (timeOutMs == -1)
-                    response = webRequest.GetHeadOnly();
-                else
-                    response = webRequest.GetHeadOnly(timeOutMs);
+                using var response = timeOutMs == -1
+                    ? webRequest.GetHeadOnly()
+                    : webRequest.GetHeadOnly(timeOutMs);
 
-                if (response != null && response.ContentType != null && response.ContentType != string.Empty)
+                if (response != null)
                 {
-                    string contentTypeString = response.ContentType;
-                    string contentEncodingString = null;
-                    if (contentTypeString.IndexOf(";", StringComparison.OrdinalIgnoreCase) > 0)
+                    var mediaType = response.Content?.Headers?.ContentType;
+                    if (mediaType != null && !string.IsNullOrEmpty(mediaType.MediaType))
                     {
-                        string[] contentTypeParts = contentTypeString.Split(';');
-                        contentTypeString = contentTypeParts[0];
-                        contentEncodingString = contentTypeParts[1];
+                        string contentTypeString = mediaType.MediaType;
+                        string contentEncodingString = mediaType.CharSet;
+                        var responseUri = response.RequestMessage?.RequestUri ?? new Uri(url);
+                        long contentLength = response.Content?.Headers?.ContentLength ?? -1;
+                        contentType = new UrlContentTypeInfo(contentTypeString, contentEncodingString, UrlHelper.SafeToAbsoluteUri(responseUri), (int)contentLength);
                     }
-                    contentType = new UrlContentTypeInfo(contentTypeString, contentEncodingString, UrlHelper.SafeToAbsoluteUri(response.ResponseUri), Convert.ToInt32(response.ContentLength));
                 }
-
             }
             return contentType;
         }

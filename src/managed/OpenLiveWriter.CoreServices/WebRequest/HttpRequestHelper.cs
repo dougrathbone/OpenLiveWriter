@@ -67,8 +67,17 @@ namespace OpenLiveWriter.CoreServices
 
         public static void TrackResponseClosing(ref HttpWebRequest req)
         {
-            // CloseTrackingHttpWebRequest removed - not available in .NET 10
-            // The tracking functionality is no longer needed in modern .NET
+            CloseTrackingHttpWebRequest.Wrap(ref req);
+        }
+        
+        /// <summary>
+        /// Wraps an HttpWebResponse for close tracking in DEBUG builds.
+        /// Call this after calling GetResponse() on a tracked request.
+        /// </summary>
+        [System.Diagnostics.Conditional("DEBUG")]
+        public static void TrackResponse(ref HttpWebResponse response)
+        {
+            CloseTrackingHttpWebRequest.TrackResponse(ref response);
         }
 
         #region HttpClient-based methods (Modern API)
