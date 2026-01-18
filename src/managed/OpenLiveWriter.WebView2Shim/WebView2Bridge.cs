@@ -149,6 +149,15 @@ namespace OpenLiveWriter.WebView2Shim
             return JsonConvert.SerializeObject(value);
         }
 
+        /// <summary>
+        /// HTML-encode a string for safe inclusion in HTML attributes/content.
+        /// </summary>
+        public static string HtmlEncode(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+            return System.Web.HttpUtility.HtmlEncode(value);
+        }
+
         // ===== Element Operations =====
         
         public string ElementGetInnerHTML(string elementId) =>

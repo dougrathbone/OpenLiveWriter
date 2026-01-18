@@ -42,6 +42,8 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
@@ -49,6 +51,7 @@
     <Compile Include="WebView2Document.cs" />
     <Compile Include="WebView2Element.cs" />
     <Compile Include="WebView2ElementCollection.cs" />
+    <Compile Include="WebView2HtmlEditorControl.cs" />
     <Compile Include="WebView2Selection.cs" />
     <Compile Include="WebView2Style.cs" />
     <Compile Include="WebView2TextRange.cs" />
@@ -63,6 +66,22 @@
     <ProjectReference Include="..\OpenLiveWriter.Interop.Mshtml\OpenLiveWriter.Interop.Mshtml.csproj">
       <Project>{0ae37842-33af-4a3c-b405-e57a1dd78e9f}</Project>
       <Name>OpenLiveWriter.Interop.Mshtml</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.ApplicationFramework\OpenLiveWriter.ApplicationFramework.csproj">
+      <Project>{71b6a7f7-ac05-4a07-9426-64c15ea8bb56}</Project>
+      <Name>OpenLiveWriter.ApplicationFramework</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.HtmlEditor\OpenLiveWriter.HtmlEditor.csproj">
+      <Project>{7658f706-8a4f-4bba-8e33-a29edf6b6ade}</Project>
+      <Name>OpenLiveWriter.HtmlEditor</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.Mshtml\OpenLiveWriter.Mshtml.csproj">
+      <Project>{61b56cc5-cfcb-485d-8e82-79a6c79f9274}</Project>
+      <Name>OpenLiveWriter.Mshtml</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenLiveWriter.Localization\OpenLiveWriter.Localization.csproj">
+      <Project>{04f6a3d5-a1ab-4c35-9da8-0e64d7a49c04}</Project>
+      <Name>OpenLiveWriter.Localization</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
