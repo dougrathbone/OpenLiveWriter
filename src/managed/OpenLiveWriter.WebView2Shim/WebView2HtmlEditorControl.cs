@@ -127,6 +127,9 @@ namespace OpenLiveWriter.WebView2Shim
                     {
                         // Inject host object sync listeners after navigation completes
                         await SetupHostObjectListeners();
+                        
+                        // Notify command source that WebView2 is ready
+                        _commandSource.SetWebView(_webView);
                     }
                 };
 
@@ -528,6 +531,7 @@ namespace OpenLiveWriter.WebView2Shim
     {
         private readonly WebView2HtmlEditorControl _editor;
         private WebView2Document _document;
+        private WebView2 _webView;
 
         public WebView2HtmlEditorCommandSource(WebView2HtmlEditorControl editor, WebView2Document document)
         {
@@ -542,22 +546,54 @@ namespace OpenLiveWriter.WebView2Shim
         {
             _document = document;
         }
+        
+        /// <summary>
+        /// Sets the WebView2 reference for direct JavaScript execution.
+        /// </summary>
+        public void SetWebView(WebView2 webView)
+        {
+            _webView = webView;
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] CommandSource.SetWebView called, webView null: {webView == null}");
+        }
+        
+        private void ExecuteCommand(string command, string value = null)
+        {
+            if (_webView?.CoreWebView2 == null) return;
+            
+            var script = value != null 
+                ? $"document.execCommand('{command}', false, '{value}')"
+                : $"document.execCommand('{command}')";
+            
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] ExecuteCommand: {script}");
+            _ = _webView.CoreWebView2.ExecuteScriptAsync(script);
+        }
+        
+        private bool QueryCommandState(string command)
+        {
+            // For now, return false - async query is complex
+            return false;
+        }
+        
+        private bool QueryCommandEnabled(string command)
+        {
+            return _webView?.CoreWebView2 != null;
+        }
 
         // ISimpleTextEditorCommandSource
         public bool HasFocus => _editor?.ContainsFocus ?? false;
-        public bool CanUndo => _document?.queryCommandEnabled("undo") ?? false;
-        public void Undo() => _document?.execCommand("undo");
-        public bool CanRedo => _document?.queryCommandEnabled("redo") ?? false;
-        public void Redo() => _document?.execCommand("redo");
-        public bool CanCut => _document?.queryCommandEnabled("cut") ?? false;
-        public void Cut() => _document?.execCommand("cut");
-        public bool CanCopy => _document?.queryCommandEnabled("copy") ?? false;
-        public void Copy() => _document?.execCommand("copy");
+        public bool CanUndo => QueryCommandEnabled("undo");
+        public void Undo() => ExecuteCommand("undo");
+        public bool CanRedo => QueryCommandEnabled("redo");
+        public void Redo() => ExecuteCommand("redo");
+        public bool CanCut => QueryCommandEnabled("cut");
+        public void Cut() => ExecuteCommand("cut");
+        public bool CanCopy => QueryCommandEnabled("copy");
+        public void Copy() => ExecuteCommand("copy");
         public bool CanPaste => true; // WebView2 handles paste internally
-        public void Paste() => _document?.execCommand("paste");
+        public void Paste() => ExecuteCommand("paste");
         public bool CanClear => true;
-        public void Clear() => _document?.execCommand("delete");
-        public void SelectAll() => _document?.execCommand("selectAll");
+        public void Clear() => ExecuteCommand("delete");
+        public void SelectAll() => ExecuteCommand("selectAll");
         public void InsertEuroSymbol() => _editor?.InsertHtml("€", false);
         public bool ReadOnly => false;
         public event EventHandler CommandStateChanged;
@@ -565,20 +601,20 @@ namespace OpenLiveWriter.WebView2Shim
 
         // IHtmlEditorCommandSource
         public void ViewSource() { /* TODO */ }
-        public void ClearFormatting() => _document?.execCommand("removeFormat");
-        public bool CanApplyFormatting(CommandId? commandId) => _editor?.IsInitialized ?? false;
+        public void ClearFormatting() => ExecuteCommand("removeFormat");
+        public bool CanApplyFormatting(CommandId? commandId) => _webView?.CoreWebView2 != null;
 
         public string SelectionFontFamily => null; // TODO
-        public void ApplyFontFamily(string fontFamily) => _document?.execCommand("fontName", false, fontFamily);
+        public void ApplyFontFamily(string fontFamily) => ExecuteCommand("fontName", fontFamily);
 
         public float SelectionFontSize => 0; // TODO
-        public void ApplyFontSize(float fontSize) => _document?.execCommand("fontSize", false, ((int)fontSize).ToString());
+        public void ApplyFontSize(float fontSize) => ExecuteCommand("fontSize", ((int)fontSize).ToString());
 
         public int SelectionForeColor => 0;
         public void ApplyFontForeColor(int color) 
         {
             var c = Color.FromArgb(color);
-            _document?.execCommand("foreColor", false, $"#{c.R:X2}{c.G:X2}{c.B:X2}");
+            ExecuteCommand("foreColor", $"#{c.R:X2}{c.G:X2}{c.B:X2}");
         }
 
         public int SelectionBackColor => 0;
@@ -587,30 +623,42 @@ namespace OpenLiveWriter.WebView2Shim
             if (color.HasValue)
             {
                 var c = Color.FromArgb(color.Value);
-                _document?.execCommand("hiliteColor", false, $"#{c.R:X2}{c.G:X2}{c.B:X2}");
+                ExecuteCommand("hiliteColor", $"#{c.R:X2}{c.G:X2}{c.B:X2}");
             }
         }
 
         public string SelectionStyleName => null;
         public void ApplyHtmlFormattingStyle(IHtmlFormattingStyle style) { /* TODO */ }
 
-        public bool SelectionBold => _document?.queryCommandState("bold") ?? false;
-        public void ApplyBold() => _document?.execCommand("bold");
+        public bool SelectionBold => QueryCommandState("bold");
+        public void ApplyBold()
+        {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] ApplyBold called, _webView null: {_webView == null}");
+            ExecuteCommand("bold");
+        }
 
-        public bool SelectionItalic => _document?.queryCommandState("italic") ?? false;
-        public void ApplyItalic() => _document?.execCommand("italic");
+        public bool SelectionItalic => QueryCommandState("italic");
+        public void ApplyItalic()
+        {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] ApplyItalic called, _webView null: {_webView == null}");
+            ExecuteCommand("italic");
+        }
 
-        public bool SelectionUnderlined => _document?.queryCommandState("underline") ?? false;
-        public void ApplyUnderline() => _document?.execCommand("underline");
+        public bool SelectionUnderlined => QueryCommandState("underline");
+        public void ApplyUnderline()
+        {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] ApplyUnderline called, _webView null: {_webView == null}");
+            ExecuteCommand("underline");
+        }
 
-        public bool SelectionStrikethrough => _document?.queryCommandState("strikeThrough") ?? false;
-        public void ApplyStrikethrough() => _document?.execCommand("strikeThrough");
+        public bool SelectionStrikethrough => QueryCommandState("strikeThrough");
+        public void ApplyStrikethrough() => ExecuteCommand("strikeThrough");
 
-        public bool SelectionSuperscript => _document?.queryCommandState("superscript") ?? false;
-        public void ApplySuperscript() => _document?.execCommand("superscript");
+        public bool SelectionSuperscript => QueryCommandState("superscript");
+        public void ApplySuperscript() => ExecuteCommand("superscript");
 
-        public bool SelectionSubscript => _document?.queryCommandState("subscript") ?? false;
-        public void ApplySubscript() => _document?.execCommand("subscript");
+        public bool SelectionSubscript => QueryCommandState("subscript");
+        public void ApplySubscript() => ExecuteCommand("subscript");
 
         public bool SelectionIsLTR => true;
         public void InsertLTRTextBlock() { /* TODO */ }
@@ -622,24 +670,24 @@ namespace OpenLiveWriter.WebView2Shim
         {
             switch (alignment)
             {
-                case EditorTextAlignment.Left: _document?.execCommand("justifyLeft"); break;
-                case EditorTextAlignment.Center: _document?.execCommand("justifyCenter"); break;
-                case EditorTextAlignment.Right: _document?.execCommand("justifyRight"); break;
-                case EditorTextAlignment.Justify: _document?.execCommand("justifyFull"); break;
+                case EditorTextAlignment.Left: ExecuteCommand("justifyLeft"); break;
+                case EditorTextAlignment.Center: ExecuteCommand("justifyCenter"); break;
+                case EditorTextAlignment.Right: ExecuteCommand("justifyRight"); break;
+                case EditorTextAlignment.Justify: ExecuteCommand("justifyFull"); break;
             }
         }
 
-        public bool SelectionBulleted => _document?.queryCommandState("insertUnorderedList") ?? false;
-        public void ApplyBullets() => _document?.execCommand("insertUnorderedList");
+        public bool SelectionBulleted => QueryCommandState("insertUnorderedList");
+        public void ApplyBullets() => ExecuteCommand("insertUnorderedList");
 
-        public bool SelectionNumbered => _document?.queryCommandState("insertOrderedList") ?? false;
-        public void ApplyNumbers() => _document?.execCommand("insertOrderedList");
+        public bool SelectionNumbered => QueryCommandState("insertOrderedList");
+        public void ApplyNumbers() => ExecuteCommand("insertOrderedList");
 
         public bool CanIndent => true;
-        public void ApplyIndent() => _document?.execCommand("indent");
+        public void ApplyIndent() => ExecuteCommand("indent");
 
         public bool CanOutdent => true;
-        public void ApplyOutdent() => _document?.execCommand("outdent");
+        public void ApplyOutdent() => ExecuteCommand("outdent");
 
         public void ApplyBlockquote() { /* TODO: wrap selection in blockquote */ }
         public bool SelectionBlockquoted => false; // TODO
@@ -648,7 +696,7 @@ namespace OpenLiveWriter.WebView2Shim
         public void InsertLink() { /* Handled by caller */ }
 
         public bool CanRemoveLink => false; // TODO
-        public void RemoveLink() => _document?.execCommand("unlink");
+        public void RemoveLink() => ExecuteCommand("unlink");
 
         public void OpenLink() { /* TODO */ }
         public void AddToGlossary() { /* TODO */ }
