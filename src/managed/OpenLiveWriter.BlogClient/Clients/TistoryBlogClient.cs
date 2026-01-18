@@ -287,12 +287,11 @@ namespace OpenLiveWriter.BlogClient.Clients
 
         private BlogInfo[] GetUsersBlogs(TistoryCredential tc)
         {
-
-            XmlRestRequestHelper Blog = new XmlRestRequestHelper();
-            TokenResponse tistory_token =(TokenResponse) tc.Token;
+            var xmlHelper = new HttpClientXmlRestRequestHelper();
+            TokenResponse tistory_token = (TokenResponse)tc.Token;
             string blog_info_uri = String.Format("{0}{1}&url={2}", blog_info_url, tistory_token.AccessToken, tc.Username);
             Uri blog_info = new Uri(blog_info_uri);
-            XmlDocument blog_xml = Blog.Get(ref blog_info, null);
+            XmlDocument blog_xml = xmlHelper.Get(ref blog_info, null);
 
             try
             {
@@ -388,11 +387,11 @@ namespace OpenLiveWriter.BlogClient.Clients
         private BlogPostCategory[] MetaweblogGetCategories(string blogId)
         {
             BlogPostCategory[] result_category = null;
-            XmlRestRequestHelper Blog = new XmlRestRequestHelper();
+            var xmlHelper = new HttpClientXmlRestRequestHelper();
             TokenResponse tistory_token = (TokenResponse)_tistoryCredential.Token;
             string categori_info_uri = String.Format("{0}{1}&blogName={2}", category_url, tistory_token.AccessToken, blogId);
             Uri blog_info = new Uri(categori_info_uri);
-            XmlDocument blog_xml = Blog.Get(ref blog_info, null);
+            XmlDocument blog_xml = xmlHelper.Get(ref blog_info, null);
 
             //// call the method
             //XmlNode result = CallMethod("metaWeblog.getCategories",
@@ -521,11 +520,11 @@ namespace OpenLiveWriter.BlogClient.Clients
 
         public override BlogPost[] GetRecentPosts(string blogId, int maxPosts, bool includeCategories, DateTime? now)
         {
-            XmlRestRequestHelper Blog = new XmlRestRequestHelper();
+            var xmlHelper = new HttpClientXmlRestRequestHelper();
             TokenResponse tistory_token = (TokenResponse)_tistoryCredential.Token;
             string recent_post_uri = String.Format("{0}{1}&blogName={2}&count={3}&sort=date", recent_post_url, tistory_token.AccessToken, blogId, maxPosts);
             Uri blog_info = new Uri(recent_post_uri);
-            XmlDocument blog_xml = Blog.Get(ref blog_info, null);
+            XmlDocument blog_xml = xmlHelper.Get(ref blog_info, null);
             //Blog.Post()
 
             // parse results
@@ -569,7 +568,6 @@ namespace OpenLiveWriter.BlogClient.Clients
 
         private string MetaweblogNewPost(string blogId, BlogPost post, bool publish)
         {
-            XmlRestRequestHelper Blog = new XmlRestRequestHelper();
             TokenResponse tistory_token = (TokenResponse)_tistoryCredential.Token;
             FormData paramemter = new FormData();
             paramemter.Add("access_token", tistory_token.AccessToken);
@@ -620,7 +618,6 @@ namespace OpenLiveWriter.BlogClient.Clients
 
         public override void DeletePost(string blogId, string postId, bool publish)
         {
-            XmlRestRequestHelper Blog = new XmlRestRequestHelper();
             TokenResponse tistory_token = (TokenResponse)_tistoryCredential.Token;
             FormData paramemter = new FormData();
             paramemter.Add("access_token", tistory_token.AccessToken);
@@ -1484,8 +1481,8 @@ namespace OpenLiveWriter.BlogClient.Clients
                         request_uri = String.Format("{0}{1}&url={2}", expire_check_url, _token.AccessToken, Username);
                         Uri expire_uri = new Uri(request_uri);
 
-                        XmlRestRequestHelper expire_request = new XmlRestRequestHelper();
-                        XmlDocument expire_xml = expire_request.Get(ref expire_uri, null);
+                        var xmlHelper = new HttpClientXmlRestRequestHelper();
+                        XmlDocument expire_xml = xmlHelper.Get(ref expire_uri, null);
                         XmlNode statusNode;
 
                         statusNode = expire_xml.SelectSingleNode("tistory/status");

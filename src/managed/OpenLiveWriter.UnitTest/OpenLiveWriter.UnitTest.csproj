@@ -19,6 +19,8 @@
     <Compile Remove="Interop\SpellApiEx.cs" />
     <!-- LocalCabResourceCacheTest references LocalCabResourceCache which no longer exists -->
     <Compile Remove="CoreServices\ResourceDownloading\LocalCabResourceCacheTest.cs" />
+    <!-- CloseTrackingHttpWebRequestTest tests deprecated RealProxy-based tracking (not available in .NET 10) -->
+    <Compile Remove="CoreServices\CloseTrackingHttpWebRequestTest.cs" />
   </ItemGroup>
 
   <ItemGroup>
