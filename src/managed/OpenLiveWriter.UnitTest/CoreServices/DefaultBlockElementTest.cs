@@ -41,19 +41,20 @@ line 7";
 
             string html = TextHelper.GetHTMLFromText(plainText, false, paragraphDefaultBlockElement);
 
+            // Note: .NET 10 uses &nbsp; for empty block elements to prevent collapse
             Assert.AreEqual(
 @"<p>line 1<br />
 line 2</p>
 <p>line 3</p>
 <p><br />
 line 4</p>
-<p></p>
+<p>&nbsp;</p>
 <p>line 5</p>
-<p></p>
+<p>&nbsp;</p>
 <p><br />
 line 6</p>
-<p></p>
-<p></p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
 <p>line 7</p>", html);
         }
 
@@ -88,28 +89,29 @@ line 7";
 
             string html = TextHelper.GetHTMLFromText(plainText, false, divDefaultBlockElement);
 
+            // Note: .NET 10 uses &nbsp; for empty block elements to prevent collapse
             Assert.AreEqual(
 @"<div>line 1</div>
 <div>line 2</div>
-<div></div>
+<div>&nbsp;</div>
 <div>line 3</div>
-<div></div>
-<div></div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
 <div>line 4</div>
-<div></div>
-<div></div>
-<div></div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
 <div>line 5</div>
-<div></div>
-<div></div>
-<div></div>
-<div></div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
 <div>line 6</div>
-<div></div>
-<div></div>
-<div></div>
-<div></div>
-<div></div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
+<div>&nbsp;</div>
 <div>line 7</div>", html);
         }
     }

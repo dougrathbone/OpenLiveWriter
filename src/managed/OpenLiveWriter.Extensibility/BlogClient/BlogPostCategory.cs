@@ -64,16 +64,20 @@ namespace OpenLiveWriter.Extensibility.BlogClient
             if ((x.HasParent || y.HasParent) && x.Parent != y.Parent)
                 return false;
 
-            string selfNameUpper = x.Name.ToUpperInvariant();
-            string otherNameUpper = y.Name.ToUpperInvariant();
-            if (selfNameUpper == otherNameUpper)
+            // Case-insensitive comparison of names
+            if (string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            if (lenientNameComparison
-                    && HtmlUtils.UnEscapeEntities(selfNameUpper, HtmlUtils.UnEscapeMode.Default)
-                        == HtmlUtils.UnEscapeEntities(otherNameUpper, HtmlUtils.UnEscapeMode.Default))
+            if (lenientNameComparison)
             {
-                return true;
+                // Unescape HTML entities first (on original names, not uppercased,
+                // because entity names like "amp" are case-sensitive in the lookup)
+                string selfUnescaped = HtmlUtils.UnEscapeEntities(x.Name, HtmlUtils.UnEscapeMode.Default);
+                string otherUnescaped = HtmlUtils.UnEscapeEntities(y.Name, HtmlUtils.UnEscapeMode.Default);
+                if (string.Equals(selfUnescaped, otherUnescaped, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
             }
 
             return false;
