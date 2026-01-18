@@ -61,6 +61,18 @@ It can be opened in Visual Studio.  The solution is in src/managed/writer.sln --
 The main program is src/managed/OpenLiveWriter/ApplicationMain.cs .
 To run from Visual Studio, set the startup project to OpenLiveWriter.
 
+**Architecture:** The build targets x64 (64-bit) only. x86/32-bit is no longer supported.
+
+### Configuration
+
+Open Live Writer uses environment variables for runtime configuration:
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `OLW_USE_MSHTML` | `0` | Set to `1` to use legacy MSHTML/IE engine instead of WebView2 |
+
+**Note:** WebView2 is now the default rendering engine. Set `OLW_USE_MSHTML=1` if you encounter issues and need to fall back to the legacy IE-based editor.
+
 ### .NET Foundation
 
 The Open Live Writer project is supported by the [.NET Foundation](http://www.dotnetfoundation.org).

@@ -64,32 +64,49 @@ namespace OpenLiveWriter.CoreServices
 
     /// <summary>
     /// Factory for creating HTML document downloaders.
-    /// Uses environment variable OLW_USE_WEBVIEW2 to determine which implementation to use.
+    /// Uses environment variable OLW_USE_MSHTML to determine which implementation to use.
+    /// Default is WebView2, set OLW_USE_MSHTML=1 for legacy IE engine.
+    /// NOTE: WebView2 page downloading is currently disabled due to timing issues.
     /// </summary>
     public static class HTMLDocumentDownloaderFactory
     {
         // Temporarily unused - WebView2 page downloader has timing issues
 #pragma warning disable CS0169
-        private static bool? _useWebView2;
+        private static bool? _useMshtml;
 #pragma warning restore CS0169
 
         /// <summary>
-        /// Gets whether to use WebView2 for downloading.
-        /// Controlled by OLW_USE_WEBVIEW2 environment variable.
-        /// NOTE: Currently disabled - WebView2 page downloading causes timing issues with 
+        /// Gets whether to use MSHTML (IE) for downloading.
+        /// Controlled by OLW_USE_MSHTML environment variable.
+        /// NOTE: Currently always returns true - WebView2 page downloading causes timing issues with 
         /// the main editor due to Application.DoEvents() message pumping.
         /// TODO: Need a different async approach that doesn't interfere with main window.
         /// </summary>
-        public static bool UseWebView2
+        public static bool UseMshtml
         {
             get
             {
-                // Temporarily disabled - WebView2 page downloader's message pump
+                // Temporarily forced to true - WebView2 page downloader's message pump
                 // interferes with MshtmlEditor loading, causing "document not loaded" errors.
                 // The WebView2 browser control (BrowserControlFactory) still works for UI.
-                return false;
+                return true;
+
+                // Original logic for when WebView2 page downloading is fixed:
+                // if (!_useMshtml.HasValue)
+                // {
+                //     string envVar = Environment.GetEnvironmentVariable("OLW_USE_MSHTML");
+                //     _useMshtml = !string.IsNullOrEmpty(envVar) && 
+                //                  (envVar == "1" || envVar.Equals("true", StringComparison.OrdinalIgnoreCase));
+                // }
+                // return _useMshtml.Value;
             }
         }
+
+        /// <summary>
+        /// Gets whether to use WebView2 (inverse of UseMshtml).
+        /// Currently always false due to timing issues.
+        /// </summary>
+        public static bool UseWebView2 => !UseMshtml;
 
         /// <summary>
         /// Creates an HTML document downloader using the appropriate implementation.

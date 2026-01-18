@@ -8,34 +8,40 @@ namespace OpenLiveWriter.BrowserControl
 {
     /// <summary>
     /// Factory for creating browser controls. Allows switching between
-    /// IE WebBrowser (ExplorerBrowserControl) and WebView2 (WebView2BrowserControl).
+    /// WebView2 (default) and IE WebBrowser (ExplorerBrowserControl).
     /// </summary>
     public static class BrowserControlFactory
     {
-        private static bool? _useWebView2;
+        private static bool? _useMshtml;
 
         /// <summary>
-        /// Gets or sets whether to use WebView2 instead of IE WebBrowser.
-        /// Default is false (use IE) for backward compatibility.
-        /// Set via environment variable OLW_USE_WEBVIEW2=1 to enable.
+        /// Gets or sets whether to use IE WebBrowser instead of WebView2.
+        /// Default is false (use WebView2).
+        /// Set via environment variable OLW_USE_MSHTML=1 to use legacy IE engine.
         /// </summary>
-        public static bool UseWebView2
+        public static bool UseMshtml
         {
             get
             {
-                if (!_useWebView2.HasValue)
+                if (!_useMshtml.HasValue)
                 {
-                    string envVar = Environment.GetEnvironmentVariable("OLW_USE_WEBVIEW2");
-                    _useWebView2 = !string.IsNullOrEmpty(envVar) && 
-                                   (envVar == "1" || envVar.Equals("true", StringComparison.OrdinalIgnoreCase));
+                    string envVar = Environment.GetEnvironmentVariable("OLW_USE_MSHTML");
+                    _useMshtml = !string.IsNullOrEmpty(envVar) && 
+                                 (envVar == "1" || envVar.Equals("true", StringComparison.OrdinalIgnoreCase));
                 }
-                return _useWebView2.Value;
+                return _useMshtml.Value;
             }
             set
             {
-                _useWebView2 = value;
+                _useMshtml = value;
             }
         }
+
+        /// <summary>
+        /// Gets whether to use WebView2 (inverse of UseMshtml for compatibility).
+        /// WebView2 is now the default.
+        /// </summary>
+        public static bool UseWebView2 => !UseMshtml;
 
         /// <summary>
         /// Creates a new browser control based on the current configuration.
