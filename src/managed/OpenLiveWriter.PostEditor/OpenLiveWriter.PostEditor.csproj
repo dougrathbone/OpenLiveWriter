@@ -567,6 +567,7 @@
     <Compile Include="PostHtmlEditing\BlogPostHtmlSourceEditorControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="PostHtmlEditing\WebView2BlogPostHtmlEditorControl.cs" />
     <Compile Include="PostHtmlEditing\DebugElementBehavior.cs" />
     <Compile Include="PostHtmlEditing\DisabledImageElementBehavior.cs" />
     <Compile Include="PostHtmlEditing\DisabledSmartContentElementBehavior.cs" />

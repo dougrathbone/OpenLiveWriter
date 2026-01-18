@@ -1675,7 +1675,24 @@ namespace OpenLiveWriter.PostEditor
                 case EditingMode.Preview:
                 case EditingMode.Wysiwyg:
                 case EditingMode.PlainText:
-                    contentEditor = _normalHtmlContentEditor;
+                    // Check for WebView2 mode
+                    if (HtmlEditorFactory.UseWebView2)
+                    {
+                        // Create WebView2 editor on first use
+                        if (_webView2HtmlContentEditor == null)
+                        {
+                            Debug.WriteLine("[OLW-DEBUG] Creating WebView2 blog post editor");
+                            _webView2HtmlContentEditor = new WebView2BlogPostHtmlEditorControl();
+                            _webView2HtmlContentEditor.EditorControl.Dock = System.Windows.Forms.DockStyle.Fill;
+                            _editorContainer.Controls.Add(_webView2HtmlContentEditor.EditorControl);
+                        }
+                        contentEditor = _webView2HtmlContentEditor;
+                        Debug.WriteLine("[OLW-DEBUG] Using WebView2 editor");
+                    }
+                    else
+                    {
+                        contentEditor = _normalHtmlContentEditor;
+                    }
                     break;
                 case EditingMode.Source:
                     Debug.Assert(_codeHtmlContentEditor != null, "Changed to source editor without creating one");
@@ -2854,6 +2871,7 @@ namespace OpenLiveWriter.PostEditor
 
         protected IBlogPostHtmlEditor _currentEditor;
         protected BlogPostHtmlEditorControl _normalHtmlContentEditor;
+        protected WebView2BlogPostHtmlEditorControl _webView2HtmlContentEditor;
         protected HtmlEditorSidebarHost _htmlEditorSidebarHost;
         private BlogPostHtmlSourceEditorControl _codeHtmlContentEditor;
 
