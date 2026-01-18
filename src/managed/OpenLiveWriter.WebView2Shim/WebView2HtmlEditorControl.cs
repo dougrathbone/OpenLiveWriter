@@ -31,6 +31,8 @@ namespace OpenLiveWriter.WebView2Shim
         public WebView2HtmlEditorControl()
         {
             InitializeComponent();
+            // Create command source immediately so it's never null
+            _commandSource = new WebView2HtmlEditorCommandSource(this, null);
             InitializeWebView();
         }
 
@@ -81,7 +83,7 @@ namespace OpenLiveWriter.WebView2Shim
                 _bridge = new WebView2Bridge(_webView);
                 _bridge.Initialize();
                 _document = new WebView2Document(_bridge, _webView);
-                _commandSource = new WebView2HtmlEditorCommandSource(this, _document);
+                _commandSource.SetDocument(_document);
                 _isInitialized = true;
                 
                 // Set up content change monitoring
@@ -314,11 +316,19 @@ namespace OpenLiveWriter.WebView2Shim
     internal class WebView2HtmlEditorCommandSource : IHtmlEditorCommandSource
     {
         private readonly WebView2HtmlEditorControl _editor;
-        private readonly WebView2Document _document;
+        private WebView2Document _document;
 
         public WebView2HtmlEditorCommandSource(WebView2HtmlEditorControl editor, WebView2Document document)
         {
             _editor = editor;
+            _document = document;
+        }
+
+        /// <summary>
+        /// Updates the document reference after WebView2 initialization.
+        /// </summary>
+        public void SetDocument(WebView2Document document)
+        {
             _document = document;
         }
 
