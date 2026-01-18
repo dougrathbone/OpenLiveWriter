@@ -21,6 +21,8 @@
     <EmbeddedResource Include="**\*.htm" />
     <EmbeddedResource Include="**\*.html" />
     <EmbeddedResource Include="Configuration\**\*.xml" />
+    <EmbeddedResource Include="Video\VideoProvidersB2.xml" />
+    <EmbeddedResource Include="Tagging\TagProviders.xml" />
   </ItemGroup>
 
   <!-- NuGet Package References -->

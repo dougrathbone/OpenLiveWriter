@@ -29,6 +29,11 @@
     <NoWarn>$(NoWarn);SYSLIB0051</NoWarn> <!-- Formatter-based serialization obsolete -->
     <NoWarn>$(NoWarn);CA1416</NoWarn>     <!-- Platform compatibility - Windows-only APIs (will add attributes in Phase 2) -->
     <NoWarn>$(NoWarn);CS9191</NoWarn>     <!-- ref vs in parameter - minor code style -->
+    <NoWarn>$(NoWarn);WFO1000</NoWarn>   <!-- WinForms property serialization - not needed for runtime -->
+    <NoWarn>$(NoWarn);CA2200</NoWarn>    <!-- Re-throwing exception - will address in code fixes -->
+    <NoWarn>$(NoWarn);WFDEV006</NoWarn>  <!-- WinForms deprecated controls - ContextMenu, MenuItem -->
+    <NoWarn>$(NoWarn);SYSLIB0021</NoWarn> <!-- SHA1Managed obsolete -->
+    <NoWarn>$(NoWarn);SYSLIB0023</NoWarn> <!-- RNGCryptoServiceProvider obsolete -->
     
     <!-- Generate binding redirects for compatibility -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
