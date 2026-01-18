@@ -16,6 +16,12 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="Microsoft.Web.WebView2.Core">
+      <HintPath>..\packages\Microsoft.Web.WebView2.1.0.2903.40\lib\net45\Microsoft.Web.WebView2.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Web.WebView2.WinForms">
+      <HintPath>..\packages\Microsoft.Web.WebView2.1.0.2903.40\lib\net45\Microsoft.Web.WebView2.WinForms.dll</HintPath>
+    </Reference>
     <Reference Include="OpenLiveWriter.Interop.SHDocVw">
       <Name>OpenLiveWriter.Interop.SHDocVw</Name>
       <HintPath>..\OpenLiveWriter.Interop\Com\OpenLiveWriter.Interop.SHDocVw.dll</HintPath>
@@ -297,6 +303,7 @@
     <Compile Include="WebRequest\UrlDownloadToFile.cs" />
     <Compile Include="WebRequest\UrlHelper.cs" />
     <Compile Include="WebRequest\WebPageDownloader.cs" />
+    <Compile Include="WebRequest\WebView2PageDownloader.cs" />
     <Compile Include="WebRequest\WebProxySettings.cs" />
     <Compile Include="WebRequest\WebRequestWithCache.cs" />
     <Compile Include="WebRequest\WsseAuthenticationModule.cs" />
