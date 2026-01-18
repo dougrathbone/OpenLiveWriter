@@ -23,10 +23,10 @@
     <!-- Maintain existing warning/error behavior -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
-    <!-- Suppress obsolete API warnings during migration - will address in Phase 2 -->
+    <!-- Suppress obsolete API warnings during migration -->
     <NoWarn>$(NoWarn);SYSLIB0003</NoWarn> <!-- Code Access Security obsolete -->
-    <NoWarn>$(NoWarn);SYSLIB0011</NoWarn> <!-- BinaryFormatter obsolete -->
-    <NoWarn>$(NoWarn);SYSLIB0051</NoWarn> <!-- Formatter-based serialization obsolete -->
+    <!-- SYSLIB0011 (BinaryFormatter) - Localized to RegistryCodec.cs for backwards-compatible settings loading -->
+    <NoWarn>$(NoWarn);SYSLIB0051</NoWarn> <!-- Formatter-based serialization obsolete (used in RegistryCodec legacy support) -->
     <!-- CA1416 - Platform compatibility: Open Live Writer targets net10.0-windows exclusively.
          The entire application is Windows-only, so platform warnings are suppressed as an architectural decision.
          P/Invoke classes have [SupportedOSPlatform("windows")] attributes for documentation purposes. -->

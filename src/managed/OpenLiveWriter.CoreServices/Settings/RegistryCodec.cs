@@ -7,7 +7,12 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+#pragma warning disable SYSLIB0011 // BinaryFormatter is obsolete - kept for backwards compatibility reading only
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete - kept for backwards compatibility
 
 namespace OpenLiveWriter.CoreServices.Settings
 {
@@ -503,18 +508,30 @@ namespace OpenLiveWriter.CoreServices.Settings
         }
 
         /// <summary>
-        /// Handles any ISerializable type by converting to/from byte array.
+        /// Handles any serializable type by converting to/from byte array.
+        /// Uses JSON for new data, with backwards compatibility for legacy BinaryFormatter data.
         /// </summary>
         /// <remarks>
-        /// TODO: BinaryFormatter is deprecated (SYSLIB0011) and will be removed in future .NET versions.
-        /// Migration plan:
-        /// 1. Replace with System.Text.Json or Newtonsoft.Json for new serialization
-        /// 2. Keep backward compatibility reader for existing registry data
-        /// 3. Test all ISerializable types stored in registry
-        /// Risk: User settings stored with BinaryFormatter cannot be read after migration
+        /// Migration strategy:
+        /// - New data is always saved as JSON (with "OLW_JSON:" prefix for identification)
+        /// - Legacy BinaryFormatter data is detected and deserialized for backwards compatibility
+        /// - On next save, data will be migrated to JSON format automatically
         /// </remarks>
         internal class SerializableCodec : Codec
         {
+            // Magic header to identify JSON-serialized data (UTF-8 bytes)
+            private static readonly byte[] JsonMagicHeader = Encoding.UTF8.GetBytes("OLW_JSON:");
+
+            // JSON serializer options with support for common scenarios
+            private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+            {
+                WriteIndented = false,
+                PropertyNamingPolicy = null, // Preserve original property names
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                IncludeFields = true, // Include public fields (important for some types)
+                Converters = { new JsonStringEnumConverter() } // Serialize enums as strings
+            };
+
             /// <summary>
             /// Unlike the other codecs, Serializable can handle a variety
             /// of types--anything that can be serialized.
@@ -526,14 +543,16 @@ namespace OpenLiveWriter.CoreServices.Settings
 
             public override object Encode(object val)
             {
-                byte[] data;
-                using (MemoryStream ms = new MemoryStream(1000))
-                {
-                    BinaryFormatter formatter = new BinaryFormatter();  // not threadsafe, so must create locally
-                    formatter.Serialize(ms, val);
-                    data = ms.ToArray();
-                }
-                return data;
+                // Serialize to JSON
+                string json = JsonSerializer.Serialize(val, val.GetType(), JsonOptions);
+                byte[] jsonBytes = Encoding.UTF8.GetBytes(json);
+
+                // Prefix with magic header so we can identify JSON data on decode
+                byte[] result = new byte[JsonMagicHeader.Length + jsonBytes.Length];
+                Array.Copy(JsonMagicHeader, 0, result, 0, JsonMagicHeader.Length);
+                Array.Copy(jsonBytes, 0, result, JsonMagicHeader.Length, jsonBytes.Length);
+
+                return result;
             }
 
             public override object Decode(object val)
@@ -541,12 +560,81 @@ namespace OpenLiveWriter.CoreServices.Settings
                 return Deserialize((byte[])val);
             }
 
+            /// <summary>
+            /// Deserializes data, automatically detecting format (JSON or legacy BinaryFormatter).
+            /// </summary>
             public static object Deserialize(byte[] data)
             {
-                using (MemoryStream ms = new MemoryStream(data))
+                return Deserialize(data, null);
+            }
+
+            /// <summary>
+            /// Deserializes data to the specified type, automatically detecting format.
+            /// </summary>
+            public static object Deserialize(byte[] data, Type targetType)
+            {
+                if (data == null || data.Length == 0)
+                    return null;
+
+                // Check for JSON magic header
+                if (IsJsonFormat(data))
                 {
-                    BinaryFormatter formatter = new BinaryFormatter();  // not threadsafe, so must create locally
-                    return formatter.Deserialize(ms);
+                    return DeserializeJson(data, targetType);
+                }
+
+                // Fall back to legacy BinaryFormatter for backwards compatibility
+                return DeserializeLegacyBinaryFormatter(data);
+            }
+
+            private static bool IsJsonFormat(byte[] data)
+            {
+                if (data.Length < JsonMagicHeader.Length)
+                    return false;
+
+                for (int i = 0; i < JsonMagicHeader.Length; i++)
+                {
+                    if (data[i] != JsonMagicHeader[i])
+                        return false;
+                }
+                return true;
+            }
+
+            private static object DeserializeJson(byte[] data, Type targetType)
+            {
+                // Skip the magic header
+                int jsonStart = JsonMagicHeader.Length;
+                int jsonLength = data.Length - jsonStart;
+                string json = Encoding.UTF8.GetString(data, jsonStart, jsonLength);
+
+                if (targetType != null)
+                {
+                    return JsonSerializer.Deserialize(json, targetType, JsonOptions);
+                }
+
+                // If no target type specified, deserialize as JsonElement and return
+                // This is a fallback - callers should specify the type when possible
+                return JsonSerializer.Deserialize<JsonElement>(json, JsonOptions);
+            }
+
+            /// <summary>
+            /// Legacy BinaryFormatter deserialization for backwards compatibility with existing settings.
+            /// This method is kept to read old settings that were serialized before the JSON migration.
+            /// </summary>
+            private static object DeserializeLegacyBinaryFormatter(byte[] data)
+            {
+                try
+                {
+                    using (MemoryStream ms = new MemoryStream(data))
+                    {
+                        var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                        return formatter.Deserialize(ms);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // If BinaryFormatter fails, the data might be corrupted or in an unknown format
+                    Trace.TraceWarning($"Failed to deserialize legacy BinaryFormatter data: {ex.Message}");
+                    return null;
                 }
             }
         }

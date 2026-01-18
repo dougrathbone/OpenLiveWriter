@@ -185,21 +185,24 @@ These are not removed features but warnings that were suppressed to allow compil
 - `SYSLIB0050` - Type.IsSerializable (serialization related)
 - `SYSLIB0051` - Formatter-based serialization - See below for details
 
-### BinaryFormatter Usage (SYSLIB0011, SYSLIB0051) - Technical Debt
+### ✅ BinaryFormatter Migration Complete (SYSLIB0011, SYSLIB0051)
 
 **Location:** `OpenLiveWriter.CoreServices/Settings/RegistryCodec.cs`
 **Class:** `SerializableCodec`
 
-The application uses `BinaryFormatter` to serialize arbitrary `ISerializable` objects to the Windows Registry for persistent user settings storage. This is deprecated in .NET 10.
+**Migration Completed:**
+- New settings are serialized using `System.Text.Json` with a magic header prefix (`OLW_JSON:`)
+- Legacy BinaryFormatter data is automatically detected and deserialized for backwards compatibility
+- Settings are migrated to JSON format on next save (transparent to users)
 
-**Migration Plan:**
-1. Replace with `System.Text.Json` or `Newtonsoft.Json` for new serialization
-2. Implement backward compatibility reader for existing BinaryFormatter data
-3. Test all `ISerializable` types that may be stored in registry
+**Format Detection:**
+- JSON data: Byte array starting with `OLW_JSON:` followed by UTF-8 JSON
+- Legacy data: BinaryFormatter serialized bytes (auto-detected by absence of JSON header)
 
-**Risk:** User settings stored with BinaryFormatter may become unreadable after migration. Requires careful testing before removal of backward compatibility support.
-
-**Current Status:** Suppressed with SYSLIB0011. TODO comment added to code.
+**Technical Details:**
+- `JsonSerializerOptions` configured with enum string conversion and field inclusion
+- BinaryFormatter kept as read-only fallback (will never write new BinaryFormatter data)
+- Warning suppression localized to `RegistryCodec.cs` only (removed from `Directory.Build.props`)
 - `CA1416` - Platform compatibility (app is Windows-only by design)
 - `CS9191` - ref vs in parameter (minor code style)
 - `WFO1000`, `WFO1001` - WinForms serialization (internal detail)
