@@ -55,9 +55,16 @@ namespace OpenLiveWriter.FileDestinations
                     {
                         if (!urlMapping.EndsWith("/", StringComparison.OrdinalIgnoreCase))
                             urlMapping = urlMapping + "/";
-                        HttpWebRequest req = HttpRequestHelper.CreateHttpWebRequest(urlMapping + testFilename, true);
-                        HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
-                        resp.Close();
+
+                        // Use HttpClient to verify URL is reachable
+                        if (!HttpRequestHelper.CheckUrlReachable(urlMapping + testFilename))
+                        {
+                            throw new DestinationUrlMappingFailedException();
+                        }
+                    }
+                    catch (DestinationUrlMappingFailedException)
+                    {
+                        throw;
                     }
                     catch (Exception e)
                     {

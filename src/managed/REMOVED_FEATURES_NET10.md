@@ -68,10 +68,14 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 |------|---------|--------|
 | `RegistryCodec.cs` | `SYSLIB0011` | BinaryFormatter read-only fallback |
 | `HttpRequestHelper.cs` | `SYSLIB0009` | WSSE auth for SixApart/TypePad blogs |
-| `HttpRequestHelper.cs` | `SYSLIB0014` | WebRequest factory (42 callers depend on it) |
+| `HttpRequestHelper.cs` | `SYSLIB0014` | WebRequest factory for legacy blog clients |
 | `GenericAtomClient.cs` | `SYSLIB0009` | Google login auth |
 
-**Migration Notes:**
-- `WebRequestWithCache.cs`, `AsyncWebRequestWithCache.cs`, `TistoryBlogClient.cs` - Migrated to HttpClient
-- `HttpRequestHelper.cs` - Removed dead ServicePointManager code; WSSE auth uses lazy initialization
-- New code should use `HttpClientService` instead of `HttpRequestHelper`
+**Migration Progress:**
+- ✅ `WebRequestWithCache.cs`, `AsyncWebRequestWithCache.cs` - Migrated to use File.OpenRead for file:// URLs
+- ✅ `TistoryBlogClient.cs` - Fully migrated to HttpClient
+- ✅ `DestinationValidator.cs` - Migrated to use HttpRequestHelper.CheckUrlReachable
+- ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods (`HttpClient`, `SendRequestAsync`, `DownloadStream`, `CheckUrlReachable`)
+- ⏳ Blog client infrastructure (XmlRestRequestHelper, RedirectHelper, AtomClient, etc.) - Complex filter/multipart patterns require significant refactoring
+
+**For New Code:** Use `HttpRequestHelper.HttpClient` or the new HttpClient-based methods instead of `CreateHttpWebRequest`

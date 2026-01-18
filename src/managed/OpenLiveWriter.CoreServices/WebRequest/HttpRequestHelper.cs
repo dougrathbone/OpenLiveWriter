@@ -9,6 +9,7 @@ using System.IO;
 using System.Net;
 using System.Net.Cache;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -69,6 +70,123 @@ namespace OpenLiveWriter.CoreServices
             // CloseTrackingHttpWebRequest removed - not available in .NET 10
             // The tracking functionality is no longer needed in modern .NET
         }
+
+        #region HttpClient-based methods (Modern API)
+
+        private static readonly Lazy<HttpClient> _httpClient = new Lazy<HttpClient>(CreateHttpClient);
+
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = true,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            };
+
+            // Configure proxy
+            if (WebProxySettings.ProxyEnabled)
+            {
+                string proxyServerUrl = WebProxySettings.Hostname;
+                if (proxyServerUrl.IndexOf("://", StringComparison.OrdinalIgnoreCase) == -1)
+                    proxyServerUrl = "http://" + proxyServerUrl;
+                if (WebProxySettings.Port > 0)
+                    proxyServerUrl += ":" + WebProxySettings.Port;
+
+                handler.Proxy = new WebProxy(proxyServerUrl, false);
+                if (!string.IsNullOrEmpty(WebProxySettings.Username))
+                {
+                    handler.Proxy.Credentials = new NetworkCredential(WebProxySettings.Username, WebProxySettings.Password);
+                }
+                handler.UseProxy = true;
+            }
+
+            var client = new HttpClient(handler);
+            client.Timeout = TimeSpan.FromMilliseconds(WebProxySettings.HttpRequestTimeout);
+            client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationEnvironment.UserAgent);
+
+            // Set Accept-Language
+            string acceptLang = CultureInfo.CurrentUICulture.Name.Split('/')[0];
+            if (acceptLang.ToUpperInvariant() == "SR-SP-LATN")
+                acceptLang = "sr-Latn-CS";
+            if (acceptLang != "en-US")
+                acceptLang += ", en-US";
+            acceptLang += ", en, *";
+            client.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+
+            return client;
+        }
+
+        /// <summary>
+        /// Gets the shared HttpClient instance configured with standard Open Live Writer settings.
+        /// Use this for modern HTTP requests instead of CreateHttpWebRequest.
+        /// </summary>
+        public static HttpClient HttpClient => _httpClient.Value;
+
+        /// <summary>
+        /// Sends a GET request and returns the response (HttpClient-based).
+        /// </summary>
+        public static HttpResponseMessage SendRequestAsync(string requestUri)
+        {
+            return HttpClient.GetAsync(requestUri).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Sends a request with the specified method and content (HttpClient-based).
+        /// </summary>
+        public static HttpResponseMessage SendRequestAsync(HttpMethod method, string requestUri, HttpContent content = null, Action<HttpRequestMessage> configureRequest = null)
+        {
+            using var request = new HttpRequestMessage(method, requestUri);
+            if (content != null)
+                request.Content = content;
+            configureRequest?.Invoke(request);
+            return HttpClient.SendAsync(request).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Downloads content from a URL and returns it as a stream (HttpClient-based).
+        /// </summary>
+        public static Stream DownloadStream(string url, out string responseUri)
+        {
+            responseUri = null;
+            try
+            {
+                var response = HttpClient.GetAsync(url).GetAwaiter().GetResult();
+                if (response.IsSuccessStatusCode)
+                {
+                    responseUri = response.RequestMessage?.RequestUri?.AbsoluteUri ?? url;
+                    return response.Content.ReadAsStream();
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Unable to download \"{url}\": {ex.Message}");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Checks if a URL is reachable (HttpClient-based HEAD request).
+        /// </summary>
+        public static bool CheckUrlReachable(string url, int? timeoutMs = null)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Head, url);
+                using var cts = timeoutMs.HasValue
+                    ? new System.Threading.CancellationTokenSource(timeoutMs.Value)
+                    : new System.Threading.CancellationTokenSource();
+                var response = HttpClient.SendAsync(request, cts.Token).GetAwaiter().GetResult();
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Download a file and return a path to it -- returns null if the file
