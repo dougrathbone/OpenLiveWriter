@@ -16,8 +16,6 @@
 
   <!-- Legacy code exclusions -->
   <ItemGroup>
-    <!-- ImageEditingPropertyForm uses MainFrameSatelliteWindow which doesn't exist -->
-    <Compile Remove="PostHtmlEditing\ImageEditing\ImageEditingPropertyForm.cs" />
     <!-- Exclude ambiguous interface definition - using SpellChecker version instead -->
     <Compile Remove="PostHtmlEditing\IBlogPostSpellCheckingContext.cs" />
   </ItemGroup>

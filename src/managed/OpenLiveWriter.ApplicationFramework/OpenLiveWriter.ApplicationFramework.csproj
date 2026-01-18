@@ -8,8 +8,6 @@
 
   <ItemGroup>
     <Compile Include="..\GlobalAssemblyInfo.cs" Link="GlobalAssemblyInfo.cs" />
-    <!-- Exclude MenuBuilderEntry.cs - dead code with missing dependencies (MenuBuilder.MenuType, SEPARATOR_TEXT) -->
-    <Compile Remove="MenuBuilderEntry.cs" />
   </ItemGroup>
 
   <PropertyGroup>

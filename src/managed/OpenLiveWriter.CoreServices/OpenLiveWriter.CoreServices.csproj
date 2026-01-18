@@ -13,7 +13,6 @@
 
   <!-- Exclude legacy/obsolete files that use unavailable .NET Framework APIs -->
   <ItemGroup>
-    <Compile Remove="AppIconCache.cs" />
     <Compile Remove="HTML\WebPageDownloader.cs" />
     <Compile Remove="HTML\AsyncPageDownload.cs" />
     <!-- InternetShortCut.cs re-enabled - simple COM interop -->
