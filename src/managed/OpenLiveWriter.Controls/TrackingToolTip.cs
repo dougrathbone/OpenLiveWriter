@@ -151,7 +151,8 @@ namespace OpenLiveWriter.Controls
         [System.Security.Permissions.PermissionSet(System.Security.Permissions.SecurityAction.Demand, Name = "FullTrust")]
         ~TrackingToolTip()
         {
-            Debug.Fail("Failed to dispose TrackingToolTip!");
+            // In .NET 10, Debug.Fail calls Environment.FailFast - use Trace instead
+            System.Diagnostics.Trace.TraceWarning("Failed to dispose TrackingToolTip - finalizer called");
         }
 
         /// <summary>

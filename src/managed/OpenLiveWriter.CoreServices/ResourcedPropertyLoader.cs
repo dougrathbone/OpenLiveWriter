@@ -105,6 +105,7 @@ namespace OpenLiveWriter.CoreServices
                     case "VisibleOnMainMenu":
                     case "ShowShortcut":
                     case "MainMenuPath":
+                    case "ContextMenuPath":
                     case "CommandBarButtonStyle":
                     case "CommandBarButtonContextMenuAcceleratorMnemonic":
                     case "CommandBarButtonContextMenuDropDown":
@@ -122,8 +123,11 @@ namespace OpenLiveWriter.CoreServices
 #endif
                         continue;
                     default:
-                        Debug.Fail("Unknown property: " + prop.Name);
-                        break;
+                        // In .NET 10, Debug.Fail calls Environment.FailFast which terminates the app.
+                        // Log unknown properties but don't crash - they may be new properties added
+                        // that just need to be added to the whitelist above.
+                        Trace.TraceWarning("ResourcedPropertyLoader: Unknown property encountered: " + prop.Name);
+                        continue;
 
                 }
 

@@ -11,13 +11,16 @@ using OpenLiveWriter.CoreServices;
 using OpenLiveWriter.CoreServices.Diagnostics;
 using OpenLiveWriter.BlogClient;
 using OpenLiveWriter.BlogClient.Providers;
-using OpenLiveWriter.Interop.Windows.TaskDialog;
 using OpenLiveWriter.Localization;
 using OpenLiveWriter.PostEditor;
 using OpenLiveWriter.PostEditor.JumpList;
 using OpenLiveWriter.PostEditor.OpenPost;
 using OpenLiveWriter.PostEditor.Configuration.Wizard;
 using OpenLiveWriter.PostEditor.Updates;
+
+// Use type alias to avoid ambiguity with System.Windows.Forms.TaskDialog introduced in .NET 5+
+using TaskDialog = OpenLiveWriter.Interop.Windows.TaskDialog.TaskDialog;
+using TaskDialogButton = OpenLiveWriter.Interop.Windows.TaskDialog.TaskDialogButton;
 
 namespace OpenLiveWriter
 {

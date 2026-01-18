@@ -37,6 +37,11 @@ namespace OpenLiveWriter
         [STAThread]
         public static void Main(string[] args)
         {
+            // In .NET 10, Debug.Fail and Trace.Fail call Environment.FailFast by default.
+            // Configure the DefaultTraceListener to show a dialog instead of terminating the process.
+            // This restores the .NET Framework behavior for debug assertions.
+            ConfigureDebugAssertBehavior();
+
             // WinLive 281407: Remove the current working directory from the dll search path
             // This prevents a rogue dll (wlidcli.dll) from being loaded while doing
             // something like opening a .wpost from a network location.
@@ -448,5 +453,32 @@ namespace OpenLiveWriter
         }
         private const string SETTINGS_VERSION = "SettingsVer";
 
+        /// <summary>
+        /// Configures the debug/trace assertion behavior for .NET 10 compatibility.
+        /// In .NET 10, Debug.Fail and Trace.Fail call Environment.FailFast by default,
+        /// which terminates the application immediately. This method configures the
+        /// DefaultTraceListener to log failures instead of crashing.
+        /// </summary>
+        private static void ConfigureDebugAssertBehavior()
+        {
+            try
+            {
+                // In .NET Core/.NET 5+, Debug and Trace share the same listeners collection
+                // Configure the DefaultTraceListener to show a dialog instead of calling FailFast
+                foreach (TraceListener listener in Trace.Listeners)
+                {
+                    if (listener is DefaultTraceListener defaultListener)
+                    {
+                        // AssertUiEnabled = true shows a dialog instead of calling FailFast
+                        // This restores the .NET Framework behavior
+                        defaultListener.AssertUiEnabled = true;
+                    }
+                }
+            }
+            catch
+            {
+                // If this fails, we'll just continue with default behavior
+            }
+        }
     }
 }

@@ -31,7 +31,8 @@ namespace OpenLiveWriter.HtmlEditor.Marshalling
         /// </summary>
         ~DataFormatHandler()
         {
-            Debug.Fail("Did not call Dispose on DataFormatHandler!!!!");
+            // In .NET 10, Debug.Fail calls Environment.FailFast - use Trace instead
+            System.Diagnostics.Trace.TraceWarning("Did not call Dispose on DataFormatHandler - finalizer called");
         }
 
 

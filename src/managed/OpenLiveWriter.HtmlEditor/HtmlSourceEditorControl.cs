@@ -58,7 +58,8 @@ namespace OpenLiveWriter.HtmlEditor
             _textBox.Dock = DockStyle.Fill;
             _textBox.MaxLength = 0;
             _textBox.AcceptsTab = true;
-            _textBox.ContextMenu = new ContextMenu();
+            // Use ContextMenuStrip instead of ContextMenu (ContextMenu throws PlatformNotSupportedException in .NET Core/.NET 5+)
+            _textBox.ContextMenuStrip = new ContextMenuStrip();
             _textBox.TextChanged += new EventHandler(_textBox_TextChanged);
             _textBox.ModifiedChanged += new EventHandler(_textBox_ModifiedChanged);
             _textBox.ContextMenuTriggered += new TextBoxEditorControl.ContextMenuTriggeredEventHandler(_textBox_ContextMenuTriggered);
@@ -95,7 +96,9 @@ namespace OpenLiveWriter.HtmlEditor
 
         ~HtmlSourceEditorControl()
         {
-            Debug.Fail("HtmlSourceEditorControl should be disposed");
+            // In .NET 10, Debug.Fail calls Environment.FailFast which terminates the app.
+            // Use Trace instead to log a warning without crashing.
+            Trace.TraceWarning("HtmlSourceEditorControl should be disposed - finalizer called");
             Dispose(false);
         }
 

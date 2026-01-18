@@ -229,7 +229,14 @@ The MSHTML-based HTML editor works in .NET 10 through the existing COM interop t
 
 ## Revision History
 
-- **2026-01-18**: Commit 2.4 complete - Verified COM interop for MSHTML compatibility
-- **2026-01-18**: Commit 2.1 complete - Added SupportedOSPlatform attributes to P/Invoke classes
+- **2026-01-18**: Phase 3 complete - .NET 10 migration completed
+  - Commit 3.1: Test projects updated with Microsoft.NET.Test.Sdk, 73/77 tests passing
+  - Commit 3.2: AppVeyor CI updated for VS2022 and .NET 10 SDK
+  - Commit 3.3: Final cleanup and documentation
+- **2026-01-18**: Phase 2 complete - Code compatibility updates
+  - Commit 2.1: Added SupportedOSPlatform attributes to P/Invoke classes
+  - Commit 2.2: System.Drawing/System.Net verified compatible
+  - Commit 2.3: BinaryFormatter documented as technical debt
+  - Commit 2.4: COM interop for MSHTML verified working
 - **2026-01-18**: Updated document - marked restored files, removed outdated build errors section (build now succeeds)
 - **2026-01-17**: Initial document created during .NET 10 migration

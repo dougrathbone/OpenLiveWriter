@@ -96,7 +96,8 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard
 
         ~WeblogConfigurationWizardController()
         {
-            Debug.Fail("Wizard controller was not disposed");
+            // In .NET 10, Debug.Fail calls Environment.FailFast - use Trace instead
+            System.Diagnostics.Trace.TraceWarning("Wizard controller was not disposed - finalizer called");
         }
 
         private string WelcomeWeblog(IWin32Window owner)

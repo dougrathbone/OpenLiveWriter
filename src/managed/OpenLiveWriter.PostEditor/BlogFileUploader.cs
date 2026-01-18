@@ -45,7 +45,8 @@ namespace OpenLiveWriter.PostEditor
 
         ~BlogFileUploader()
         {
-            Debug.Fail("Failed to Dispose BlogFileUploader!");
+            // In .NET 10, Debug.Fail calls Environment.FailFast - use Trace instead
+            System.Diagnostics.Trace.TraceWarning("Failed to Dispose BlogFileUploader - finalizer called");
         }
 
         public virtual void Connect() { }

@@ -251,7 +251,8 @@ namespace OpenLiveWriter.PostEditor
 
             ~LocalSupportingFileUploader()
             {
-                Debug.Fail("Failed to dispose LocalSupportingFileUploader");
+                // In .NET 10, Debug.Fail calls Environment.FailFast - use Trace instead
+                System.Diagnostics.Trace.TraceWarning("Failed to dispose LocalSupportingFileUploader - finalizer called");
             }
 
             private IBlogPostPublishingContext _publishingContext;

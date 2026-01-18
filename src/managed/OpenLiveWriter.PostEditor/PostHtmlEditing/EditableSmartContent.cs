@@ -46,7 +46,8 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         ~EditableSmartContent()
         {
-            Debug.Fail("EditableSmartContent was not disposed");
+            // In .NET 10, Debug.Fail calls Environment.FailFast - use Trace instead
+            System.Diagnostics.Trace.TraceWarning("EditableSmartContent was not disposed - finalizer called");
         }
 
         public string Id

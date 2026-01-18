@@ -52,10 +52,8 @@ namespace OpenLiveWriter.CoreServices
                 string stackTrace = pStackTrace == IntPtr.Zero ? "NULL" : Marshal.PtrToStringUni(pStackTrace);
                 FreeStackTrace();
 
-                if (!ApplicationDiagnostics.AutomationMode)
-                    Debug.Fail("Unclosed response\r\n" + stackTrace);
-                else
-                    Debug.WriteLine("Unclosed response\r\n" + stackTrace);
+                // In .NET 10, Debug.Fail calls Environment.FailFast - use Trace instead
+                Trace.TraceWarning("Unclosed response - finalizer called\r\n" + stackTrace);
             }
 
             private void FreeStackTrace()

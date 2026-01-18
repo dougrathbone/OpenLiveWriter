@@ -469,10 +469,21 @@ namespace OpenLiveWriter.PostEditor
             string nativeResourceDLL = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\OpenLiveWriter.Ribbon.dll";
             IntPtr hMod = Kernel32.LoadLibrary(nativeResourceDLL);
 
+            if (hMod == IntPtr.Zero)
+            {
+                // Ribbon DLL not found - this is a C++ native DLL that needs to be built separately
+                Trace.TraceWarning("OpenLiveWriter.Ribbon.dll not found. The ribbon UI will not be available. Build the C++ Ribbon project to enable the ribbon.");
+                return;
+            }
+
             using (new QuickTimer("IUIRibbonFramework::LoadUI"))
             {
                 int loadResult = _framework.LoadUI(hMod, "RIBBON_RIBBON");
-                Trace.Assert(loadResult == HRESULT.S_OK, "Ribbon failed to load: " + loadResult);
+                if (loadResult != HRESULT.S_OK)
+                {
+                    Trace.TraceWarning("Ribbon failed to load: " + loadResult + ". The ribbon UI will not be available.");
+                    return;
+                }
             }
 
             _framework.SetModes(mode);
@@ -1586,7 +1597,7 @@ namespace OpenLiveWriter.PostEditor
                         break;
                     case ViewVerb.Size:
                         uint ribbonHeight;
-                        if (ComHelper.SUCCEEDED(ribbon.GetHeight(out ribbonHeight)))
+                        if (ribbon != null && ComHelper.SUCCEEDED(ribbon.GetHeight(out ribbonHeight)))
                         {
                             Debug.Assert(ribbonHeight >= 0);
                             OnSizeChanged(EventArgs.Empty);
@@ -1608,6 +1619,9 @@ namespace OpenLiveWriter.PostEditor
 
         public void LoadRibbonSettings()
         {
+            if (ribbon == null)
+                return;
+
             lock (_ribbonSettingsLock)
             {
                 try
@@ -1623,6 +1637,9 @@ namespace OpenLiveWriter.PostEditor
 
         public void SaveRibbonSettings()
         {
+            if (ribbon == null)
+                return;
+
             lock (_ribbonSettingsLock)
             {
                 try

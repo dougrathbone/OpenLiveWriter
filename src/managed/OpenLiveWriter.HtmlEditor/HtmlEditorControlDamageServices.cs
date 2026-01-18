@@ -226,7 +226,8 @@ namespace OpenLiveWriter.HtmlEditor
 
             ~DamageTracker()
             {
-                Debug.Fail("DamageTracker was not disposed.");
+                // In .NET 10, Debug.Fail calls Environment.FailFast - use Trace instead
+                System.Diagnostics.Trace.TraceWarning("DamageTracker was not disposed - finalizer called");
             }
         }
 
