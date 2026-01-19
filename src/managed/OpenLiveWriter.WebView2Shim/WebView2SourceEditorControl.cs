@@ -3,6 +3,8 @@
 
 using System;
 using System.Drawing;
+using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -12,7 +14,7 @@ using Newtonsoft.Json;
 namespace OpenLiveWriter.WebView2Shim
 {
     /// <summary>
-    /// A WebView2-based HTML source editor using CodeMirror 6 for syntax highlighting.
+    /// A WebView2-based HTML source editor using CodeMirror 5 for syntax highlighting.
     /// </summary>
     public class WebView2SourceEditorControl : UserControl
     {
@@ -313,145 +315,157 @@ namespace OpenLiveWriter.WebView2Shim
             base.Focus();
         }
 
+        private static string GetEmbeddedResource(string name)
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = $"OpenLiveWriter.WebView2Shim.Resources.CodeMirror.{name}";
+            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] Missing embedded resource: {resourceName}");
+                    return "";
+                }
+                using (var reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
+        }
+
         private string GetEditorHtml()
         {
-            // CodeMirror 5 - syntax highlighted HTML editor
-            return @"<!DOCTYPE html>
+            // Load CodeMirror from embedded resources (offline support)
+            var cmJs = GetEmbeddedResource("codemirror.min.js");
+            var cmCss = GetEmbeddedResource("codemirror.min.css");
+            var xmlJs = GetEmbeddedResource("xml.min.js");
+            var jsJs = GetEmbeddedResource("javascript.min.js");
+            var cssJs = GetEmbeddedResource("css.min.js");
+            var htmlMixedJs = GetEmbeddedResource("htmlmixed.min.js");
+            var foldCodeJs = GetEmbeddedResource("foldcode.min.js");
+            var foldGutterJs = GetEmbeddedResource("foldgutter.min.js");
+            var xmlFoldJs = GetEmbeddedResource("xml-fold.min.js");
+            var foldGutterCss = GetEmbeddedResource("foldgutter.min.css");
+
+            // CodeMirror 5 - syntax highlighted HTML editor with embedded resources
+            return $@"<!DOCTYPE html>
 <html>
 <head>
     <meta charset=""utf-8"">
-    <link rel=""stylesheet"" href=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"">
-    <link rel=""stylesheet"" href=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css"">
+    <style>{cmCss}</style>
+    <style>{foldGutterCss}</style>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { 
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        html, body {{ 
             height: 100%; 
             overflow: hidden;
             background: #fff;
-        }
-        .CodeMirror {
+        }}
+        .CodeMirror {{
             height: 100%;
             font-family: 'Consolas', 'Courier New', monospace;
             font-size: 13px;
-        }
-        .CodeMirror-gutters {
+        }}
+        .CodeMirror-gutters {{
             background: #f5f5f5;
             border-right: 1px solid #ddd;
-        }
-        .CodeMirror-linenumber {
+        }}
+        .CodeMirror-linenumber {{
             color: #999;
-        }
-        .cm-tag { color: #170; }
-        .cm-attribute { color: #00c; }
-        .cm-string { color: #a11; }
-        .cm-comment { color: #a50; }
+        }}
+        .cm-tag {{ color: #170; }}
+        .cm-attribute {{ color: #00c; }}
+        .cm-string {{ color: #a11; }}
+        .cm-comment {{ color: #a50; }}
     </style>
 </head>
 <body>
     <textarea id=""editor""></textarea>
-    <script src=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js""></script>
-    <script src=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js""></script>
-    <script src=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js""></script>
-    <script src=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js""></script>
-    <script src=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js""></script>
-    <script src=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js""></script>
-    <script src=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js""></script>
-    <script src=""https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/xml-fold.min.js""></script>
+    <script>{cmJs}</script>
+    <script>{xmlJs}</script>
+    <script>{jsJs}</script>
+    <script>{cssJs}</script>
+    <script>{htmlMixedJs}</script>
+    <script>{foldCodeJs}</script>
+    <script>{foldGutterJs}</script>
+    <script>{xmlFoldJs}</script>
     <script>
         var editor = null;
         
-        // Initialize CodeMirror when scripts are loaded
-        function initCodeMirror() {
-            if (typeof CodeMirror === 'undefined') {
-                // Scripts not loaded yet, retry
-                setTimeout(initCodeMirror, 50);
-                return;
-            }
-            
-            editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
-                mode: 'htmlmixed',
-                lineNumbers: true,
-                lineWrapping: true,
-                foldGutter: true,
-                gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-                matchBrackets: true,
-                indentUnit: 4,
-                tabSize: 4,
-                indentWithTabs: false
-            });
+        // Initialize CodeMirror
+        editor = CodeMirror.fromTextArea(document.getElementById('editor'), {{
+            mode: 'htmlmixed',
+            lineNumbers: true,
+            lineWrapping: true,
+            foldGutter: true,
+            gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+            matchBrackets: true,
+            indentUnit: 4,
+            tabSize: 4,
+            indentWithTabs: false
+        }});
 
-            // Notify C# when content changes
-            editor.on('change', function() {
-                if (window.chrome && window.chrome.webview) {
-                    window.chrome.webview.postMessage(JSON.stringify({ 
-                        type: 'contentChanged',
-                        content: editor.getValue()
-                    }));
-                }
-            });
+        // Notify C# when content changes
+        editor.on('change', function() {{
+            if (window.chrome && window.chrome.webview) {{
+                window.chrome.webview.postMessage(JSON.stringify({{ 
+                    type: 'contentChanged',
+                    content: editor.getValue()
+                }}));
+            }}
+        }});
 
-            editor.on('focus', function() {
-                if (window.chrome && window.chrome.webview) {
-                    window.chrome.webview.postMessage(JSON.stringify({ type: 'focus' }));
-                }
-            });
+        editor.on('focus', function() {{
+            if (window.chrome && window.chrome.webview) {{
+                window.chrome.webview.postMessage(JSON.stringify({{ type: 'focus' }}));
+            }}
+        }});
 
-            editor.on('blur', function() {
-                if (window.chrome && window.chrome.webview) {
-                    window.chrome.webview.postMessage(JSON.stringify({ type: 'blur' }));
-                }
-            });
-        }
+        editor.on('blur', function() {{
+            if (window.chrome && window.chrome.webview) {{
+                window.chrome.webview.postMessage(JSON.stringify({{ type: 'blur' }}));
+            }}
+        }});
 
         // API for C#
-        window.setContent = function(text) {
-            if (editor) {
-                editor.setValue(text || '');
-            } else {
-                // CodeMirror not ready, store for later
-                document.getElementById('editor').value = text || '';
-            }
-        };
+        window.setContent = function(text) {{
+            editor.setValue(text || '');
+        }};
 
-        window.getContent = function() {
-            return editor ? editor.getValue() : document.getElementById('editor').value;
-        };
+        window.getContent = function() {{
+            return editor.getValue();
+        }};
 
-        window.getSelection = function() {
-            return editor ? editor.getSelection() : '';
-        };
+        window.getSelection = function() {{
+            return editor.getSelection();
+        }};
 
-        window.getSelectionStart = function() {
-            if (!editor) return 0;
+        window.getSelectionStart = function() {{
             var cursor = editor.getCursor('from');
             return editor.indexFromPos(cursor);
-        };
+        }};
 
-        window.getSelectionLength = function() {
-            return editor ? editor.getSelection().length : 0;
-        };
+        window.getSelectionLength = function() {{
+            return editor.getSelection().length;
+        }};
 
-        window.setSelection = function(start, length) {
-            if (!editor) return;
+        window.setSelection = function(start, length) {{
             var from = editor.posFromIndex(start);
             var to = editor.posFromIndex(start + length);
             editor.setSelection(from, to);
-        };
+        }};
 
-        window.selectAll = function() {
-            if (editor) editor.execCommand('selectAll');
-        };
+        window.selectAll = function() {{
+            editor.execCommand('selectAll');
+        }};
 
-        window.scrollToCursor = function() {
-            if (editor) editor.scrollIntoView(editor.getCursor());
-        };
+        window.scrollToCursor = function() {{
+            editor.scrollIntoView(editor.getCursor());
+        }};
 
-        window.focusEditor = function() {
-            if (editor) editor.focus();
-        };
-
-        // Start initialization
-        initCodeMirror();
+        window.focusEditor = function() {{
+            editor.focus();
+        }};
     </script>
 </body>
 </html>";

@@ -79,6 +79,16 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\olw-dom-bridge.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\codemirror.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\codemirror.min.css" />
+    <EmbeddedResource Include="Resources\CodeMirror\xml.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\javascript.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\css.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\htmlmixed.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\foldcode.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\foldgutter.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\xml-fold.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\foldgutter.min.css" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
