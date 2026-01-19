@@ -13,9 +13,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
-using OpenLiveWriter.Localization;
-using OpenLiveWriter.CoreServices;
 using System.Xml;
+using OpenLiveWriter.CoreServices;
+using OpenLiveWriter.Localization;
 using OpenLiveWriter.PostEditor.ContentSources.Common;
 
 namespace OpenLiveWriter.PostEditor.Video.YouTube
@@ -307,37 +307,22 @@ namespace OpenLiveWriter.PostEditor.Video.YouTube
 
         private string Upload()
         {
-            HttpWebRequest req = HttpRequestHelper.CreateHttpWebRequest("http://uploads.gdata.youtube.com/feeds/api/users/default/uploads", true, -1, -1);
+            // Use HttpClient-based upload
+            string uploadUrl = "http://uploads.gdata.youtube.com/feeds/api/users/default/uploads";
+            string fileName = Path.GetFileName(_filePath);
 
-            YouTubeUploadRequestHelper uploader = new YouTubeUploadRequestHelper(req);
-            uploader.AddHeader(_authToken, Path.GetFileName(Path.GetFileName(_filePath)));
-            uploader.Open();
-            uploader.AddXmlRequest(_title, _description, _tags, _categoryId, _permissionValue);
-            uploader.AddFile(_filePath);
-            uploader.Close();
+            using var content = YouTubeUploadRequestHelper.CreateMultipartContent(
+                _title, _description, _tags, _categoryId, _permissionValue, _filePath);
 
-            try
-            {
-                using (_stream = new CancelableStream(new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.Read)))
-                {
-                    uploader.SendRequest(_stream);
-                }
-            }
-            finally
-            {
-                _stream = null;
-            }
+            using var request = new HttpRequestMessage(HttpMethod.Post, uploadUrl);
+            YouTubeUploadRequestHelper.AddSimpleHeader(request, _authToken);
+            request.Headers.TryAddWithoutValidation("Slug", fileName);
+            request.Content = content;
 
-            string result;
-            using (HttpWebResponse response = (HttpWebResponse)req.GetResponse())
-            {
-                using (StreamReader responseReader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
-                {
-                    result = responseReader.ReadToEnd();
-                }
-            }
+            using var response = HttpClientService.DefaultClient.SendAsync(request).GetAwaiter().GetResult();
+            response.EnsureSuccessStatusCode();
 
-            return result;
+            return response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
         }
 
         private XmlNamespaceManager _nsMgr;
@@ -556,11 +541,83 @@ namespace OpenLiveWriter.PostEditor.Video.YouTube
             request.Headers.Add("X-GData-Key", "key=" + YouTubeVideoPublisher.DEVELOPER_KEY);
         }
 
-        internal static void AddSimpleHeader(HttpRequestMessage request, string authToken)
+        public static void AddSimpleHeader(HttpRequestMessage request, string authToken)
         {
             request.Headers.TryAddWithoutValidation("Authorization", authToken);
             //request.Headers.TryAddWithoutValidation("X-GData-Client", YouTubeVideoPublisher.CLIENT_CODE);
             request.Headers.TryAddWithoutValidation("X-GData-Key", "key=" + YouTubeVideoPublisher.DEVELOPER_KEY);
+        }
+
+        /// <summary>
+        /// Creates HttpClient-compatible multipart content for YouTube video upload.
+        /// </summary>
+        public static HttpContent CreateMultipartContent(
+            string title, string description, string keywords, string category, string permission, string filePath)
+        {
+            string boundary = "--------------------------" + Guid.NewGuid().ToString().Replace("-", "");
+            var content = new MultipartContent("related", boundary);
+
+            // Add XML metadata part
+            string xmlContent = CreateAtomXml(title, description, keywords, category, permission);
+            var xmlPart = new StringContent(xmlContent, Encoding.UTF8, "application/atom+xml");
+            content.Add(xmlPart);
+
+            // Add video file part
+            var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var filePart = new StreamContent(fileStream);
+            filePart.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                MimeHelper.GetContentType(Path.GetExtension(filePath)));
+            filePart.Headers.TryAddWithoutValidation("Content-Transfer-Encoding", "binary");
+            content.Add(filePart);
+
+            return content;
+        }
+
+        /// <summary>
+        /// Creates the Atom XML for YouTube video metadata.
+        /// </summary>
+        private static string CreateAtomXml(string title, string description, string keywords, string category, string permission)
+        {
+            var xmlMemoryStream = new MemoryStream();
+            var xmlWriter = new XmlTextWriter(xmlMemoryStream, Encoding.UTF8);
+
+            xmlWriter.WriteStartDocument();
+            xmlWriter.WriteStartElement("entry", "http://www.w3.org/2005/Atom");
+            xmlWriter.WriteStartElement("media", "group", "http://search.yahoo.com/mrss/");
+
+            xmlWriter.WriteStartElement("media", "title", "http://search.yahoo.com/mrss/");
+            xmlWriter.WriteAttributeString("type", "plain");
+            xmlWriter.WriteString(title);
+            xmlWriter.WriteEndElement();
+
+            xmlWriter.WriteStartElement("media", "description", "http://search.yahoo.com/mrss/");
+            xmlWriter.WriteAttributeString("type", "plain");
+            xmlWriter.WriteString(description);
+            xmlWriter.WriteEndElement();
+
+            xmlWriter.WriteStartElement("media", "category", "http://search.yahoo.com/mrss/");
+            xmlWriter.WriteAttributeString("scheme", "http://gdata.youtube.com/schemas/2007/categories.cat");
+            xmlWriter.WriteString(category);
+            xmlWriter.WriteEndElement();
+
+            xmlWriter.WriteStartElement("media", "keywords", "http://search.yahoo.com/mrss/");
+            xmlWriter.WriteString(keywords);
+            xmlWriter.WriteEndElement();
+
+            if (permission == "1")
+            {
+                xmlWriter.WriteStartElement("yt", "private", "http://gdata.youtube.com/schemas/2007");
+                xmlWriter.WriteEndElement();
+            }
+
+            xmlWriter.WriteEndElement();
+            xmlWriter.WriteEndElement();
+            xmlWriter.WriteEndDocument();
+            xmlWriter.Flush();
+
+            xmlMemoryStream.Position = 0;
+            using var reader = new StreamReader(xmlMemoryStream, Encoding.UTF8);
+            return reader.ReadToEnd();
         }
 
         internal void Open()
