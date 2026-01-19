@@ -4,8 +4,9 @@
 using System;
 using System.Globalization;
 using System.IO;
-using System.Xml;
 using System.Net;
+using System.Net.Http;
+using System.Xml;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Collections;
@@ -78,48 +79,49 @@ namespace OpenLiveWriter.BlogClient.Detection
                     return new WriterEditingManifest(downloadInfo);
 
                 // execute the download
-                HttpWebResponse response = null;
-                try
+                if (credentials != null)
                 {
-                    if (credentials != null)
-                        response = blogClient.SendAuthenticatedHttpRequest(downloadInfo.SourceUrl, REQUEST_TIMEOUT, new HttpRequestFilter(new EditingManifestFilter(downloadInfo).Filter));
-                    else
-                        response = HttpRequestHelper.SendRequest(downloadInfo.SourceUrl, new HttpRequestFilter(new EditingManifestFilter(downloadInfo).Filter));
-                }
-                catch (WebException ex)
-                {
-                    // Not modified -- return ONLY an updated downloadInfo (not a document)
-                    HttpWebResponse errorResponse = ex.Response as HttpWebResponse;
-                    if (errorResponse != null && errorResponse.StatusCode == HttpStatusCode.NotModified)
+                    // Use legacy path for authenticated requests (requires IBlogClient interface)
+                    HttpWebResponse response = null;
+                    try
                     {
-                        return new WriterEditingManifest(
-                            new WriterEditingManifestDownloadInfo(
-                                downloadInfo.SourceUrl,
-                                HttpRequestHelper.GetExpiresHeader(errorResponse),
-                                downloadInfo.LastModified,
-                                HttpRequestHelper.GetETagHeader(errorResponse)));
+                        response = blogClient.SendAuthenticatedHttpRequest(downloadInfo.SourceUrl, REQUEST_TIMEOUT, new HttpRequestFilter(new EditingManifestFilter(downloadInfo).Filter));
                     }
-                    else
-                        throw;
+                    catch (WebException ex)
+                    {
+                        HttpWebResponse errorResponse = ex.Response as HttpWebResponse;
+                        if (errorResponse != null && errorResponse.StatusCode == HttpStatusCode.NotModified)
+                        {
+                            return new WriterEditingManifest(
+                                new WriterEditingManifestDownloadInfo(
+                                    downloadInfo.SourceUrl,
+                                    HttpRequestHelper.GetExpiresHeader(errorResponse),
+                                    downloadInfo.LastModified,
+                                    HttpRequestHelper.GetETagHeader(errorResponse)));
+                        }
+                        else
+                            throw;
+                    }
+
+                    DateTime expires = HttpRequestHelper.GetExpiresHeader(response);
+                    DateTime lastModified = response.LastModified;
+                    string eTag = HttpRequestHelper.GetETagHeader(response);
+
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        XmlDocument manifestXmlDocument = new XmlDocument();
+                        manifestXmlDocument.Load(stream);
+                        return new WriterEditingManifest(
+                            new WriterEditingManifestDownloadInfo(downloadInfo.SourceUrl, expires, lastModified, eTag),
+                            manifestXmlDocument,
+                            blogClient,
+                            credentials);
+                    }
                 }
-
-                // read headers
-                DateTime expires = HttpRequestHelper.GetExpiresHeader(response);
-                DateTime lastModified = response.LastModified;
-                string eTag = HttpRequestHelper.GetETagHeader(response);
-
-                // read document
-                using (Stream stream = response.GetResponseStream())
+                else
                 {
-                    XmlDocument manifestXmlDocument = new XmlDocument();
-                    manifestXmlDocument.Load(stream);
-
-                    // return the manifest
-                    return new WriterEditingManifest(
-                        new WriterEditingManifestDownloadInfo(downloadInfo.SourceUrl, expires, lastModified, eTag),
-                        manifestXmlDocument,
-                        blogClient,
-                        credentials);
+                    // Use HttpClient for non-authenticated requests
+                    return DownloadManifestWithHttpClient(downloadInfo, blogClient, credentials);
                 }
             }
             catch (Exception ex)
@@ -130,6 +132,69 @@ namespace OpenLiveWriter.BlogClient.Detection
                 }
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Downloads the manifest using HttpClient (for non-authenticated requests).
+        /// </summary>
+        private static WriterEditingManifest DownloadManifestWithHttpClient(WriterEditingManifestDownloadInfo downloadInfo, IBlogClient blogClient, IBlogCredentialsAccessor credentials)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, downloadInfo.SourceUrl);
+
+            // Add conditional request headers
+            if (downloadInfo.LastModified != DateTime.MinValue)
+                request.Headers.IfModifiedSince = downloadInfo.LastModified;
+
+            if (!string.IsNullOrEmpty(downloadInfo.ETag))
+                request.Headers.IfNoneMatch.ParseAdd(downloadInfo.ETag);
+
+            try
+            {
+                using var response = HttpClientService.DefaultClient.SendAsync(request).GetAwaiter().GetResult();
+
+                // Handle 304 Not Modified
+                if (response.StatusCode == HttpStatusCode.NotModified)
+                {
+                    DateTime expires = GetExpiresFromResponse(response);
+                    string eTag = response.Headers.ETag?.Tag ?? string.Empty;
+                    return new WriterEditingManifest(
+                        new WriterEditingManifestDownloadInfo(downloadInfo.SourceUrl, expires, downloadInfo.LastModified, eTag));
+                }
+
+                response.EnsureSuccessStatusCode();
+
+                // Read headers
+                DateTime responseExpires = GetExpiresFromResponse(response);
+                DateTime lastModified = response.Content.Headers.LastModified?.UtcDateTime ?? DateTime.MinValue;
+                string responseETag = response.Headers.ETag?.Tag ?? string.Empty;
+
+                // Read document
+                using (Stream stream = response.Content.ReadAsStream())
+                {
+                    XmlDocument manifestXmlDocument = new XmlDocument();
+                    manifestXmlDocument.Load(stream);
+                    return new WriterEditingManifest(
+                        new WriterEditingManifestDownloadInfo(downloadInfo.SourceUrl, responseExpires, lastModified, responseETag),
+                        manifestXmlDocument,
+                        blogClient,
+                        credentials);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                Trace.WriteLine("Error downloading manifest from " + downloadInfo.SourceUrl + ": " + ex.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the Expires header value from an HttpResponseMessage.
+        /// </summary>
+        private static DateTime GetExpiresFromResponse(HttpResponseMessage response)
+        {
+            if (response.Content.Headers.Expires.HasValue)
+                return response.Content.Headers.Expires.Value.UtcDateTime;
+            return DateTime.MinValue;
         }
 
         private class EditingManifestFilter

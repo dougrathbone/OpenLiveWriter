@@ -92,10 +92,12 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 
 **Remaining Legacy HttpWebRequest Usages (deferred):**
 - `AtomClient.cs` / `AtomMediaUploader.cs` / `BloggerAtomClient.cs` - Complex Picasa file upload with multipart MIME
-- `YouTubeUploadRequestHelper` - Multipart video upload
-- `XmlRpcClient.cs` - XML-RPC infrastructure with auth filters
-- `XmlRestRequestHelper.cs` / `RedirectHelper.cs` - Core infrastructure (used by above)
-- Blog detection infrastructure (`WriterEditingManifest.cs`, `BlogEditingTemplateDetector.cs`, etc.)
+- `XmlRestRequestHelper.cs` / `RedirectHelper.cs` - Legacy versions (HttpClient alternatives exist)
+- Blog detection (`WriterEditingManifest.cs`, `BlogEditingTemplateDetector.cs`) - Uses `IBlogClient.SendAuthenticatedHttpRequest` interface
+
+**Migrated with Dual Support:**
+- ✅ `XmlRpcClient.cs` - Added `CallMethodWithHttpClient()` method and `Action<HttpRequestMessage>` constructor
+- ✅ `YouTubeUploadRequestHelper` - Added `CreateMultipartContent()` for HttpClient uploads, legacy code removed
 
 These legacy usages are suppressed via `SYSLIB0014` in `HttpRequestHelper.cs` and work correctly. Full migration would require significant refactoring of the multipart upload patterns and authentication infrastructure.
 
