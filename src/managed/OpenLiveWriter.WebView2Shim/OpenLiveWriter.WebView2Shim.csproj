@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>OpenLiveWriter.WebView2Shim</AssemblyName>
+    <RootNamespace>OpenLiveWriter.WebView2Shim</RootNamespace>
+    <ProjectGuid>{8E5C2A3D-F9B4-4C1E-A7D5-6B3E9F8A2C1D}</ProjectGuid>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- Embedded Resources - CodeMirror and JavaScript bridge -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\olw-dom-bridge.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\codemirror.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\codemirror.min.css" />
+    <EmbeddedResource Include="Resources\CodeMirror\xml.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\javascript.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\css.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\htmlmixed.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\foldcode.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\foldgutter.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\xml-fold.min.js" />
+    <EmbeddedResource Include="Resources\CodeMirror\foldgutter.min.css" />
+  </ItemGroup>
+
+  <!-- NuGet Package References -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" />
+    <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+
+  <!-- Project References -->
+  <ItemGroup>
+    <ProjectReference Include="..\OpenLiveWriter.ApplicationFramework\OpenLiveWriter.ApplicationFramework.csproj" />
+    <ProjectReference Include="..\OpenLiveWriter.Controls\OpenLiveWriter.Controls.csproj" />
+    <ProjectReference Include="..\OpenLiveWriter.CoreServices\OpenLiveWriter.CoreServices.csproj" />
+    <ProjectReference Include="..\OpenLiveWriter.HtmlEditor\OpenLiveWriter.HtmlEditor.csproj" />
+    <ProjectReference Include="..\OpenLiveWriter.Interop\OpenLiveWriter.Interop.csproj" />
+    <ProjectReference Include="..\OpenLiveWriter.Interop.Mshtml\OpenLiveWriter.Interop.Mshtml.csproj" />
+    <ProjectReference Include="..\OpenLiveWriter.Localization\OpenLiveWriter.Localization.csproj" />
+    <ProjectReference Include="..\OpenLiveWriter.Mshtml\OpenLiveWriter.Mshtml.csproj" />
+  </ItemGroup>
+
+</Project>

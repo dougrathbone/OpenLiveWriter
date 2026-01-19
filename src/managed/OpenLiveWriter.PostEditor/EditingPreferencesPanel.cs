@@ -30,6 +30,7 @@ namespace OpenLiveWriter.PostEditor
         private CheckBox checkBoxSmartQuotes;
         private CheckBox checkBoxSpecialChars;
         private CheckBox checkBoxEmoticons;
+        private CheckBox checkBoxUseParagraphTags;
 
         public EditingPreferencesPanel()
         {
@@ -44,6 +45,7 @@ namespace OpenLiveWriter.PostEditor
                 checkBoxSmartQuotes.Text = Res.Get(StringId.AutoreplaceSmartQuotes);
                 checkBoxSpecialChars.Text = Res.Get(StringId.AutoreplaceOtherChars);
                 checkBoxEmoticons.Text = Res.Get(StringId.AutoreplaceEmoticons);
+                checkBoxUseParagraphTags.Text = "Use <p> tags for paragraphs (uncheck for <div> tags)";
             }
 
             PanelBitmap = ResourceHelper.LoadAssemblyResourceBitmap("Configuration.Settings.Images.EditingPanelBitmap.png");
@@ -62,6 +64,9 @@ namespace OpenLiveWriter.PostEditor
 
             checkBoxEmoticons.Checked = _autoReplacePreferences.EnableEmoticonsReplacement;
             checkBoxEmoticons.CheckedChanged += new EventHandler(checkBoxEmoticons_CheckedChanged);
+
+            checkBoxUseParagraphTags.Checked = PostEditorSettings.UseParagraphTags;
+            checkBoxUseParagraphTags.CheckedChanged += new EventHandler(checkBoxUseParagraphTags_CheckedChanged);
         }
 
         private bool _layedOut = false;
@@ -102,6 +107,14 @@ namespace OpenLiveWriter.PostEditor
             _autoReplacePreferences.EnableEmoticonsReplacement = checkBoxEmoticons.Checked;
         }
 
+        private void checkBoxUseParagraphTags_CheckedChanged(object sender, EventArgs e)
+        {
+            PostEditorSettings.UseParagraphTags = checkBoxUseParagraphTags.Checked;
+            // Update the WebView2 document setting in real-time
+            WebView2Shim.WebView2Document.UseParagraphTags = checkBoxUseParagraphTags.Checked;
+            OnModified(EventArgs.Empty);
+        }
+
         void _autoReplacePreferences_PreferencesModified(object sender, EventArgs e)
         {
             OnModified(EventArgs.Empty);
@@ -134,6 +147,7 @@ namespace OpenLiveWriter.PostEditor
             this.checkBoxSmartQuotes = new System.Windows.Forms.CheckBox();
             this.checkBoxTypographic = new System.Windows.Forms.CheckBox();
             this.checkBoxEmoticons = new System.Windows.Forms.CheckBox();
+            this.checkBoxUseParagraphTags = new System.Windows.Forms.CheckBox();
             this.groupBoxEditing.SuspendLayout();
             this.SuspendLayout();
             //
@@ -143,10 +157,11 @@ namespace OpenLiveWriter.PostEditor
             this.groupBoxEditing.Controls.Add(this.checkBoxSmartQuotes);
             this.groupBoxEditing.Controls.Add(this.checkBoxTypographic);
             this.groupBoxEditing.Controls.Add(this.checkBoxEmoticons);
+            this.groupBoxEditing.Controls.Add(this.checkBoxUseParagraphTags);
             this.groupBoxEditing.FlatStyle = System.Windows.Forms.FlatStyle.System;
             this.groupBoxEditing.Location = new System.Drawing.Point(8, 32);
             this.groupBoxEditing.Name = "groupBoxEditing";
-            this.groupBoxEditing.Size = new System.Drawing.Size(345, 179);
+            this.groupBoxEditing.Size = new System.Drawing.Size(345, 205);
             this.groupBoxEditing.TabIndex = 0;
             this.groupBoxEditing.TabStop = false;
             this.groupBoxEditing.Text = "Editing";
@@ -199,6 +214,18 @@ namespace OpenLiveWriter.PostEditor
             this.checkBoxTypographic.Text = "Replace h&yphens (--) with dash (—)";
             this.checkBoxTypographic.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             this.checkBoxTypographic.UseVisualStyleBackColor = true;
+            //
+            // checkBoxUseParagraphTags
+            //
+            this.checkBoxUseParagraphTags.CheckAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.checkBoxUseParagraphTags.FlatStyle = System.Windows.Forms.FlatStyle.System;
+            this.checkBoxUseParagraphTags.Location = new System.Drawing.Point(16, 125);
+            this.checkBoxUseParagraphTags.Name = "checkBoxUseParagraphTags";
+            this.checkBoxUseParagraphTags.Size = new System.Drawing.Size(312, 18);
+            this.checkBoxUseParagraphTags.TabIndex = 9;
+            this.checkBoxUseParagraphTags.Text = "Use <p> tags for paragraphs";
+            this.checkBoxUseParagraphTags.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.checkBoxUseParagraphTags.UseVisualStyleBackColor = true;
             //
             // EditingPrefencesPanel
             //

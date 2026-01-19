@@ -7,7 +7,7 @@ IF "%OLW_CONFIG%" == "" (
   set OLW_CONFIG=Debug
 )
 
-SET WRITER_EXE_PATH="%~dp0src\managed\bin\%OLW_CONFIG%\i386\Writer\OpenLiveWriter.exe"
+SET WRITER_EXE_PATH="%~dp0src\managed\bin\%OLW_CONFIG%\x64\Writer\OpenLiveWriter.exe"
 
 IF NOT EXIST "%WRITER_EXE_PATH%" (
   ECHO ERROR: %WRITER_EXE_PATH% does not exist.

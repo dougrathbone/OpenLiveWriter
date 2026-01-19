@@ -30,7 +30,8 @@ namespace OpenLiveWriter.Controls
     /// </summary>
     public class BrowserMiniForm : MiniForm
     {
-        private OpenLiveWriter.BrowserControl.ExplorerBrowserControl _explorerBrowserControl;
+        private UserControl _browserControl;
+        private IBrowserControl _browser;
         private string _url;
 
         public BrowserMiniForm(string url, int downloadOptions, WinInetCredentialsContext credentialsContext)
@@ -47,35 +48,36 @@ namespace OpenLiveWriter.Controls
             // background color is white to minimize flashing problem when dismissing
             BackColor = Color.White;
 
-            // initialize browser control
-            _explorerBrowserControl = new ExplorerBrowserControl();
-            _explorerBrowserControl.Dock = DockStyle.Fill;
-            Controls.Add(_explorerBrowserControl);
+            // initialize browser control using factory
+            _browserControl = BrowserControlFactory.CreateBrowserUserControl();
+            _browser = (IBrowserControl)_browserControl;
+            _browserControl.Dock = DockStyle.Fill;
+            Controls.Add(_browserControl);
 
-            // install download options if requested
-            if (downloadOptions > 0)
+            // install download options if requested (IE-specific, WebView2 handles differently)
+            if (downloadOptions > 0 && _browser is ExplorerBrowserControl explorerControl)
             {
-                _explorerBrowserControl.DownloadOptions = downloadOptions;
+                explorerControl.DownloadOptions = downloadOptions;
             }
 
-            // install network credential if requested
-            if (credentialsContext != null)
+            // install network credential if requested (IE-specific for now)
+            if (credentialsContext != null && _browser is ExplorerBrowserControl explorerBrowser)
             {
                 if (credentialsContext.NetworkCredential != null)
-                    _explorerBrowserControl.NetworkCredential = credentialsContext.NetworkCredential;
+                    explorerBrowser.NetworkCredential = credentialsContext.NetworkCredential;
 
                 if (credentialsContext.CookieString != null)
-                    _explorerBrowserControl.SetCookies(credentialsContext.CookieString.Url, credentialsContext.CookieString.Cookies);
+                    explorerBrowser.SetCookies(credentialsContext.CookieString.Url, credentialsContext.CookieString.Cookies);
             }
 
             // other options
-            _explorerBrowserControl.Silent = true;
+            _browser.Silent = true;
 
             // Navigate to about:blank for installation of ui customizations. Note that this step is CRITICAL
             // to ensuring that not only our custom ui hooks get installed but also to ensure that our DLCTL
             // options (which control security) are registered prior to the fetching of the content.
-            _explorerBrowserControl.DocumentComplete += new BrowserDocumentEventHandler(_explorerBrowserControl_AboutBlankDocumentComplete);
-            _explorerBrowserControl.Navigate("about:blank");
+            _browser.DocumentComplete += new BrowserDocumentEventHandler(_explorerBrowserControl_AboutBlankDocumentComplete);
+            _browser.Navigate("about:blank");
         }
 
         protected override void OnLoad(EventArgs e)
@@ -106,7 +108,7 @@ namespace OpenLiveWriter.Controls
 
                     // write the web page
                     string progressText = Res.Get(StringId.BrowserMiniFormProgress);
-                    int bodyHeight = _explorerBrowserControl.Height - 50;
+                    int bodyHeight = _browserControl.Height - 50;
                     int progressTop = Math.Max((bodyHeight / 2) - 50, 0);
                     using (StreamWriter writer = new StreamWriter(progressPagePath, false, Encoding.UTF8))
                     {
@@ -131,8 +133,8 @@ namespace OpenLiveWriter.Controls
                 }
 
                 // navigate to progress page
-                _explorerBrowserControl.DocumentComplete += new BrowserDocumentEventHandler(_explorerBrowserControl_ProgressDocumentComplete);
-                _explorerBrowserControl.Navigate(progressPagePath);
+                _browser.DocumentComplete += new BrowserDocumentEventHandler(_explorerBrowserControl_ProgressDocumentComplete);
+                _browser.Navigate(progressPagePath);
             }
             catch (Exception ex)
             {
@@ -145,7 +147,7 @@ namespace OpenLiveWriter.Controls
             try
             {
                 // unsubscribe from the event
-                _explorerBrowserControl.DocumentComplete -= new BrowserDocumentEventHandler(_explorerBrowserControl_ProgressDocumentComplete);
+                _browser.DocumentComplete -= new BrowserDocumentEventHandler(_explorerBrowserControl_ProgressDocumentComplete);
 
                 // navigate to the actual target (pulse)
                 BeginInvoke(new InvokeInUIThreadDelegate(NavigateBrowser));
@@ -159,7 +161,7 @@ namespace OpenLiveWriter.Controls
 
         private void NavigateBrowser()
         {
-            _explorerBrowserControl.Navigate(_url);
+            _browser.Navigate(_url);
         }
 
         private void _explorerBrowserControl_AboutBlankDocumentComplete(object sender, BrowserDocumentEventArgs e)
@@ -167,23 +169,31 @@ namespace OpenLiveWriter.Controls
             try
             {
                 // unsubscribe from the event
-                _explorerBrowserControl.DocumentComplete -= new BrowserDocumentEventHandler(_explorerBrowserControl_AboutBlankDocumentComplete);
+                _browser.DocumentComplete -= new BrowserDocumentEventHandler(_explorerBrowserControl_AboutBlankDocumentComplete);
 
-                // set borders to none
-                IHTMLDocument2 document = _explorerBrowserControl.Document as IHTMLDocument2;
-                if (document != null)
+                // set borders to none - only works for IE browser
+                if (_browser is ExplorerBrowserControl explorerBrowser)
                 {
-                    ICustomDoc customDoc = (ICustomDoc)document;
-                    customDoc.SetUIHandler(new BrowserDocHostUIHandler());
+                    IHTMLDocument2 document = explorerBrowser.Document as IHTMLDocument2;
+                    if (document != null)
+                    {
+                        ICustomDoc customDoc = (ICustomDoc)document;
+                        customDoc.SetUIHandler(new BrowserDocHostUIHandler());
 
-                    if (document.body != null && document.body.style != null)
-                        document.body.style.borderStyle = "none";
+                        if (document.body != null && document.body.style != null)
+                            document.body.style.borderStyle = "none";
+                        else
+                            Debug.Fail("Couldn't set document body style after document completed!");
+                    }
                     else
-                        Debug.Fail("Couldn't set document body style after document completed!");
+                    {
+                        Debug.Fail("Couldn't get document after document completed!");
+                    }
                 }
-                else
+                else if (_browser is WebView2BrowserControl webView2Browser)
                 {
-                    Debug.Fail("Couldn't get document after document completed!");
+                    // WebView2: Use JavaScript to set border style
+                    webView2Browser.ExecuteScriptAsync("document.body.style.borderStyle = 'none';");
                 }
             }
             catch (Exception ex)

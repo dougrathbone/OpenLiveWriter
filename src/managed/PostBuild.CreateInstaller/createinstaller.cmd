@@ -15,7 +15,7 @@ IF EXIST "%LocalAppData%\Nuget\Nuget.exe" (GOTO package) ELSE (
 )
 
 :package
-"%LocalAppData%\Nuget\Nuget.exe" pack .\OpenLiveWriter.nuspec -version %dottedVersion% -basepath src\managed\bin\%OLW_CONFIG%\i386\Writer
+"%LocalAppData%\Nuget\Nuget.exe" pack .\OpenLiveWriter.nuspec -version %dottedVersion% -basepath src\managed\bin\%OLW_CONFIG%\x64\Writer
 ECHO Created Writer NuGet package.
 
 .\src\managed\packages\squirrel.windows.1.4.4\tools\SyncReleases.exe -url=https://olw.blob.core.windows.net/stable/Releases/ -r=.\Releases

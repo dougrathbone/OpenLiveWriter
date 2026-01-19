@@ -614,6 +614,63 @@ namespace OpenLiveWriter.CoreServices
         }
 
         /// <summary>
+        /// Reads HTML content from a stream with proper encoding detection (WebView2-compatible).
+        /// This is the same logic as StreamToHTMLDoc but returns a string instead of IHTMLDocument2.
+        /// </summary>
+        /// <param name="stream">The stream containing HTML content</param>
+        /// <param name="baseUrl">The base URL for the document</param>
+        /// <returns>The HTML content as a string with correct encoding</returns>
+        public static string StreamToHTMLString(Stream stream, string baseUrl)
+        {
+            if (!stream.CanSeek)
+            {
+                MemoryStream mStream = new MemoryStream();
+                StreamHelper.Transfer(stream, mStream);
+                mStream.Seek(0, SeekOrigin.Begin);
+                stream = mStream;
+            }
+            
+            string htmlContent = null;
+            Encoding currentEncoding = Encoding.Default;
+            
+            using (StreamReader reader = new StreamReader(stream, currentEncoding))
+            {
+                htmlContent = reader.ReadToEnd();
+                LightWeightHTMLDocument lwDoc = LightWeightHTMLDocument.FromString(htmlContent, baseUrl, true);
+
+                // If there is metadata that specifies a different encoding, re-read with that encoding
+                LightWeightHTMLMetaData metaData = new LightWeightHTMLMetaData(lwDoc);
+                if (metaData != null && metaData.Charset != null)
+                {
+                    try
+                    {
+                        Encoding encoding = Encoding.GetEncoding(metaData.Charset);
+                        if (encoding != currentEncoding)
+                        {
+                            reader.DiscardBufferedData();
+                            stream.Seek(0, SeekOrigin.Begin);
+
+                            using (StreamReader reader2 = new StreamReader(stream, encoding))
+                            {
+                                htmlContent = reader2.ReadToEnd();
+                            }
+                        }
+                    }
+                    catch (NotSupportedException)
+                    {
+                        // The encoding isn't supported on this system
+                    }
+                    catch (ArgumentException)
+                    {
+                        // The encoding isn't an encoding that the OS even knows about
+                    }
+                }
+            }
+
+            return htmlContent;
+        }
+
+        /// <summary>
         /// Gets a string representing the HTML selection in a html document
         /// </summary>
         /// <param name="document">The document from which to select</param>

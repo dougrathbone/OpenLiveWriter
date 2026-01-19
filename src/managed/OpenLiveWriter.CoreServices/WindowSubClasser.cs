@@ -40,12 +40,8 @@ namespace OpenLiveWriter.CoreServices
             Debug.Assert(m_baseWndProc == IntPtr.Zero,
                 "Invalid attempt to subclass a window twice");
 
-            // subclass the window
-            int baseProc =
-                User32.SetWindowProc(_window.Handle, GWL.WNDPROC, m_wndProcDelegate);
-
-            // save the base window proc
-            m_baseWndProc = new IntPtr(baseProc);
+            // subclass the window (x64-safe)
+            m_baseWndProc = User32.SetWindowProc(_window.Handle, GWL.WNDPROC, m_wndProcDelegate);
         }
 
         /// <summary>
@@ -57,8 +53,8 @@ namespace OpenLiveWriter.CoreServices
             Debug.Assert(m_baseWndProc != IntPtr.Zero,
                 "Invalid call to Uninstall prior to Install");
 
-            // uninstall the subclassing behavior
-            User32.SetWindowLong(_window.Handle, GWL.WNDPROC, m_baseWndProc.ToInt32());
+            // uninstall the subclassing behavior (x64-safe)
+            User32.SetWindowLongPtr(_window.Handle, GWL.WNDPROC, m_baseWndProc);
             m_baseWndProc = IntPtr.Zero;
         }
 

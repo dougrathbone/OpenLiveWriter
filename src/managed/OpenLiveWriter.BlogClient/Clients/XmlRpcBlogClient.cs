@@ -214,27 +214,39 @@ namespace OpenLiveWriter.BlogClient.Clients
         protected XmlNode CallMethod(string methodName, params XmlRpcValue[] parameters)
         {
             string url = _postApiUrl;
+            Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - methodName: {methodName}, postApiUrl: {url}");
+            
             if (Options.SupportsHttps)
             {
                 if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
                     url = "https://" + url.Substring("http://".Length);
+                Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - Upgraded to HTTPS: {url}");
             }
+
+            #pragma warning disable SYSLIB0014 // ServicePointManager is obsolete
+            Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - SecurityProtocol: {System.Net.ServicePointManager.SecurityProtocol}");
+            #pragma warning restore SYSLIB0014
 
             try
             {
                 // create an RpcClient
+                Debug.WriteLine("[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - Creating XmlRpcClient");
                 XmlRpcClient xmlRpcClient = new XmlRpcClient(url, ApplicationEnvironment.UserAgent, new HttpRequestFilter(BeforeHttpRequest), _clientOptions.CharacterSet);
 
                 // call the method
+                Debug.WriteLine("[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - Calling xmlRpcClient.CallMethod");
                 XmlRpcMethodResponse response = xmlRpcClient.CallMethod(methodName, parameters);
+                Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - Response received, FaultOccurred: {response.FaultOccurred}");
 
                 // if success, return the response
                 if (!response.FaultOccurred)
                 {
+                    Debug.WriteLine("[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - Success, returning response");
                     return response.Response;
                 }
                 else // throw error indicating problem
                 {
+                    Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - Fault occurred: {response.FaultCode} - {response.FaultString}");
                     // prepare to throw exception
                     BlogClientException exception;
 
@@ -250,10 +262,16 @@ namespace OpenLiveWriter.BlogClient.Clients
             }
             catch (IOException ex)
             {
+                Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - IOException: {ex.Message}");
                 throw new BlogClientIOException("calling XML-RPC method " + methodName, ex);
             }
             catch (WebException ex)
             {
+                Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - WebException: {ex.Status} - {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - WebException.InnerException: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
+                }
                 HttpRequestHelper.LogException(ex);
 
                 // see if this was a 404 not found
@@ -273,6 +291,7 @@ namespace OpenLiveWriter.BlogClient.Clients
             }
             catch (XmlRpcClientInvalidResponseException ex)
             {
+                Debug.WriteLine($"[OLW-DEBUG] XmlRpcBlogClient.CallMethod() - XmlRpcClientInvalidResponseException: {ex.Message}");
                 throw new BlogClientInvalidServerResponseException(methodName, ex.Message, ex.Response);
             }
         }

@@ -28,7 +28,8 @@ namespace OpenLiveWriter.InternalWriterPlugin
         public static int MIN_ZOOM = 1;
         public static int MAX_ZOOM = 19;
 
-        private ExplorerBrowserControl explorerBrowserControl;
+        private UserControl _browserControl;
+        private IBrowserControl _browser;
         /// <summary>
         /// Required designer variable.
         /// </summary>
@@ -42,7 +43,7 @@ namespace OpenLiveWriter.InternalWriterPlugin
             // This call is required by the Windows.Forms Form Designer.
             InitializeComponent();
 
-            explorerBrowserControl.DocumentComplete += new BrowserDocumentEventHandler(explorerBrowserControl_DocumentComplete);
+            _browser.DocumentComplete += new BrowserDocumentEventHandler(explorerBrowserControl_DocumentComplete);
 
             this.RightToLeft = RightToLeft.No;
         }
@@ -54,11 +55,11 @@ namespace OpenLiveWriter.InternalWriterPlugin
         {
             if (disposing)
             {
-                if (explorerBrowserControl != null)
+                if (_browserControl != null)
                 {
-                    explorerBrowserControl.DocumentComplete -= new BrowserDocumentEventHandler(explorerBrowserControl_DocumentComplete);
-                    explorerBrowserControl.Dispose();
-                    explorerBrowserControl = null;
+                    _browser.DocumentComplete -= new BrowserDocumentEventHandler(explorerBrowserControl_DocumentComplete);
+                    _browserControl.Dispose();
+                    _browserControl = null;
                 }
                 if (MapActiveObject != null)
                 {
@@ -79,27 +80,26 @@ namespace OpenLiveWriter.InternalWriterPlugin
         /// </summary>
         private void InitializeComponent()
         {
-            this.explorerBrowserControl = new OpenLiveWriter.BrowserControl.ExplorerBrowserControl();
+            this._browserControl = BrowserControlFactory.CreateBrowserUserControl();
+            this._browser = (IBrowserControl)this._browserControl;
             this.SuspendLayout();
             //
-            // explorerBrowserControl
+            // browserControl
             //
-            this.explorerBrowserControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.explorerBrowserControl.Location = new System.Drawing.Point(1, 1);
-            this.explorerBrowserControl.Name = "explorerBrowserControl";
-            this.explorerBrowserControl.Silent = true;
-            this.explorerBrowserControl.Size = new System.Drawing.Size(326, 278);
-            this.explorerBrowserControl.TabIndex = 0;
-            this.explorerBrowserControl.TextSize = OpenLiveWriter.BrowserControl.TextSize.Medium;
-            this.explorerBrowserControl.WorkOffline = false;
+            this._browserControl.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._browserControl.Location = new System.Drawing.Point(1, 1);
+            this._browserControl.Name = "browserControl";
+            this._browser.Silent = true;
+            this._browserControl.Size = new System.Drawing.Size(326, 278);
+            this._browserControl.TabIndex = 0;
             //
             // MapControl
             //
-            this.Controls.Add(this.explorerBrowserControl);
+            this.Controls.Add(this._browserControl);
             this.DockPadding.All = 1;
             this.Name = "MapControl";
             this.Size = new System.Drawing.Size(328, 280);
-            this.Controls.SetChildIndex(this.explorerBrowserControl, 0);
+            this.Controls.SetChildIndex(this._browserControl, 0);
             this.ResumeLayout(false);
 
         }
@@ -160,19 +160,37 @@ namespace OpenLiveWriter.InternalWriterPlugin
 
         private void explorerBrowserControl_DocumentComplete(object sender, BrowserDocumentEventArgs e)
         {
-            IHTMLDocument2 document = (IHTMLDocument2)explorerBrowserControl.Document;
-
-            // turn off borders
-            (document.body as IHTMLElement).style.borderStyle = "none";
-
-            //MapActiveObject.ClearEvents();
-            if (_address != null)
+            // Handle DOM manipulation - IE-specific for now
+            if (_browser is ExplorerBrowserControl explorerBrowser)
             {
-                MapActiveObject.FindLocation(_address);
-                _address = null;
-            }
+                IHTMLDocument2 document = (IHTMLDocument2)explorerBrowser.Document;
 
-            MapActiveObject.AttachToMapDocument(document);
+                // turn off borders
+                (document.body as IHTMLElement).style.borderStyle = "none";
+
+                if (_address != null)
+                {
+                    MapActiveObject.FindLocation(_address);
+                    _address = null;
+                }
+
+                MapActiveObject.AttachToMapDocument(document);
+            }
+            else if (_browser is WebView2BrowserControl webView2Browser)
+            {
+                // WebView2: Use JavaScript for DOM manipulation
+                webView2Browser.ExecuteScriptAsync("document.body.style.borderStyle = 'none';");
+                
+                if (_address != null)
+                {
+                    // TODO: Implement MapActiveObject for WebView2
+                    Debug.WriteLine($"[OLW-DEBUG] MapControl WebView2: FindLocation not yet implemented for address: {_address}");
+                    _address = null;
+                }
+                
+                // TODO: MapActiveObject.AttachToMapDocument needs WebView2 equivalent
+                Debug.WriteLine("[OLW-DEBUG] MapControl WebView2: AttachToMapDocument not yet implemented");
+            }
         }
 
         /// <summary>
@@ -210,7 +228,7 @@ namespace OpenLiveWriter.InternalWriterPlugin
             //string url = MapUrlHelper.CreateMapUrl(LocalMapUrl, latitude, longitude, mapStyle, zoomLevel);
             string url = LocalMapUrl;
             url = new Uri(url).ToString();
-            explorerBrowserControl.Navigate(url);
+            _browser.Navigate(url);
         }
 
         public void PanMap(int deltaX, int deltaY)

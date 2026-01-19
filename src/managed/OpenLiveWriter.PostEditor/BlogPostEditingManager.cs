@@ -469,6 +469,7 @@ namespace OpenLiveWriter.PostEditor
 
         public void EditPost(IBlogPostEditingContext editingContext, bool forceDirty)
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} BlogPostEditingManager.EditPost starting");
             // not yet initialized
             _initialized = false;
 
@@ -478,6 +479,7 @@ namespace OpenLiveWriter.PostEditor
             // defend against invalid blog id
             bool resetPostId = false;
             string blogId = editingContext.BlogId;
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Checking BlogIdIsValid");
             if (!BlogSettings.BlogIdIsValid(blogId))
             {
                 blogId = BlogSettings.DefaultBlogId;
@@ -485,7 +487,9 @@ namespace OpenLiveWriter.PostEditor
             }
 
             // initialize state
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} SetCurrentBlog");
             SetCurrentBlog(blogId);
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Setting BlogPost and files");
             BlogPost = editingContext.BlogPost;
             LocalFile = editingContext.LocalFile;
             _autoSaveLocalFile = editingContext.AutoSaveLocalFile;
@@ -506,13 +510,17 @@ namespace OpenLiveWriter.PostEditor
 
             // only fire events after we are fully initialized (event handlers call back into
             // this object and expect everything to be initialized)
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnBlogChanged");
             OnBlogChanged();
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnBlogPostChanged");
             OnBlogPostChanged();
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} OnEditingStatusChanged");
             OnEditingStatusChanged();
 
             // force dirty if requested
             if (forceDirty)
                 ForceDirty();
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} BlogPostEditingManager.EditPost done");
         }
 
         /// <summary>
@@ -1508,8 +1516,14 @@ namespace OpenLiveWriter.PostEditor
             if (_initialized)
             {
                 // notify post editors
+                int i = 0;
                 foreach (IBlogPostEditor postEditor in _postEditors)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} Initializing postEditor[{i}]: {postEditor.GetType().Name}");
                     postEditor.Initialize(this, Blog.ClientOptions);
+                    System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] {DateTime.Now:HH:mm:ss.fff} postEditor[{i}] initialized");
+                    i++;
+                }
             }
         }
 

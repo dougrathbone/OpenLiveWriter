@@ -50,16 +50,12 @@ namespace OpenLiveWriter.Interop.Com
         ushort wReserved2;
         ushort wReserved3;
 
-        // In order to allow x64 compat, we need to allow for
-        // expansion of the IntPtr. However, the BLOB struct
-        // uses a 4-byte int, followed by an IntPtr, so
-        // although the valueData field catches most pointer values,
-        // we need an additional 4-bytes to get the BLOB
-        // pointer. The valueDataExt field provides this, as well as
-        // the last 4-bytes of an 8-byte value on 32-bit
-        // architectures.
+        // The PROPVARIANT union is 16 bytes on x64 (to hold 2 pointers).
+        // We use two IntPtr fields to ensure correct size on both x86 and x64.
+        // On x86: 2 x 4 = 8 bytes (correct for union)
+        // On x64: 2 x 8 = 16 bytes (correct for union)
         IntPtr valueData;
-        Int32 valueDataExt;
+        IntPtr valueDataExt;
         #endregion // struct fields
 
         #region public Methods
@@ -69,7 +65,7 @@ namespace OpenLiveWriter.Interop.Com
             valueType = (ushort)VarEnum.VT_EMPTY;
             wReserved1 = wReserved2 = wReserved3 = 0;
             valueData = IntPtr.Zero;
-            valueDataExt = 0;
+            valueDataExt = IntPtr.Zero;
         }
 
         public PropVariant(uint value) : this()
@@ -304,7 +300,7 @@ namespace OpenLiveWriter.Interop.Com
             valueType = (ushort)VarEnum.VT_EMPTY;
             wReserved1 = wReserved2 = wReserved3 = 0;
             valueData = IntPtr.Zero;
-            valueDataExt = 0;
+            valueDataExt = IntPtr.Zero;
         }
 
         /// <summary>
@@ -566,7 +562,7 @@ namespace OpenLiveWriter.Interop.Com
         {
             int[] bits = Decimal.GetBits(value);
             valueData = (IntPtr)bits[0];
-            valueDataExt = bits[1];
+            valueDataExt = (IntPtr)bits[1];
             wReserved3 = (ushort)(bits[2] >> 16);
             wReserved2 = (ushort)(bits[2] & 0x0000FFFF);
             wReserved1 = (ushort)(bits[3] >> 16);
@@ -811,7 +807,7 @@ namespace OpenLiveWriter.Interop.Com
             {
                 int[] bits = new int[4];
                 bits[0] = (int)valueData;
-                bits[1] = valueDataExt;
+                bits[1] = (int)valueDataExt;
                 bits[2] = (wReserved3 << 16) | wReserved2;
                 bits[3] = (wReserved1 << 16);
                 return new decimal(bits);
@@ -860,16 +856,12 @@ namespace OpenLiveWriter.Interop.Com
             IntPtr pBlobData;
             if (IntPtr.Size == 4)
             {
-                pBlobData = new IntPtr(valueDataExt);
+                pBlobData = valueDataExt;
             }
             else if (IntPtr.Size == 8)
             {
-                // In this case, we need to derive a pointer at offset 12,
-                // because the size of the blob is represented as a 4-byte int
-                // but the pointer is immediately after that.
-                pBlobData = new IntPtr(
-                    (Int64)(BitConverter.ToInt32(GetDataBytes(), sizeof(int))) +
-                    (Int64)(BitConverter.ToInt32(GetDataBytes(), 2 * sizeof(int)) << 32));
+                // On x64, the pointer is in valueDataExt (the second IntPtr in the union)
+                pBlobData = valueDataExt;
             }
             else
             {
@@ -980,12 +972,17 @@ namespace OpenLiveWriter.Interop.Com
         /// <returns>A byte array that is the combined size of the data bits.</returns>
         private byte[] GetDataBytes()
         {
-            byte[] ret = new byte[IntPtr.Size + sizeof(int)];
+            byte[] ret = new byte[IntPtr.Size * 2];
             if (IntPtr.Size == 4)
+            {
                 BitConverter.GetBytes(valueData.ToInt32()).CopyTo(ret, 0);
+                BitConverter.GetBytes(valueDataExt.ToInt32()).CopyTo(ret, IntPtr.Size);
+            }
             else if (IntPtr.Size == 8)
+            {
                 BitConverter.GetBytes(valueData.ToInt64()).CopyTo(ret, 0);
-            BitConverter.GetBytes(valueDataExt).CopyTo(ret, IntPtr.Size);
+                BitConverter.GetBytes(valueDataExt.ToInt64()).CopyTo(ret, IntPtr.Size);
+            }
             return ret;
         }
 
