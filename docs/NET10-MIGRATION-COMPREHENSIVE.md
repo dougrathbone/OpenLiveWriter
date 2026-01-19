@@ -1,35 +1,323 @@
-# Open Live Writer: .NET 10 Migration Plan (Comprehensive)
+# Open Live Writer: Modernization Plan
 
-## Executive Summary
+## Overview
 
-This document outlines a comprehensive plan to migrate Open Live Writer from **.NET Framework 4.7.2** to **.NET 10 LTS** (released November 2025, supported until November 2028).
+This plan is divided into **two independent phases** that can be executed separately:
 
-**Estimated Effort**: 3-6 months for a small team
-**Risk Level**: Medium-High (due to extensive COM interop and P/Invoke usage)
-**Recommended Approach**: Phased migration with intermediate .NET 8 target
+| Phase | Goal | Framework | Risk | Duration |
+|-------|------|-----------|------|----------|
+| **Phase A** | Squirrel → Velopack | .NET Framework 4.7.2 | Low | 2-3 weeks |
+| **Phase B** | .NET Framework → .NET 10 | .NET 10 | Medium-High | 10-18 weeks |
 
----
-
-## Table of Contents
-
-1. [Current State Analysis](#1-current-state-analysis)
-2. [Migration Benefits](#2-migration-benefits)
-3. [Technical Challenges](#3-technical-challenges)
-4. [Migration Strategy](#4-migration-strategy)
-5. [Phase 1: Preparation](#5-phase-1-preparation)
-6. [Phase 2: Project Conversion](#6-phase-2-project-conversion)
-7. [Phase 3: Code Migration](#7-phase-3-code-migration)
-8. [Phase 4: Testing & Validation](#8-phase-4-testing--validation)
-9. [Phase 5: Deployment](#9-phase-5-deployment)
-10. [Risk Assessment](#10-risk-assessment)
-11. [Timeline](#11-timeline)
-12. [Resources](#12-resources)
+**Why separate phases?**
+- Velopack supports both .NET Framework AND .NET 10
+- Can ship Velopack update to all users on current .NET Framework
+- Reduces risk - one major change at a time
+- Phase A can be done immediately; Phase B can wait
 
 ---
 
-## 1. Current State Analysis
+# PHASE A: Velopack Migration (Installer & Auto-Update)
 
-### 1.1 Project Structure
+**Target**: Stay on .NET Framework 4.7.2, replace Squirrel with Velopack
+
+**Estimated Duration**: 2-3 weeks
+
+## A.1 Why Velopack?
+
+| Feature | Squirrel.Windows | Velopack |
+|---------|-----------------|----------|
+| .NET Framework Support | ✅ Yes | ✅ Yes |
+| .NET 10 Support | ❌ No | ✅ Yes |
+| Active Maintenance | ❌ Abandoned | ✅ Active |
+| Delta Updates | ✅ Yes | ✅ Yes (faster) |
+| Cross-Platform | ❌ Windows only | ✅ Win/Mac/Linux |
+| Auto-Migration from Squirrel | N/A | ✅ Built-in |
+
+## A.2 Current Squirrel Code (~70 lines)
+
+**Files affected:**
+- `OpenLiveWriter\ApplicationMain.cs` - Install/uninstall/update hooks
+- `OpenLiveWriter.PostEditor\Updates\UpdateManager.cs` - Background update check
+- `OpenLiveWriter\packages.config` - NuGet reference
+
+## A.3 Migration Steps
+
+### Step 1: Update NuGet Package
+
+```xml
+<!-- packages.config: Remove -->
+<package id="squirrel.windows" version="1.4.4" />
+<package id="Splat" version="2.0.0" />
+<package id="DeltaCompressionDotNet" version="1.1.0" />
+<package id="Mono.Cecil" version="0.9.6.4" />
+
+<!-- packages.config: Add -->
+<package id="Velopack" version="0.0.1298" targetFramework="net472" />
+```
+
+### Step 2: Update ApplicationMain.cs
+
+```csharp
+// OLD: Squirrel
+using Squirrel;
+
+public static void Main(string[] args)
+{
+    Kernel32.SetDllDirectory("");
+    Application.EnableVisualStyles();
+    
+    // Squirrel event registration (later in code)
+    RegisterSquirrelEventHandlers(downloadUrl);
+    // ...
+}
+
+private static void RegisterSquirrelEventHandlers(string downloadUrl)
+{
+    using (var mgr = new Squirrel.UpdateManager(downloadUrl))
+    {
+        SquirrelAwareApp.HandleEvents(
+            onInitialInstall: v => InitialInstall(mgr),
+            onFirstRun: () => FirstRun(mgr),
+            onAppUpdate: v => OnAppUpdate(mgr),
+            onAppUninstall: v => OnAppUninstall(mgr));
+    }
+}
+```
+
+```csharp
+// NEW: Velopack
+using Velopack;
+
+public static void Main(string[] args)
+{
+    // IMPORTANT: Velopack MUST be first thing in Main()
+    VelopackApp.Build()
+        .WithFirstRun((v) => OnFirstRun())
+        .WithAfterInstallFastCallback((v) => OnInstall())
+        .WithAfterUpdateFastCallback((v) => OnUpdate())
+        .WithBeforeUninstallFastCallback((v) => OnUninstall())
+        .Run();
+
+    // Then existing code...
+    Kernel32.SetDllDirectory("");
+    Application.EnableVisualStyles();
+    // ...
+}
+
+private static void OnInstall()
+{
+    try
+    {
+        // Create shortcuts
+        var locator = VelopackLocator.GetDefault(null);
+        
+        // File association for .wpost files
+        var exePath = locator?.CurrentlyInstalledVersion?.TargetFullPath 
+            ?? Application.ExecutablePath;
+        SetAssociation(".wpost", "OPEN_LIVE_WRITER", exePath, "Open Live Writer post");
+    }
+    catch (Exception ex)
+    {
+        Trace.WriteLine($"Install callback error: {ex.Message}");
+    }
+}
+
+private static void OnFirstRun()
+{
+    // Any first-run logic (currently just creates shortcuts, handled by Velopack)
+    Trace.WriteLine("First run after install");
+}
+
+private static void OnUpdate()
+{
+    Trace.WriteLine("App updated successfully");
+}
+
+private static void OnUninstall()
+{
+    try
+    {
+        // Clean up registry
+        string OLWRegKey = @"SOFTWARE\OpenLiveWriter";
+        Registry.CurrentUser.DeleteSubKeyTree(OLWRegKey, false);
+        
+        // Clean up app data (optional - may want to keep user data)
+        // Directory.Delete(ApplicationEnvironment.LocalApplicationDataDirectory, true);
+        // Directory.Delete(ApplicationEnvironment.ApplicationDataDirectory, true);
+    }
+    catch (Exception ex)
+    {
+        Trace.WriteLine($"Uninstall cleanup error: {ex.Message}");
+    }
+}
+```
+
+### Step 3: Update UpdateManager.cs
+
+```csharp
+// OLD: Squirrel
+using Squirrel;
+
+private static ThreadStart UpdateOpenLiveWriter(string downloadUrl, bool checkNow)
+{
+    return async () =>
+    {
+        if (checkNow)
+        {
+            using (var manager = new Squirrel.UpdateManager(downloadUrl))
+            {
+                var update = await manager.CheckForUpdate();
+                await manager.UpdateApp();
+            }
+        }
+    };
+}
+```
+
+```csharp
+// NEW: Velopack
+using Velopack;
+using Velopack.Sources;
+
+public static void CheckforUpdates(bool forceCheck = false)
+{
+    var checkNow = forceCheck || UpdateSettings.AutoUpdate;
+    if (!checkNow) return;
+
+    var downloadUrl = UpdateSettings.CheckForBetaUpdates ?
+        UpdateSettings.BetaUpdateDownloadUrl : UpdateSettings.UpdateDownloadUrl;
+
+    // Schedule update check 10 seconds after launch
+    var delayUpdate = new DelayUpdateHelper(
+        CheckForUpdatesAsync(downloadUrl), 
+        UPDATELAUNCHDELAY);
+    delayUpdate.StartBackgroundUpdate("Background OpenLiveWriter application update");
+}
+
+private static ThreadStart CheckForUpdatesAsync(string downloadUrl)
+{
+    return async () =>
+    {
+        try
+        {
+            var source = new SimpleWebSource(downloadUrl);
+            var mgr = new Velopack.UpdateManager(source);
+            
+            // Check if we're in a Velopack-installed app
+            if (!mgr.IsInstalled)
+            {
+                Trace.WriteLine("Not a Velopack install, skipping update check");
+                return;
+            }
+            
+            var newVersion = await mgr.CheckForUpdatesAsync();
+            if (newVersion == null)
+            {
+                Trace.WriteLine("No updates available");
+                return;
+            }
+            
+            // Verify it's actually newer
+            if (newVersion.TargetFullRelease.Version <= mgr.CurrentVersion)
+            {
+                Trace.WriteLine($"Available version {newVersion.TargetFullRelease.Version} " +
+                    $"is not newer than current {mgr.CurrentVersion}");
+                return;
+            }
+            
+            Trace.WriteLine($"Downloading update: {newVersion.TargetFullRelease.Version}");
+            await mgr.DownloadUpdatesAsync(newVersion);
+            
+            Trace.WriteLine("Update downloaded, will apply on next restart");
+            // Update applies automatically on next app start
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Update check failed: {ex.Message}");
+        }
+    };
+}
+```
+
+### Step 4: Update Build Script
+
+```powershell
+# build-release.ps1 - Add after existing build
+
+# Install Velopack CLI (one-time)
+if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
+    dotnet tool install -g vpk
+}
+
+# Package with Velopack
+$version = Get-Content .\version.txt
+$writerDir = ".\src\managed\bin\Release\x64\Writer"
+
+vpk pack `
+    --packId "OpenLiveWriter" `
+    --packVersion $version `
+    --packDir $writerDir `
+    --mainExe "OpenLiveWriter.exe" `
+    --icon ".\src\managed\OpenLiveWriter.CoreServices\Images\ApplicationIcon.ico" `
+    --outputDir ".\Releases"
+
+Write-Host "Velopack package created in .\Releases\"
+```
+
+### Step 5: Update AppVeyor CI
+
+```yaml
+# appveyor.yml additions
+after_build:
+  - ps: |
+      dotnet tool install -g vpk
+      $version = Get-Content version.txt
+      vpk pack --packId OpenLiveWriter --packVersion $version `
+        --packDir ./src/managed/bin/Release/x64/Writer `
+        --mainExe OpenLiveWriter.exe `
+        --outputDir ./Releases
+
+artifacts:
+  - path: Releases\*.nupkg
+  - path: Releases\*Setup.exe
+  - path: Releases\RELEASES
+```
+
+## A.4 Testing Checklist
+
+- [ ] Clean install works (new user)
+- [ ] Existing Squirrel install migrates automatically
+- [ ] Shortcuts created correctly
+- [ ] .wpost file association works
+- [ ] Auto-update downloads new version
+- [ ] Update applies on restart
+- [ ] Uninstall removes registry keys
+- [ ] Beta channel updates work
+
+## A.5 Rollout Plan
+
+1. **Week 1**: Implement Velopack, test internally
+2. **Week 2**: Release to beta channel (`CheckForBetaUpdates = true`)
+3. **Week 3**: Release to stable channel if no issues
+
+**Key benefit**: Existing users on Squirrel will automatically migrate to Velopack when they receive this update.
+
+---
+
+# PHASE B: .NET 10 Migration
+
+**Target**: Migrate from .NET Framework 4.7.2 to .NET 10 LTS
+
+**Prerequisite**: Phase A complete (Velopack working)
+
+**Estimated Duration**: 10-18 weeks
+
+---
+
+## B.1 Current State Analysis
+
+### B.1.1 Project Structure
 
 | Metric | Count |
 |--------|-------|
@@ -38,26 +326,26 @@ This document outlines a comprehensive plan to migrate Open Live Writer from **.
 | Executable Projects | 4 |
 | Test Projects | 3 |
 
-### 1.2 Target Framework
+### B.1.2 Target Framework
 - **Current**: .NET Framework 4.7.2
+- **Target**: .NET 10.0-windows (LTS until Nov 2028)
 - **Platform**: x64 only (x86 deprecated)
-- **Build System**: MSBuild with custom `.targets` files
+- **Build System**: MSBuild with custom `.targets` files → SDK-style projects
 
-### 1.3 NuGet Dependencies
+### B.1.3 NuGet Dependencies
 
 | Package | Version | .NET 10 Compatible | Notes |
 |---------|---------|-------------------|-------|
 | Microsoft.Web.WebView2 | 1.0.2903.40 | ✅ Yes | Core dependency |
 | Newtonsoft.Json | 13.0.3 | ✅ Yes | Can migrate to System.Text.Json |
-| Google.Apis.* | 1.39.0 | ⚠️ Update Required | Need v1.60+ for .NET 10 |
-| squirrel.windows | 1.4.4 | ❌ No | **Migrate to Velopack** (see Section 3.1) |
-| DeltaCompressionDotNet | 1.1.0 | ❌ Unknown | Test required |
+| **Velopack** | 0.0.1298 | ✅ Yes | **From Phase A** |
+| Google.Apis.* | 1.39.0 | ⚠️ Update | Need v1.60+ for .NET 10 |
 | NUnit | 3.4.1 | ✅ Yes | Update to 4.x recommended |
-| YamlDotNet | 6.1.1 | ✅ Yes | Update to 13.x recommended |
+| YamlDotNet | 6.1.1 | ✅ Yes | Update to 15.x recommended |
 | Microsoft.Bcl.* | 1.1.10 | ❌ Remove | Built into .NET 10 |
 | PlatformSpellCheck | 1.0.0 | ⚠️ Unknown | Test required |
 
-### 1.4 Native Interop Analysis
+### B.1.4 Native Interop Analysis
 
 #### P/Invoke Declarations (~120+)
 
@@ -87,7 +375,7 @@ This document outlines a comprehensive plan to migrate Open Live Writer from **.
 
 **Assessment**: COM interop is supported but some patterns may need adjustment.
 
-### 1.5 Windows-Specific APIs
+### B.1.5 Windows-Specific APIs
 
 | API | Files Using | Migration Path |
 |-----|-------------|----------------|
@@ -97,25 +385,25 @@ This document outlines a comprehensive plan to migrate Open Live Writer from **.
 
 ---
 
-## 2. Migration Benefits
+## B.2 Migration Benefits
 
-### 2.1 Performance Improvements
+### B.2.1 Performance Improvements
 - **30-50% faster startup** (JIT improvements)
 - **Lower memory usage** (GC improvements)
 - **Faster JSON serialization** (System.Text.Json)
 
-### 2.2 Modern Features
+### B.2.2 Modern Features
 - **C# 14** language features (field-backed properties, primary constructors)
 - **Native AOT** option for faster startup
 - **Better container support** for deployment
 - **Enhanced debugging** with Hot Reload improvements
 
-### 2.3 Long-Term Support
+### B.2.3 Long-Term Support
 - **.NET 10 LTS** supported until November 2028
 - **Active development** vs. .NET Framework (maintenance only)
 - **Security updates** delivered faster
 
-### 2.4 Developer Experience
+### B.2.4 Developer Experience
 - **SDK-style projects** (simpler .csproj files)
 - **Central package management**
 - **Faster builds** with incremental compilation
@@ -123,210 +411,9 @@ This document outlines a comprehensive plan to migrate Open Live Writer from **.
 
 ---
 
-## 3. Technical Challenges
+## B.3 Technical Challenges
 
-### 3.1 Squirrel.Windows → Velopack Migration
-
-**Problem**: Squirrel.Windows 1.4.4 does not support .NET 10.
-
-**Solution**: Migrate to **Velopack** - the actively maintained successor to Squirrel.
-
-#### Why Velopack?
-
-| Feature | Squirrel.Windows | Velopack |
-|---------|-----------------|----------|
-| .NET 10 Support | ❌ No | ✅ Yes |
-| Active Maintenance | ❌ Abandoned | ✅ Active |
-| Delta Updates | ✅ Yes | ✅ Yes (faster) |
-| Cross-Platform | ❌ Windows only | ✅ Win/Mac/Linux |
-| Auto-Migration | N/A | ✅ From Squirrel |
-| API Similarity | - | ~90% compatible |
-
-#### Current Squirrel Usage in OLW
-
-**Files to modify:**
-1. `OpenLiveWriter\ApplicationMain.cs` - Event handlers (install/uninstall/update)
-2. `OpenLiveWriter.PostEditor\Updates\UpdateManager.cs` - Background update check
-3. `OpenLiveWriter\packages.config` - Package reference
-
-**Current implementation (~70 lines of Squirrel code):**
-
-```csharp
-// ApplicationMain.cs - Current Squirrel code
-using Squirrel;
-
-private static void RegisterSquirrelEventHandlers(string downloadUrl)
-{
-    using (var mgr = new Squirrel.UpdateManager(downloadUrl))
-    {
-        SquirrelAwareApp.HandleEvents(
-            onInitialInstall: v => InitialInstall(mgr),
-            onFirstRun: () => FirstRun(mgr),
-            onAppUpdate: v => OnAppUpdate(mgr),
-            onAppUninstall: v => OnAppUninstall(mgr));
-    }
-}
-
-// UpdateManager.cs - Current update check
-using (var manager = new Squirrel.UpdateManager(downloadUrl))
-{
-    var update = await manager.CheckForUpdate();
-    await manager.UpdateApp();
-}
-```
-
-#### Velopack Migration Code
-
-**Step 1: Replace NuGet package**
-```xml
-<!-- Remove -->
-<package id="squirrel.windows" version="1.4.4" />
-
-<!-- Add -->
-<PackageReference Include="Velopack" Version="0.0.1298" />
-```
-
-**Step 2: Update ApplicationMain.cs**
-```csharp
-// NEW: Velopack implementation
-using Velopack;
-
-public static void Main(string[] args)
-{
-    // Velopack MUST be first line in Main()
-    VelopackApp.Build()
-        .WithFirstRun(v => FirstRun())
-        .WithAfterInstallFastCallback(v => InitialInstall())
-        .WithAfterUpdateFastCallback(v => OnAppUpdate())
-        .WithBeforeUninstallFastCallback(v => OnAppUninstall())
-        .Run();
-    
-    // Rest of existing Main() code...
-    Application.EnableVisualStyles();
-    // ...
-}
-
-private static void InitialInstall()
-{
-    // Create shortcuts, file associations
-    var locator = VelopackLocator.GetDefault(null);
-    var mgr = new UpdateManager(locator);
-    mgr.CreateShortcutForThisExe(ShortcutLocation.StartMenu | ShortcutLocation.Desktop);
-    
-    SetAssociation(".wpost", "OPEN_LIVE_WRITER", 
-        locator.CurrentlyInstalledVersion?.TargetFullPath ?? Application.ExecutablePath, 
-        "Open Live Writer post");
-}
-
-private static void OnAppUninstall()
-{
-    // Clean up registry and data
-    string OLWRegKey = @"SOFTWARE\OpenLiveWriter";
-    Registry.CurrentUser.DeleteSubKeyTree(OLWRegKey, false);
-    
-    try
-    {
-        Directory.Delete(ApplicationEnvironment.LocalApplicationDataDirectory, true);
-        Directory.Delete(ApplicationEnvironment.ApplicationDataDirectory, true);
-    }
-    catch { /* Ignore cleanup errors */ }
-}
-```
-
-**Step 3: Update UpdateManager.cs**
-```csharp
-// NEW: Velopack update check
-using Velopack;
-using Velopack.Sources;
-
-public class UpdateManager
-{
-    public static async Task CheckForUpdatesAsync(bool forceCheck = false)
-    {
-        if (!forceCheck && !UpdateSettings.AutoUpdate)
-            return;
-            
-        var downloadUrl = UpdateSettings.CheckForBetaUpdates ?
-            UpdateSettings.BetaUpdateDownloadUrl : UpdateSettings.UpdateDownloadUrl;
-
-        try
-        {
-            var source = new SimpleWebSource(downloadUrl);
-            var mgr = new Velopack.UpdateManager(source);
-            
-            // Check for updates
-            var newVersion = await mgr.CheckForUpdatesAsync();
-            if (newVersion == null)
-            {
-                Trace.WriteLine("No updates available.");
-                return;
-            }
-            
-            // Verify update is newer (not older)
-            var currentVersion = mgr.CurrentVersion;
-            if (newVersion.TargetFullRelease.Version <= currentVersion)
-            {
-                Trace.WriteLine($"Update {newVersion.TargetFullRelease.Version} is not newer than {currentVersion}");
-                return;
-            }
-            
-            // Download and apply
-            await mgr.DownloadUpdatesAsync(newVersion);
-            Trace.WriteLine($"Update downloaded: {newVersion.TargetFullRelease.Version}");
-            
-            // Will apply on next restart
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"Update check failed: {ex.Message}");
-        }
-    }
-}
-```
-
-**Step 4: Update build/packaging**
-```powershell
-# Install Velopack CLI
-dotnet tool install -g vpk
-
-# Package the app (replaces Squirrel packaging)
-vpk pack `
-    --packId "OpenLiveWriter" `
-    --packVersion "0.7.0" `
-    --packDir "./src/managed/bin/Release/x64/Writer" `
-    --mainExe "OpenLiveWriter.exe" `
-    --outputDir "./Releases"
-
-# Generate delta updates
-vpk delta `
-    --baseDir "./Releases/previous" `
-    --targetDir "./Releases/current"
-```
-
-#### Automatic Migration from Squirrel
-
-**Good news**: Velopack automatically migrates existing Squirrel installations!
-
-When an existing Squirrel user updates to the new Velopack version:
-1. Velopack detects Squirrel installation artifacts
-2. Shortcuts are updated to point to new location
-3. Registry entries are migrated
-4. Old Squirrel files are cleaned up
-5. User continues receiving updates via Velopack
-
-**No user action required** - migration is seamless.
-
-#### Testing the Migration
-
-1. Create test VM with current Squirrel-based OLW installed
-2. Build new Velopack version with same app ID
-3. Publish update to test channel
-4. Verify existing install updates correctly
-5. Verify shortcuts, file associations still work
-6. Verify clean install works
-7. Verify uninstall cleans up properly
-
-### 3.2 HIGH: UI Ribbon COM Interop
+### B.3.1 UI Ribbon COM Interop (High Risk)
 
 **Problem**: Custom Windows Ribbon Framework integration via COM.
 
@@ -341,7 +428,7 @@ When an existing Squirrel user updates to the new Velopack version:
 
 **Recommendation**: Keep existing COM interop, test thoroughly.
 
-### 3.3 MEDIUM: MSHTML/SHDocVw Interop
+### B.3.2 MSHTML/SHDocVw Interop (Resolved)
 
 **Current State**: Already migrated to WebView2! ✅
 
@@ -351,13 +438,13 @@ When an existing Squirrel user updates to the new Velopack version:
 - Remove MSHTML interop assemblies if WebView2 migration is complete
 - Keep as compatibility layer if needed for edge cases
 
-### 3.4 MEDIUM: Project File Format
+### B.3.3 Project File Format (Medium Risk)
 
 **Problem**: Old-style .csproj files with complex dependencies.
 
 **Solution**: Convert to SDK-style projects using .NET Upgrade Assistant.
 
-### 3.5 LOW: Registry Access
+### B.3.4 Registry Access (Low Risk)
 
 **Problem**: Direct Registry access not included by default in .NET 10.
 
@@ -365,27 +452,27 @@ When an existing Squirrel user updates to the new Velopack version:
 
 ---
 
-## 4. Migration Strategy
+## B.4 Migration Strategy
 
-### 4.1 Recommended Approach: Phased Migration
+### B.4.1 Recommended Approach: Phased Migration
 
 ```
-Phase 1: Preparation (2-3 weeks)
+Sub-Phase B1: Preparation (2-3 weeks)
     │
     ▼
-Phase 2: Project Conversion (2-4 weeks)
+Sub-Phase B2: Project Conversion (2-4 weeks)
     │
     ▼
-Phase 3: Code Migration (4-8 weeks)
+Sub-Phase B3: Code Migration (4-8 weeks)
     │
     ▼
-Phase 4: Testing & Validation (2-4 weeks)
+Sub-Phase B4: Testing & Validation (2-4 weeks)
     │
     ▼
-Phase 5: Deployment (1-2 weeks)
+Sub-Phase B5: Deployment (1-2 weeks)
 ```
 
-### 4.2 Migration Order (Bottom-Up)
+### B.4.2 Migration Order (Bottom-Up)
 
 ```
 Layer 1 (No UI dependencies):
@@ -418,23 +505,23 @@ Layer 5 (Tools - optional):
 
 ---
 
-## 5. Phase 1: Preparation
+## B.5 Sub-Phase B1: Preparation
 
-### 5.1 Prerequisites
+### B.5.1 Prerequisites
 
 - [ ] Install .NET 10 SDK
 - [ ] Install Visual Studio 2026 with .NET 10 workload
 - [ ] Install .NET Upgrade Assistant (VS extension or CLI)
 - [ ] Create migration branch: `feature/dotnet10-migration`
 
-### 5.2 Dependency Audit
+### B.5.2 Dependency Audit
 
 ```powershell
 # Run .NET Upgrade Assistant analyze mode
 upgrade-assistant analyze writer.sln --source ./src/managed
 ```
 
-### 5.3 NuGet Package Updates
+### B.5.3 NuGet Package Updates
 
 **Before migration**, update to latest .NET Framework-compatible versions:
 
@@ -444,7 +531,7 @@ upgrade-assistant analyze writer.sln --source ./src/managed
 | YamlDotNet | 6.1.1 | 15.x |
 | NUnit | 3.4.1 | 4.x |
 
-### 5.4 Remove Obsolete Dependencies
+### B.5.4 Remove Obsolete Dependencies
 
 These are built into .NET 10:
 - `Microsoft.Bcl`
@@ -452,22 +539,20 @@ These are built into .NET 10:
 - `Microsoft.Bcl.Build`
 - `Microsoft.Net.Http`
 
-### 5.5 Evaluate Squirrel Replacement
+### B.5.5 Verify Velopack Migration Complete
 
-Test these alternatives:
-```powershell
-# Install Velopack CLI
-dotnet tool install -g vpk
+**Prerequisite**: Phase A must be complete before starting Phase B.
 
-# Evaluate MSIX
-# Evaluate ClickOnce
-```
+Verify:
+- [ ] Velopack is working in current .NET Framework 4.7.2 build
+- [ ] Updates are being distributed via Velopack
+- [ ] No Squirrel dependencies remain
 
 ---
 
-## 6. Phase 2: Project Conversion
+## B.6 Sub-Phase B2: Project Conversion
 
-### 6.1 Convert to SDK-Style Projects
+### B.6.1 Convert to SDK-Style Projects
 
 **Option A: .NET Upgrade Assistant (Recommended)**
 
@@ -519,7 +604,7 @@ For each project, replace old .csproj with SDK-style:
 </Project>
 ```
 
-### 6.2 Directory.Build.props
+### B.6.2 Directory.Build.props
 
 Create centralized build settings:
 
@@ -542,7 +627,7 @@ Create centralized build settings:
 </Project>
 ```
 
-### 6.3 Directory.Packages.props
+### B.6.3 Directory.Packages.props
 
 Central package version management:
 
@@ -564,11 +649,11 @@ Central package version management:
 
 ---
 
-## 7. Phase 3: Code Migration
+## B.7 Sub-Phase B3: Code Migration
 
-### 7.1 API Compatibility Changes
+### B.7.1 API Compatibility Changes
 
-#### 7.1.1 System.Drawing
+#### B.7.1.1 System.Drawing
 
 ```csharp
 // Add to .csproj
@@ -577,7 +662,7 @@ Central package version management:
 // Code change: None required for basic usage
 ```
 
-#### 7.1.2 Registry Access
+#### B.7.1.2 Registry Access
 
 ```csharp
 // Add to .csproj
@@ -586,7 +671,7 @@ Central package version management:
 // Code: No changes required
 ```
 
-#### 7.1.3 Encoding.Default
+#### B.7.1.3 Encoding.Default
 
 ```csharp
 // .NET Framework
@@ -599,7 +684,7 @@ Encoding.Default  // Returns UTF-8
 Encoding.GetEncoding("windows-1252")  // Or specific codepage
 ```
 
-#### 7.1.4 AppDomain
+#### B.7.1.4 AppDomain
 
 ```csharp
 // .NET Framework
@@ -611,9 +696,9 @@ AppContext.BaseDirectory
 // For isolation: Use AssemblyLoadContext
 ```
 
-### 7.2 COM Interop Adjustments
+### B.7.2 COM Interop Adjustments
 
-#### 7.2.1 ComImport Interfaces
+#### B.7.2.1 ComImport Interfaces
 
 Most work unchanged. Watch for:
 
@@ -627,7 +712,7 @@ interface IMyInterface
 }
 ```
 
-#### 7.2.2 COM Activation
+#### B.7.2.2 COM Activation
 
 ```csharp
 // .NET Framework
@@ -640,9 +725,9 @@ dynamic shell = Activator.CreateInstance(type);
 </PropertyGroup>
 ```
 
-### 7.3 Windows Forms Changes
+### B.7.3 Windows Forms Changes
 
-#### 7.3.1 High DPI
+#### B.7.3.1 High DPI
 
 ```csharp
 // .NET 10 has better High DPI support
@@ -652,15 +737,15 @@ Application.EnableVisualStyles();
 Application.SetCompatibleTextRenderingDefault(false);
 ```
 
-#### 7.3.2 Form Designer
+#### B.7.3.2 Form Designer
 
 - SDK-style projects use new `.designer.cs` format
 - May need to regenerate some designer files
 - Resource files (`.resx`) format is the same
 
-### 7.4 Specific File Changes
+### B.7.4 Specific File Changes
 
-#### 7.4.1 OpenLiveWriter.Interop Changes
+#### B.7.4.1 OpenLiveWriter.Interop Changes
 
 ```csharp
 // File: Kernel32.cs
@@ -671,7 +756,7 @@ public static extern bool SetDllDirectory(string path);
 #endif
 ```
 
-#### 7.4.2 Remove MSHTML Dependencies (if WebView2 complete)
+#### B.7.4.2 Remove MSHTML Dependencies (if WebView2 complete)
 
 ```xml
 <!-- Remove these projects from solution -->
@@ -681,9 +766,9 @@ OpenLiveWriter.Mshtml
 
 ---
 
-## 8. Phase 4: Testing & Validation
+## B.8 Sub-Phase B4: Testing & Validation
 
-### 8.1 Test Categories
+### B.8.1 Test Categories
 
 | Category | Priority | Automated |
 |----------|----------|-----------|
@@ -694,15 +779,15 @@ OpenLiveWriter.Mshtml
 | Blog provider tests | High | Partial |
 | Plugin compatibility | Medium | No |
 
-### 8.2 Test Plan
+### B.8.2 Test Plan
 
-#### 8.2.1 Build Verification
+#### B.8.2.1 Build Verification
 ```powershell
 dotnet build src/managed/writer.sln -c Release
 dotnet test src/managed/writer.sln
 ```
 
-#### 8.2.2 Smoke Test Checklist
+#### B.8.2.2 Smoke Test Checklist
 
 - [ ] Application starts without errors
 - [ ] Splash screen displays correctly
@@ -719,7 +804,7 @@ dotnet test src/managed/writer.sln
 - [ ] Update check works (with new system)
 - [ ] All menus/commands functional
 
-#### 8.2.3 Blog Provider Tests
+#### B.8.2.3 Blog Provider Tests
 
 - [ ] WordPress (self-hosted)
 - [ ] WordPress.com
@@ -727,7 +812,7 @@ dotnet test src/managed/writer.sln
 - [ ] TypePad
 - [ ] MetaWeblog API generic
 
-### 8.3 Performance Baseline
+### B.8.3 Performance Baseline
 
 Capture before/after metrics:
 
@@ -743,13 +828,13 @@ Get-Process OpenLiveWriter | Select WorkingSet64
 
 ---
 
-## 9. Phase 5: Deployment
+## B.9 Sub-Phase B5: Deployment
 
-### 9.1 Velopack Deployment (Replaces Squirrel)
+### B.9.1 Velopack .NET 10 Packaging
 
-**Velopack is now the definitive choice** for OLW's update system. See Section 3.1 for full migration code.
+**Note**: Velopack was already migrated in Phase A. This section covers .NET 10-specific changes.
 
-#### 9.1.1 Build Pipeline Changes
+#### B.9.1.1 Build Pipeline for .NET 10
 
 ```powershell
 # build-release.ps1 - Updated for Velopack
@@ -782,7 +867,7 @@ vpk delta `
     --outputDir "./Releases"
 ```
 
-#### 9.1.2 Release Artifacts
+#### B.9.1.2 Release Artifacts
 
 Velopack generates these files in `./Releases/`:
 
@@ -793,7 +878,7 @@ Velopack generates these files in `./Releases/`:
 | `OpenLiveWriter-0.7.0-win-Setup.exe` | Standalone installer |
 | `RELEASES` | Version manifest |
 
-#### 9.1.3 Update Server Requirements
+#### B.9.1.3 Update Server Requirements
 
 Same as Squirrel - just static file hosting:
 - Azure Blob Storage (current)
@@ -803,7 +888,7 @@ Same as Squirrel - just static file hosting:
 
 **Update URL format**: `https://olw.blob.core.windows.net/stable/Releases/`
 
-#### 9.1.4 CI/CD Integration (AppVeyor)
+#### B.9.1.4 CI/CD Integration (AppVeyor)
 
 ```yaml
 # appveyor.yml updates
@@ -831,15 +916,7 @@ deploy:
     folder: Releases
 ```
 
-### 9.2 Installer Changes
-
-```powershell
-# Velopack packaging
-vpk pack --packId OpenLiveWriter --packVersion 0.7.0 \
-    --packDir ./publish --mainExe OpenLiveWriter.exe
-```
-
-### 9.3 Runtime Deployment Options
+### B.9.2 Runtime Deployment Options
 
 | Option | Size | Startup | Recommended |
 |--------|------|---------|-------------|
@@ -860,21 +937,20 @@ vpk pack --packId OpenLiveWriter --packVersion 0.7.0 \
 
 ---
 
-## 10. Risk Assessment
+## B.10 Risk Assessment
 
-### 10.1 Risk Matrix
+### B.10.1 Risk Matrix
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| ~~Squirrel incompatibility~~ | ~~High~~ | ~~Critical~~ | ✅ **RESOLVED**: Migrate to Velopack (Section 3.1) |
-| Velopack migration issues | Low | Medium | Test on VM with existing Squirrel install |
+| ~~Squirrel incompatibility~~ | ~~High~~ | ~~Critical~~ | ✅ **RESOLVED**: Phase A handles Velopack migration |
 | COM interop breaks | Medium | High | Extensive testing, keep fallbacks |
 | Third-party plugin breaks | Medium | Medium | Document breaking changes |
 | Performance regression | Low | Medium | Benchmark before/after |
 | Build system complexity | Medium | Low | Incremental migration |
 | Google API changes | Low | Medium | Update packages first |
 
-### 10.2 Rollback Plan
+### B.10.2 Rollback Plan
 
 1. Keep `main` branch on .NET Framework
 2. Maintain parallel `feature/dotnet10-migration` branch
@@ -883,35 +959,35 @@ vpk pack --packId OpenLiveWriter --packVersion 0.7.0 \
 
 ---
 
-## 11. Timeline
+## B.11 Timeline
 
-### 11.1 Conservative Estimate (Part-time, 1-2 developers)
+### B.11.1 Conservative Estimate (Part-time, 1-2 developers)
 
 | Phase | Duration | Milestone |
 |-------|----------|-----------|
-| Phase 1: Preparation | 2-3 weeks | Dependencies audited, branch created |
-| Phase 2: Project Conversion | 3-4 weeks | All projects SDK-style, builds |
-| Phase 3: Code Migration | 6-8 weeks | All code compiles, tests pass |
-| Phase 4: Testing | 3-4 weeks | Full test pass, performance verified |
-| Phase 5: Deployment | 2 weeks | Release candidate ready |
+| B1: Preparation | 2-3 weeks | Dependencies audited, branch created |
+| B2: Project Conversion | 3-4 weeks | All projects SDK-style, builds |
+| B3: Code Migration | 6-8 weeks | All code compiles, tests pass |
+| B4: Testing | 3-4 weeks | Full test pass, performance verified |
+| B5: Deployment | 2 weeks | Release candidate ready |
 | **Total** | **16-21 weeks** | |
 
-### 11.2 Aggressive Estimate (Full-time, 2-3 developers)
+### B.11.2 Aggressive Estimate (Full-time, 2-3 developers)
 
 | Phase | Duration |
 |-------|----------|
-| Phase 1 | 1 week |
-| Phase 2 | 2 weeks |
-| Phase 3 | 4 weeks |
-| Phase 4 | 2 weeks |
-| Phase 5 | 1 week |
+| B1 | 1 week |
+| B2 | 2 weeks |
+| B3 | 4 weeks |
+| B4 | 2 weeks |
+| B5 | 1 week |
 | **Total** | **10 weeks** |
 
 ---
 
-## 12. Resources
+## B.12 Resources
 
-### 12.1 Documentation
+### B.12.1 Documentation
 
 - [.NET 10 What's New](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-10/overview)
 - [WinForms Migration Guide](https://learn.microsoft.com/en-us/dotnet/desktop/winforms/migration/)
@@ -919,13 +995,13 @@ vpk pack --packId OpenLiveWriter --packVersion 0.7.0 \
 - [COM Interop in .NET](https://learn.microsoft.com/en-us/dotnet/core/native-interop/)
 - [Velopack Documentation](https://velopack.io/)
 
-### 12.2 Tools
+### B.12.2 Tools
 
 - .NET Upgrade Assistant (VS extension or `dotnet tool install -g upgrade-assistant`)
 - .NET Portability Analyzer
 - API Analyzer for deprecated APIs
 
-### 12.3 Community
+### B.12.3 Community
 
 - [Open Live Writer GitHub Discussions](https://github.com/OpenLiveWriter/OpenLiveWriter/discussions)
 - [.NET Discord](https://aka.ms/dotnet-discord)
@@ -949,9 +1025,9 @@ For each project:
 
 ---
 
-## Appendix B: Breaking Changes Reference
+## Appendix: Breaking Changes Reference
 
-### B.1 Common .NET Framework → .NET 10 Breaks
+### Common .NET Framework → .NET 10 Breaks
 
 | API | Change | Fix |
 |-----|--------|-----|
@@ -962,7 +1038,7 @@ For each project:
 | `Code Access Security` | Not supported | Use OS-level security |
 | `BinaryFormatter` | Obsolete/dangerous | Use System.Text.Json |
 
-### B.2 Windows Forms Specific
+### Windows Forms Specific
 
 | API | Change | Fix |
 |-----|--------|-----|
@@ -972,9 +1048,9 @@ For each project:
 
 ---
 
-## Appendix C: OLW-Specific Considerations
+## Appendix: OLW-Specific Considerations
 
-### C.1 WebView2 Migration Status (COMPLETE ✅)
+### WebView2 Migration Status (COMPLETE ✅)
 
 The hardest part of .NET 10 migration - removing MSHTML - is already done:
 - WebView2 WYSIWYG editor working
@@ -982,13 +1058,13 @@ The hardest part of .NET 10 migration - removing MSHTML - is already done:
 - Local image support working
 - Content synchronization working
 
-### C.2 Remaining MSHTML Code
+### Remaining MSHTML Code
 
 These projects can be removed or kept as stubs:
 - `OpenLiveWriter.Interop.Mshtml` - COM interop definitions
 - `OpenLiveWriter.Mshtml` - MSHTML wrapper classes
 
-### C.3 Native C++ Ribbon DLL
+### Native C++ Ribbon DLL
 
 The `OpenLiveWriter.Ribbon.dll` (C++) will continue to work:
 - P/Invoke calls work the same in .NET 10
