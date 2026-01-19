@@ -208,8 +208,10 @@ namespace OpenLiveWriter.BlogClient.Clients
             try
             {
                 RedirectHelper.SimpleRequest sr = new RedirectHelper.SimpleRequest("DELETE", new HttpRequestFilter(DeleteRequestFilter));
-                HttpWebResponse response = RedirectHelper.GetResponse(UrlHelper.SafeToAbsoluteUri(editUri), new RedirectHelper.RequestFactory(sr.Create));
-                response.Close();
+                using (var response = RedirectHelper.GetResponse(UrlHelper.SafeToAbsoluteUri(editUri), new RedirectHelper.RequestFactory(sr.Create)))
+                {
+                    // Response obtained successfully, delete completed
+                }
             }
             catch (Exception e)
             {
@@ -489,15 +491,10 @@ namespace OpenLiveWriter.BlogClient.Clients
         {
             try
             {
-                HttpWebResponse response = RedirectHelper.GetResponse(uri,
-                    new RedirectHelper.RequestFactory(new RedirectHelper.SimpleRequest(methods[0], requestFilter).Create));
-                try
+                using (var response = RedirectHelper.GetResponse(uri,
+                    new RedirectHelper.RequestFactory(new RedirectHelper.SimpleRequest(methods[0], requestFilter).Create)))
                 {
                     return FilterWeakEtag(response.Headers["ETag"]);
-                }
-                finally
-                {
-                    response.Close();
                 }
             }
             catch (WebException we)
@@ -511,6 +508,17 @@ namespace OpenLiveWriter.BlogClient.Clients
                         Array.Copy(methods, 1, newMethods, 0, newMethods.Length);
                         return GetEtagImpl(uri, requestFilter, newMethods);
                     }
+                }
+                throw;
+            }
+            catch (System.Net.Http.HttpRequestException)
+            {
+                // HttpClient throws HttpRequestException for some status codes
+                if (methods.Length > 1)
+                {
+                    string[] newMethods = new string[methods.Length - 1];
+                    Array.Copy(methods, 1, newMethods, 0, newMethods.Length);
+                    return GetEtagImpl(uri, requestFilter, newMethods);
                 }
                 throw;
             }

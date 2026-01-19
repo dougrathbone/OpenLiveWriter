@@ -130,17 +130,17 @@ namespace OpenLiveWriter.BlogClient.Clients
             if (mediaCollectionUri == null || mediaCollectionUri == "")
                 throw new BlogClientFileUploadNotSupportedException();
 
-            HttpWebResponse response = null;
             try
             {
-                response = RedirectHelper.GetResponse(mediaCollectionUri,
-                new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "POST", null, allowWriteStreamBuffering).Create));
-
-                string entryUri;
-                string etag;
-                string selfPage;
-                XmlDocument xmlDoc = GetCreatedEntity(response, out entryUri, out etag);
-                ParseResponse(xmlDoc, out srcUrl, out editMediaUri, out editEntryUri, out selfPage);
+                using (var response = RedirectHelper.GetResponse(mediaCollectionUri,
+                    new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "POST", null, allowWriteStreamBuffering).Create)))
+                {
+                    string entryUri;
+                    string etag;
+                    string selfPage;
+                    XmlDocument xmlDoc = GetCreatedEntity(response, out entryUri, out etag);
+                    ParseResponse(xmlDoc, out srcUrl, out editMediaUri, out editEntryUri, out selfPage);
+                }
             }
             catch (WebException we)
             {
@@ -149,21 +149,15 @@ namespace OpenLiveWriter.BlogClient.Clients
                 if (we.Status == WebExceptionStatus.ProtocolError && !allowWriteStreamBuffering)
                 {
                     PostNewImage(path, true, out srcUrl, out editMediaUri, out editEntryUri);
-
                 }
                 else
                 {
                     throw;
                 }
             }
-            finally
-            {
-                if (response != null)
-                    response.Close();
-            }
         }
 
-        private XmlDocument GetCreatedEntity(HttpWebResponse postResponse, out string editUri, out string etag)
+        private XmlDocument GetCreatedEntity(HttpResponseMessageWrapper postResponse, out string editUri, out string etag)
         {
             editUri = postResponse.Headers["Location"];
             string contentLocation = postResponse.Headers["Content-Location"];
@@ -206,13 +200,13 @@ namespace OpenLiveWriter.BlogClient.Clients
 
         protected virtual void UpdateImage(bool allowWriteStreamBuffering, ref string editMediaUri, string path, string editEntryUri, string etag, bool getEditInfo, out string srcUrl, out string thumbnailSmall, out string thumbnailLarge)
         {
-            HttpWebResponse response = null;
             try
             {
-                response = RedirectHelper.GetResponse(editMediaUri,
-                    new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "PUT", etag, allowWriteStreamBuffering).Create));
-                response.Close();
-
+                using (var response = RedirectHelper.GetResponse(editMediaUri,
+                    new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "PUT", etag, allowWriteStreamBuffering).Create)))
+                {
+                    // Response obtained successfully
+                }
             }
             catch (WebException we)
             {
@@ -229,15 +223,10 @@ namespace OpenLiveWriter.BlogClient.Clients
                             if (!AtomClient.ConfirmOverwrite())
                                 throw new BlogClientOperationCancelledException();
 
-                            try
+                            using (var response = RedirectHelper.GetResponse(editMediaUri,
+                                new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "PUT", newEtag, allowWriteStreamBuffering).Create)))
                             {
-                                response = RedirectHelper.GetResponse(editMediaUri,
-                                new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "PUT", newEtag, allowWriteStreamBuffering).Create));
-                            }
-                            finally
-                            {
-                                if (response != null)
-                                    response.Close();
+                                // Response obtained successfully
                             }
 
                             recovered = true;

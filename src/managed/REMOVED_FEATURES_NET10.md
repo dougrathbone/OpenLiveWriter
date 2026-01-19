@@ -91,15 +91,18 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 - ✅ `CloseTrackingHttpWebRequest.cs` - Rewritten without `RealProxy` using wrapper pattern for .NET 10 compatibility
 
 **Remaining Legacy HttpWebRequest Usages (deferred):**
-- `AtomClient.cs` / `AtomMediaUploader.cs` / `BloggerAtomClient.cs` - Complex Picasa file upload with multipart MIME
-- `XmlRestRequestHelper.cs` / `RedirectHelper.cs` - Legacy versions (HttpClient alternatives exist)
-- Blog detection (`WriterEditingManifest.cs`, `BlogEditingTemplateDetector.cs`) - Uses `IBlogClient.SendAuthenticatedHttpRequest` interface
+- Blog detection authenticated path (`BlogEditingTemplateDetector.cs`) - Uses `IBlogClient.SendAuthenticatedHttpRequest` interface
 
-**Migrated with Dual Support:**
+**Fully Migrated to HttpClient:**
+- ✅ `RedirectHelper.cs` - Now uses `HttpClientService` internally with `HttpResponseMessageWrapper` for compatibility
+- ✅ `XmlRestRequestHelper.cs` - Updated to use `HttpResponseMessageWrapper`
+- ✅ `AtomClient.cs` - Updated to use `HttpResponseMessageWrapper`
+- ✅ `AtomMediaUploader.cs` - Updated to use `HttpResponseMessageWrapper`
+- ✅ `BloggerAtomClient.cs` - Updated to use `HttpResponseMessageWrapper`
 - ✅ `XmlRpcClient.cs` - Added `CallMethodWithHttpClient()` method and `Action<HttpRequestMessage>` constructor
-- ✅ `YouTubeUploadRequestHelper` - Added `CreateMultipartContent()` for HttpClient uploads, legacy code removed
+- ✅ `YouTubeUploadRequestHelper` - Added `CreateMultipartContent()` for HttpClient uploads
 
-These legacy usages are suppressed via `SYSLIB0014` in `HttpRequestHelper.cs` and work correctly. Full migration would require significant refactoring of the multipart upload patterns and authentication infrastructure.
+The only remaining `SYSLIB0014` suppression in `HttpRequestHelper.cs` is for `CreateHttpWebRequest` which is used by request factory delegates for configuring headers.
 
 **For New Code:**
 - Use `HttpClientRedirectHelper` instead of `RedirectHelper`

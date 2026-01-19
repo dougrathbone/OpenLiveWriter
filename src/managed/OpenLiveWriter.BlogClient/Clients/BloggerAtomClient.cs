@@ -553,16 +553,18 @@ namespace OpenLiveWriter.BlogClient.Clients
             GDataCredentials.FromCredentials(transientCredentials).EnsureLoggedIn(transientCredentials.Username, transientCredentials.Password, GDataCredentials.PICASAWEB_SERVICE_NAME, false);
 
             string albumUrl = GetBlogImagesAlbum(albumName);
-            HttpWebResponse response = RedirectHelper.GetResponse(albumUrl, new RedirectHelper.RequestFactory(new UploadFileRequestFactory(this, filename, "POST").Create));
-            using (Stream s = response.GetResponseStream())
-                ParseMediaEntry(s, out srcUrl, out editUri);
+            using (var response = RedirectHelper.GetResponse(albumUrl, new RedirectHelper.RequestFactory(new UploadFileRequestFactory(this, filename, "POST").Create)))
+            {
+                using (Stream s = response.GetResponseStream())
+                    ParseMediaEntry(s, out srcUrl, out editUri);
+            }
         }
 
         private void UpdateImage(string editUri, string filename, out string srcUrl, out string newEditUri)
         {
             for (int retry = 5; retry > 0; retry--)
             {
-                HttpWebResponse response;
+                HttpResponseMessageWrapper response = null;
                 bool conflict = false;
                 try
                 {
@@ -574,16 +576,23 @@ namespace OpenLiveWriter.BlogClient.Clients
                         && we.Response as HttpWebResponse != null
                         && ((HttpWebResponse)we.Response).StatusCode == HttpStatusCode.Conflict)
                     {
-                        response = (HttpWebResponse)we.Response;
-                        conflict = true;
+                        // For conflict responses, we need to parse the response body
+                        var errResponse = (HttpWebResponse)we.Response;
+                        using (Stream s = errResponse.GetResponseStream())
+                            ParseMediaEntry(s, out srcUrl, out newEditUri);
+                        editUri = newEditUri;
+                        continue;
                     }
                     else
                         throw;
                 }
-                using (Stream s = response.GetResponseStream())
-                    ParseMediaEntry(s, out srcUrl, out newEditUri);
-                if (!conflict)
-                    return; // success!
+                using (response)
+                {
+                    using (Stream s = response.GetResponseStream())
+                        ParseMediaEntry(s, out srcUrl, out newEditUri);
+                    if (!conflict)
+                        return; // success!
+                }
                 editUri = newEditUri;
             }
 
@@ -870,105 +879,102 @@ namespace OpenLiveWriter.BlogClient.Clients
                         captchaValue = null;
                     }
 
-                    HttpWebResponse response;
+                    HttpResponseMessageWrapper response;
                     try
                     {
                         response = RedirectHelper.GetResponse(uri, new RedirectHelper.RequestFactory(glrf.Create));
                     }
-                    catch (WebException we)
+                    catch (Exception ex) when (ex is WebException || ex is System.Net.Http.HttpRequestException)
                     {
-                        response = (HttpWebResponse)we.Response;
-                        if (response == null)
+                        Trace.Fail(ex.ToString());
+                        if (showUi)
                         {
-                            Trace.Fail(we.ToString());
-                            if (showUi)
-                            {
-                                showUi = false;
-                                ShowError(MessageId.WeblogConnectionError, we.Message);
-                            }
-                            throw;
+                            showUi = false;
+                            ShowError(MessageId.WeblogConnectionError, ex.Message);
                         }
+                        throw;
                     }
 
-                    if (response.StatusCode == HttpStatusCode.OK)
+                    using (response)
                     {
-                        Hashtable ht = ParseAuthResponse(response.GetResponseStream());
-                        if (ht.ContainsKey("Auth"))
+                        if (response.StatusCode == HttpStatusCode.OK)
                         {
-                            _auths[new AuthKey(username, password, service)] = new AuthValue((string)ht["Auth"], ht["YouTubeUser"] as string);
-                            return;
+                            Hashtable ht = ParseAuthResponse(response.GetResponseStream());
+                            if (ht.ContainsKey("Auth"))
+                            {
+                                _auths[new AuthKey(username, password, service)] = new AuthValue((string)ht["Auth"], ht["YouTubeUser"] as string);
+                                return;
+                            }
+                            else
+                            {
+                                if (showUi)
+                                {
+                                    showUi = false;
+                                    ShowError(MessageId.GoogleAuthTokenNotFound);
+                                }
+                                throw new BlogClientInvalidServerResponseException(uri, "No Auth token was present in the response.", string.Empty);
+                            }
+                        }
+                        else if (response.StatusCode == HttpStatusCode.Forbidden)
+                        {
+                            // login failed
+                            Hashtable ht = ParseAuthResponse(response.GetResponseStream());
+                            string error = ht["Error"] as string;
+                            if (error != null && error == "CaptchaRequired")
+                            {
+                                captchaToken = (string)ht["CaptchaToken"];
+                                string captchaUrl = (string)ht["CaptchaUrl"];
+
+                                GDataCaptchaHelper helper = new GDataCaptchaHelper(
+                                    new Win32WindowImpl(BlogClientUIContext.ContextForCurrentThread.Handle),
+                                    captchaUrl);
+
+                                BlogClientUIContext.ContextForCurrentThread.Invoke(new ThreadStart(helper.ShowCaptcha), null);
+
+                                if (helper.DialogResult == DialogResult.OK)
+                                {
+                                    captchaValue = helper.Reply;
+                                    continue;
+                                }
+                                else
+                                {
+                                    throw new BlogClientOperationCancelledException();
+                                }
+                            }
+
+                            if (showUi)
+                            {
+                                if (error == "NoLinkedYouTubeAccount")
+                                {
+                                    if (DisplayMessage.Show(MessageId.YouTubeSignup, username) == DialogResult.Yes)
+                                    {
+                                        ShellHelper.LaunchUrl(GLink.Instance.YouTubeRegister);
+                                    }
+                                    return;
+                                }
+
+                                showUi = false;
+
+                                if (error == "BadAuthentication")
+                                {
+                                    ShowError(MessageId.LoginFailed, ApplicationEnvironment.ProductNameQualified);
+                                }
+                                else
+                                {
+                                    ShowError(MessageId.BloggerError, TranslateError(error));
+                                }
+                            }
+                            throw new BlogClientAuthenticationException(error, TranslateError(error));
                         }
                         else
                         {
                             if (showUi)
                             {
                                 showUi = false;
-                                ShowError(MessageId.GoogleAuthTokenNotFound);
+                                ShowError(MessageId.BloggerError, response.StatusCode + ": " + response.StatusDescription);
                             }
-                            throw new BlogClientInvalidServerResponseException(uri, "No Auth token was present in the response.", string.Empty);
+                            throw new BlogClientAuthenticationException(response.StatusCode + "", response.StatusDescription);
                         }
-                    }
-                    else if (response.StatusCode == HttpStatusCode.Forbidden)
-                    {
-                        // login failed
-
-                        Hashtable ht = ParseAuthResponse(response.GetResponseStream());
-                        string error = ht["Error"] as string;
-                        if (error != null && error == "CaptchaRequired")
-                        {
-                            captchaToken = (string)ht["CaptchaToken"];
-                            string captchaUrl = (string)ht["CaptchaUrl"];
-
-                            GDataCaptchaHelper helper = new GDataCaptchaHelper(
-                                new Win32WindowImpl(BlogClientUIContext.ContextForCurrentThread.Handle),
-                                captchaUrl);
-
-                            BlogClientUIContext.ContextForCurrentThread.Invoke(new ThreadStart(helper.ShowCaptcha), null);
-
-                            if (helper.DialogResult == DialogResult.OK)
-                            {
-                                captchaValue = helper.Reply;
-                                continue;
-                            }
-                            else
-                            {
-                                throw new BlogClientOperationCancelledException();
-                            }
-                        }
-
-                        if (showUi)
-                        {
-                            if (error == "NoLinkedYouTubeAccount")
-                            {
-                                if (DisplayMessage.Show(MessageId.YouTubeSignup, username) == DialogResult.Yes)
-                                {
-                                    ShellHelper.LaunchUrl(GLink.Instance.YouTubeRegister);
-                                }
-                                return;
-                            }
-
-                            showUi = false;
-
-                            if (error == "BadAuthentication")
-                            {
-                                ShowError(MessageId.LoginFailed, ApplicationEnvironment.ProductNameQualified);
-                            }
-                            else
-                            {
-                                ShowError(MessageId.BloggerError, TranslateError(error));
-                            }
-
-                        }
-                        throw new BlogClientAuthenticationException(error, TranslateError(error));
-                    }
-                    else
-                    {
-                        if (showUi)
-                        {
-                            showUi = false;
-                            ShowError(MessageId.BloggerError, response.StatusCode + ": " + response.StatusDescription);
-                        }
-                        throw new BlogClientAuthenticationException(response.StatusCode + "", response.StatusDescription);
                     }
                 }
             }

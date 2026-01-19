@@ -68,17 +68,11 @@ namespace OpenLiveWriter.BlogClient.Clients
             }
 
             RedirectHelper.SimpleRequest simpleRequest = new RedirectHelper.SimpleRequest(method, filter);
-            HttpWebResponse response = RedirectHelper.GetResponse(absUri, new RedirectHelper.RequestFactory(simpleRequest.Create));
-            try
+            using (HttpResponseMessageWrapper response = RedirectHelper.GetResponse(absUri, new RedirectHelper.RequestFactory(simpleRequest.Create)))
             {
                 uri = response.ResponseUri;
                 responseHeaders = response.Headers;
                 return ParseXmlResponse(response);
-            }
-            finally
-            {
-                if (response != null)
-                    response.Close();
             }
         }
 
@@ -141,8 +135,7 @@ namespace OpenLiveWriter.BlogClient.Clients
             Debug.WriteLine("XML Request to " + absUri + ":\r\n" + doc.InnerXml);
 
             SendFactory sf = new SendFactory(etag, method, filter, contentType, doc, encoding);
-            HttpWebResponse response = RedirectHelper.GetResponse(absUri, new RedirectHelper.RequestFactory(sf.Create));
-            try
+            using (HttpResponseMessageWrapper response = RedirectHelper.GetResponse(absUri, new RedirectHelper.RequestFactory(sf.Create)))
             {
                 responseHeaders = response.Headers;
                 uri = response.ResponseUri;
@@ -155,11 +148,6 @@ namespace OpenLiveWriter.BlogClient.Clients
                     XmlDocument xmlDocResponse = ParseXmlResponse(response);
                     return xmlDocResponse;
                 }
-            }
-            finally
-            {
-                if (response != null)
-                    response.Close();
             }
         }
 
@@ -275,7 +263,7 @@ namespace OpenLiveWriter.BlogClient.Clients
             }
         }
 
-        protected static XmlDocument ParseXmlResponse(HttpWebResponse response)
+        protected static XmlDocument ParseXmlResponse(HttpResponseMessageWrapper response)
         {
             MemoryStream ms = new MemoryStream();
             using (Stream s = response.GetResponseStream())
