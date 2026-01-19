@@ -90,11 +90,13 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 - ✅ `MultiThreadedPageDownloader.cs` - Re-enabled (namespace updated from Project31 to OpenLiveWriter)
 - ✅ `CloseTrackingHttpWebRequest.cs` - Rewritten without `RealProxy` using wrapper pattern for .NET 10 compatibility
 
-**Remaining Legacy HttpWebRequest Usages (deferred):**
+**Remaining Legacy HttpWebRequest Usages:**
+- `RedirectHelper.cs` - Uses HttpWebRequest internally (SYSLIB0014 localized) to support legacy factories
+- `HttpRequestHelper.CreateHttpWebRequest` - Factory method used by request factories
 - Blog detection authenticated path (`BlogEditingTemplateDetector.cs`) - Uses `IBlogClient.SendAuthenticatedHttpRequest` interface
 
-**Fully Migrated to HttpClient:**
-- ✅ `RedirectHelper.cs` - Now uses `HttpClientService` internally with `HttpResponseMessageWrapper` for compatibility
+**Updated to Use HttpResponseMessageWrapper:**
+- ✅ `RedirectHelper.cs` - Returns `HttpResponseMessageWrapper` for unified response interface
 - ✅ `XmlRestRequestHelper.cs` - Updated to use `HttpResponseMessageWrapper`
 - ✅ `AtomClient.cs` - Updated to use `HttpResponseMessageWrapper`
 - ✅ `AtomMediaUploader.cs` - Updated to use `HttpResponseMessageWrapper`
@@ -102,7 +104,7 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 - ✅ `XmlRpcClient.cs` - Added `CallMethodWithHttpClient()` method and `Action<HttpRequestMessage>` constructor
 - ✅ `YouTubeUploadRequestHelper` - Added `CreateMultipartContent()` for HttpClient uploads
 
-The only remaining `SYSLIB0014` suppression in `HttpRequestHelper.cs` is for `CreateHttpWebRequest` which is used by request factory delegates for configuring headers.
+SYSLIB0014 suppressions are localized to `HttpRequestHelper.cs` and `RedirectHelper.cs` for legacy factory support.
 
 **For New Code:**
 - Use `HttpClientRedirectHelper` instead of `RedirectHelper`

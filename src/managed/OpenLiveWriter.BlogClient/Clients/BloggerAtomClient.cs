@@ -155,15 +155,16 @@ namespace OpenLiveWriter.BlogClient.Clients
                     string srcUrl2 = srcUrl.Substring(0, lastSlash)
                                      + "/s1600-h"
                                      + srcUrl.Substring(lastSlash);
-                    HttpWebRequest req = HttpRequestHelper.CreateHttpWebRequest(srcUrl2, true);
-                    req.Method = "HEAD";
-                    req.GetResponse().Close();
-                    srcUrl = srcUrl2;
-                    return;
+                    // Use HttpClient for HEAD request
+                    if (HttpRequestHelper.CheckUrlReachable(srcUrl2))
+                    {
+                        srcUrl = srcUrl2;
+                        return;
+                    }
                 }
-                catch (WebException we)
+                catch (Exception ex)
                 {
-                    Debug.Fail("Picasa s1600-h hack failed: " + we.ToString());
+                    Debug.Fail("Picasa s1600-h hack failed: " + ex.ToString());
                 }
             }
 
