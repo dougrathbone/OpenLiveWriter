@@ -160,10 +160,8 @@ namespace OpenLiveWriter.WebView2Shim
             {
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl#{_instanceId}.InitializeWebView starting");
                 
-                // Create environment with --allow-file-access-from-files to load local images
-                // OLW stores images in temp folders and references them via file:// URLs
-                var options = new CoreWebView2EnvironmentOptions("--allow-file-access-from-files");
-                var env = await CoreWebView2Environment.CreateAsync(null, null, options);
+                // Use shared environment to avoid conflicts when multiple WebView2 controls initialize
+                var env = await WebView2EnvironmentManager.GetEnvironmentAsync();
                 await _webView.EnsureCoreWebView2Async(env);
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] WebView2HtmlEditorControl#{_instanceId}.EnsureCoreWebView2Async completed");
                 

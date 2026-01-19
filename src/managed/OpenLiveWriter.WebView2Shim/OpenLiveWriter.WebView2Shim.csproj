@@ -70,8 +70,10 @@
     <Compile Include="WebView2Document.cs" />
     <Compile Include="WebView2Element.cs" />
     <Compile Include="WebView2ElementCollection.cs" />
+    <Compile Include="WebView2EnvironmentManager.cs" />
     <Compile Include="WebView2HtmlEditorControl.cs" />
     <Compile Include="WebView2Selection.cs" />
+    <Compile Include="WebView2SourceEditorControl.cs" />
     <Compile Include="WebView2Style.cs" />
     <Compile Include="WebView2TextRange.cs" />
   </ItemGroup>
