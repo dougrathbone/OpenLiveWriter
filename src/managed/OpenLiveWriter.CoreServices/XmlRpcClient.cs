@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Xml;
 using OpenLiveWriter.CoreServices.Diagnostics;
@@ -221,6 +222,104 @@ namespace OpenLiveWriter.CoreServices
         private string _userAgent;
         private HttpRequestFilter _requestFilter;
         private string _transportEncoding;
+        private Action<HttpRequestMessage> _httpClientRequestConfigurator;
+
+        /// <summary>
+        /// Create an XmlRpcClient that uses HttpClient for requests.
+        /// </summary>
+        /// <param name="hostname">XML-RPC endpoint URL</param>
+        /// <param name="userAgent">User agent string</param>
+        /// <param name="requestConfigurator">Optional callback to configure HttpRequestMessage (e.g., add auth headers)</param>
+        /// <param name="transportEncoding">Character encoding for the request</param>
+        public XmlRpcClient(string hostname, string userAgent, Action<HttpRequestMessage> requestConfigurator, string transportEncoding)
+        {
+            _hostname = hostname;
+            _userAgent = userAgent;
+            _httpClientRequestConfigurator = requestConfigurator;
+            _transportEncoding = transportEncoding;
+        }
+
+        /// <summary>
+        /// Call an XmlRpc method using HttpClient (modern implementation).
+        /// </summary>
+        public XmlRpcMethodResponse CallMethodWithHttpClient(string methodName, params XmlRpcValue[] parameters)
+        {
+            // Select the encoding
+            Encoding encodingToUse = StringHelper.GetEncoding(_transportEncoding, new UTF8Encoding(false, false));
+
+            // Build the XmlRpc packet
+            byte[] requestBytes = GetRequestBytes(encodingToUse, methodName, parameters, false);
+
+            if (ApplicationDiagnostics.VerboseLogging)
+            {
+                LogXmlRpcRequest(encodingToUse, methodName, parameters);
+            }
+
+            // Send the request using HttpClient
+            HttpResponseMessage response;
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, _hostname);
+                request.Content = new ByteArrayContent(requestBytes);
+                request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(MimeHelper.TEXT_XML)
+                {
+                    CharSet = encodingToUse.WebName
+                };
+
+                // Apply custom configuration (e.g., auth headers)
+                _httpClientRequestConfigurator?.Invoke(request);
+
+                response = HttpClientService.DefaultClient.SendAsync(request).GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
+            }
+            catch
+            {
+                if (!ApplicationDiagnostics.VerboseLogging)
+                {
+                    LogXmlRpcRequest(encodingToUse, methodName, parameters);
+                }
+                throw;
+            }
+
+            // Get response encoding from Content-Type header
+            string characterSet = response.Content.Headers.ContentType?.CharSet;
+            if (!string.IsNullOrEmpty(characterSet))
+            {
+                encodingToUse = StringHelper.GetEncoding(characterSet, encodingToUse);
+            }
+
+            // Return the response
+            string xmlRpcString = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+            if (ApplicationDiagnostics.VerboseLogging)
+            {
+                LogXmlRpcResponse(xmlRpcString);
+            }
+
+            try
+            {
+                XmlRpcMethodResponse xmlRpcResponse = new XmlRpcMethodResponse(xmlRpcString);
+                if (xmlRpcResponse.FaultOccurred)
+                {
+                    if (!ApplicationDiagnostics.VerboseLogging)
+                    {
+                        LogXmlRpcRequest(encodingToUse, methodName, parameters);
+                        LogXmlRpcResponse(xmlRpcString);
+                    }
+                }
+                return xmlRpcResponse;
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine("Exception parsing XML-RPC response:\r\n\r\n" + ex.ToString() + "\r\n\r\n" + xmlRpcString);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if this client is configured to use HttpClient.
+        /// </summary>
+        public bool UsesHttpClient => _httpClientRequestConfigurator != null && _requestFilter == null;
     }
 
     public abstract class XmlRpcValue
