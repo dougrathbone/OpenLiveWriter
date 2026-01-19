@@ -13,6 +13,8 @@
     <StartupObject>OpenLiveWriter.ApplicationMain</StartupObject>
     <ApplicationManifest>OpenLiveWriter.exe.manifest</ApplicationManifest>
     <UseVSHostingProcess>false</UseVSHostingProcess>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
   </PropertyGroup>

@@ -7,6 +7,8 @@
     <ProjectGuid>{BA726BEA-9A29-4E53-95DF-E478D86D0926}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <CoverageDisabled>true</CoverageDisabled>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
   </PropertyGroup>
