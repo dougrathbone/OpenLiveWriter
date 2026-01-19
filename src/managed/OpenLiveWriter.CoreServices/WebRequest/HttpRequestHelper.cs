@@ -633,6 +633,86 @@ namespace OpenLiveWriter.CoreServices
             StreamReader sr = new StreamReader(s);
             return sr.ReadToEnd();
         }
+
+        #region Legacy Filter Adapter
+
+        /// <summary>
+        /// Applies a legacy HttpRequestFilter to an HttpRequestMessage by creating a temporary
+        /// HttpWebRequest, running the filter, and extracting the headers that were set.
+        /// This allows legacy code to work with HttpClient while maintaining compatibility.
+        /// </summary>
+        /// <param name="request">The HttpRequestMessage to configure</param>
+        /// <param name="filter">The legacy filter to apply</param>
+        /// <param name="tempUri">A URI to use for creating the temporary HttpWebRequest</param>
+        public static void ApplyLegacyFilter(HttpRequestMessage request, HttpRequestFilter filter, string tempUri)
+        {
+            if (filter == null) return;
+
+            // Create a temporary HttpWebRequest to capture filter settings
+            #pragma warning disable SYSLIB0014 // WebRequest is obsolete - used only to capture filter settings
+            var tempRequest = (HttpWebRequest)WebRequest.Create(tempUri);
+            #pragma warning restore SYSLIB0014
+
+            // Apply the filter
+            filter(tempRequest);
+
+            // Extract and apply headers
+            foreach (string key in tempRequest.Headers.AllKeys)
+            {
+                // Skip headers that are set via other properties
+                if (key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)) continue;
+                if (key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase)) continue;
+                if (key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+                {
+                    request.Headers.UserAgent.Clear();
+                    request.Headers.TryAddWithoutValidation("User-Agent", tempRequest.Headers[key]);
+                    continue;
+                }
+                if (key.Equals("Accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    request.Headers.Accept.Clear();
+                    request.Headers.TryAddWithoutValidation("Accept", tempRequest.Headers[key]);
+                    continue;
+                }
+
+                request.Headers.TryAddWithoutValidation(key, tempRequest.Headers[key]);
+            }
+
+            // Apply credentials if set (via Authorization header typically)
+            if (tempRequest.Credentials != null)
+            {
+                // For NetworkCredential, we can set basic auth
+                if (tempRequest.Credentials is NetworkCredential nc && !string.IsNullOrEmpty(nc.UserName))
+                {
+                    var authValue = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{nc.UserName}:{nc.Password}"));
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authValue);
+                }
+            }
+
+            // Apply content type if set
+            if (!string.IsNullOrEmpty(tempRequest.ContentType) && request.Content != null)
+            {
+                try
+                {
+                    request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(tempRequest.ContentType);
+                }
+                catch
+                {
+                    // Ignore parse errors
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates an Action&lt;HttpRequestMessage&gt; that applies a legacy HttpRequestFilter.
+        /// </summary>
+        public static Action<HttpRequestMessage> CreateLegacyFilterAdapter(HttpRequestFilter filter, string uri)
+        {
+            if (filter == null) return null;
+            return request => ApplyLegacyFilter(request, filter, uri);
+        }
+
+        #endregion
     }
 
     public class HttpRequestCredentialsFilter

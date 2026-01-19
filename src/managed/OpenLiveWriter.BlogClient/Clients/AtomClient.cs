@@ -204,11 +204,16 @@ namespace OpenLiveWriter.BlogClient.Clients
 
             FixupBlogId(ref blogId);
             Uri editUri = PostIdToPostUri(postId);
+            string editUriStr = UrlHelper.SafeToAbsoluteUri(editUri);
 
             try
             {
-                RedirectHelper.SimpleRequest sr = new RedirectHelper.SimpleRequest("DELETE", new HttpRequestFilter(DeleteRequestFilter));
-                using (var response = RedirectHelper.GetResponse(UrlHelper.SafeToAbsoluteUri(editUri), new RedirectHelper.RequestFactory(sr.Create)))
+                using (var response = RedirectHelper.GetResponse(editUriStr, "DELETE",
+                    request =>
+                    {
+                        request.Headers.TryAddWithoutValidation("If-match", "*");
+                        HttpRequestHelper.ApplyLegacyFilter(request, RequestFilter, editUriStr);
+                    }))
                 {
                     // Response obtained successfully, delete completed
                 }
@@ -228,16 +233,15 @@ namespace OpenLiveWriter.BlogClient.Clients
                         }
                     }
                 }
+                else if (e is System.Net.Http.HttpRequestException hre)
+                {
+                    if (hre.StatusCode == HttpStatusCode.NotFound || hre.StatusCode == HttpStatusCode.Gone)
+                        return; // these are acceptable responses to a DELETE
+                }
 
-                if (!AttemptDeletePostRecover(e, blogId, UrlHelper.SafeToAbsoluteUri(editUri), publish))
+                if (!AttemptDeletePostRecover(e, blogId, editUriStr, publish))
                     throw;
             }
-        }
-
-        private void DeleteRequestFilter(HttpWebRequest request)
-        {
-            request.Headers["If-match"] = "*";
-            RequestFilter(request);
         }
 
         protected virtual bool AttemptDeletePostRecover(Exception e, string blogId, string postId, bool publish)
@@ -491,8 +495,8 @@ namespace OpenLiveWriter.BlogClient.Clients
         {
             try
             {
-                using (var response = RedirectHelper.GetResponse(uri,
-                    new RedirectHelper.RequestFactory(new RedirectHelper.SimpleRequest(methods[0], requestFilter).Create)))
+                using (var response = RedirectHelper.GetResponse(uri, methods[0],
+                    requestFilter != null ? request => HttpRequestHelper.ApplyLegacyFilter(request, requestFilter, uri) : null))
                 {
                     return FilterWeakEtag(response.Headers["ETag"]);
                 }
@@ -511,10 +515,10 @@ namespace OpenLiveWriter.BlogClient.Clients
                 }
                 throw;
             }
-            catch (System.Net.Http.HttpRequestException)
+            catch (System.Net.Http.HttpRequestException ex)
             {
                 // HttpClient throws HttpRequestException for some status codes
-                if (methods.Length > 1)
+                if (methods.Length > 1 && (ex.StatusCode == HttpStatusCode.MethodNotAllowed || ex.StatusCode == HttpStatusCode.NotImplemented))
                 {
                     string[] newMethods = new string[methods.Length - 1];
                     Array.Copy(methods, 1, newMethods, 0, newMethods.Length);

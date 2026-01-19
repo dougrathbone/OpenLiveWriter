@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -132,14 +133,26 @@ namespace OpenLiveWriter.BlogClient.Clients
 
             try
             {
-                using (var response = RedirectHelper.GetResponse(mediaCollectionUri,
-                    new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "POST", null, allowWriteStreamBuffering).Create)))
+                using (var response = UploadImage(mediaCollectionUri, path, "POST", null))
                 {
                     string entryUri;
                     string etag;
                     string selfPage;
                     XmlDocument xmlDoc = GetCreatedEntity(response, out entryUri, out etag);
                     ParseResponse(xmlDoc, out srcUrl, out editMediaUri, out editEntryUri, out selfPage);
+                }
+            }
+            catch (HttpRequestException ex) when (ex.InnerException is WebException we)
+            {
+                // The error may have been due to the server requiring stream buffering (WinLive 114314, 252175)
+                // Try again with stream buffering (ignored for HttpClient, but kept for API compatibility).
+                if (we.Status == WebExceptionStatus.ProtocolError && !allowWriteStreamBuffering)
+                {
+                    PostNewImage(path, true, out srcUrl, out editMediaUri, out editEntryUri);
+                }
+                else
+                {
+                    throw;
                 }
             }
             catch (WebException we)
@@ -155,6 +168,44 @@ namespace OpenLiveWriter.BlogClient.Clients
                     throw;
                 }
             }
+        }
+
+        /// <summary>
+        /// Uploads an image using HttpClient.
+        /// </summary>
+        private HttpResponseMessageWrapper UploadImage(string uri, string filename, string method, string etag)
+        {
+            byte[] fileBytes;
+            using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                fileBytes = new byte[fs.Length];
+                fs.Read(fileBytes, 0, fileBytes.Length);
+            }
+
+            return RedirectHelper.GetResponse(
+                uri,
+                new HttpMethod(method),
+                request =>
+                {
+                    // Add slug if supported
+                    if (_options != null && _options.SupportsSlug)
+                        request.Headers.TryAddWithoutValidation("Slug", Path.GetFileNameWithoutExtension(filename));
+
+                    // Add etag for updates
+                    if (!string.IsNullOrEmpty(etag))
+                        request.Headers.TryAddWithoutValidation("If-match", etag);
+
+                    // Apply legacy filter for authorization
+                    if (_requestFilter != null)
+                        HttpRequestHelper.ApplyLegacyFilter(request, _requestFilter, uri);
+                },
+                () =>
+                {
+                    var content = new ByteArrayContent(fileBytes);
+                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                        MimeHelper.GetContentType(Path.GetExtension(filename)));
+                    return content;
+                });
         }
 
         private XmlDocument GetCreatedEntity(HttpResponseMessageWrapper postResponse, out string editUri, out string etag)
@@ -202,11 +253,34 @@ namespace OpenLiveWriter.BlogClient.Clients
         {
             try
             {
-                using (var response = RedirectHelper.GetResponse(editMediaUri,
-                    new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "PUT", etag, allowWriteStreamBuffering).Create)))
+                using (var response = UploadImage(editMediaUri, path, "PUT", etag))
                 {
                     // Response obtained successfully
                 }
+            }
+            catch (HttpRequestException ex)
+            {
+                bool recovered = false;
+
+                if (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+                {
+                    string newEtag = AtomClient.GetEtag(editMediaUri, _requestFilter);
+                    if (!string.IsNullOrEmpty(newEtag) && newEtag != etag)
+                    {
+                        if (!AtomClient.ConfirmOverwrite())
+                            throw new BlogClientOperationCancelledException();
+
+                        using (var response = UploadImage(editMediaUri, path, "PUT", newEtag))
+                        {
+                            // Response obtained successfully
+                        }
+
+                        recovered = true;
+                    }
+                }
+
+                if (!recovered)
+                    throw;
             }
             catch (WebException we)
             {
@@ -223,8 +297,7 @@ namespace OpenLiveWriter.BlogClient.Clients
                             if (!AtomClient.ConfirmOverwrite())
                                 throw new BlogClientOperationCancelledException();
 
-                            using (var response = RedirectHelper.GetResponse(editMediaUri,
-                                new RedirectHelper.RequestFactory(new ImageUploadHelper(this, path, "PUT", newEtag, allowWriteStreamBuffering).Create)))
+                            using (var response = UploadImage(editMediaUri, path, "PUT", newEtag))
                             {
                                 // Response obtained successfully
                             }
@@ -279,124 +352,6 @@ namespace OpenLiveWriter.BlogClient.Clients
                                    null, null, null);
             selfPage = AtomEntry.GetLink(xmlDoc.SelectSingleNode("/atom:entry", _nsMgr) as XmlElement, _nsMgr, "alternate",
                        null, null, null);
-        }
-
-        protected class ImageUploadHelper
-        {
-            private readonly AtomMediaUploader _parent;
-            private readonly string _filename;
-            private readonly string _method;
-            private readonly string _etag;
-            private readonly bool _allowWriteStreamBuffering;
-
-            public ImageUploadHelper(AtomMediaUploader parent, string filename, string method, string etag, bool allowWriteStreamBuffering)
-            {
-                _parent = parent;
-                _filename = filename;
-                _method = method;
-                _etag = etag;
-                _allowWriteStreamBuffering = allowWriteStreamBuffering;
-            }
-
-            public HttpWebRequest Create(string uri)
-            {
-                // TODO: ETag support required??
-                // TODO: choose rational timeout values
-                HttpWebRequest request = HttpRequestHelper.CreateHttpWebRequest(uri, false);
-
-                request.ContentType = MimeHelper.GetContentType(Path.GetExtension(_filename));
-                if (_parent._options != null && _parent._options.SupportsSlug)
-                    request.Headers.Add("Slug", Path.GetFileNameWithoutExtension(_filename));
-
-                request.Method = _method;
-
-                request.AllowWriteStreamBuffering = _allowWriteStreamBuffering;
-
-                if (_etag != null && _etag.Length != 0)
-                    request.Headers.Add("If-match", _etag);
-
-                _parent._requestFilter(request);
-
-                using (Stream inS = new FileStream(_filename, FileMode.Open, FileAccess.Read, FileShare.Read))
-                {
-                    using (CancelableStream cs = new CancelableStream(inS))
-                    {
-                        request.ContentLength = cs.Length;
-                        using (Stream s = request.GetRequestStream())
-                        {
-
-                            StreamHelper.Transfer(cs, s);
-                        }
-                    }
-                }
-
-                return request;
-            }
-        }
-
-    }
-
-    public class MultipartMimeRequestHelper
-    {
-        private string _boundary;
-        private HttpWebRequest _request;
-        Stream _requestStream;
-        protected MemoryStream _requestBodyTop = new MemoryStream();
-        protected MemoryStream _requestBodyBottom = new MemoryStream();
-
-        public virtual void Init(HttpWebRequest request)
-        {
-            _boundary = String.Format(CultureInfo.InvariantCulture, "============{0}==", Guid.NewGuid().ToString().Replace("-", ""));
-            _request = request;
-            _request.Method = "POST";
-            _request.ContentType = String.Format(CultureInfo.InvariantCulture,
-                                                @"multipart/related; boundary=""{0}""; type = ""application/atom+xml""",
-                                                _boundary);
-        }
-
-        public virtual void Open()
-        {
-            AddBoundary(true, _requestBodyTop);
-        }
-
-        public virtual void Close()
-        {
-            AddBoundary(false, _requestBodyBottom);
-            Write("--" + Environment.NewLine, _requestBodyBottom);
-        }
-
-        public virtual void AddBoundary(bool newLine, MemoryStream stream)
-        {
-            Write("--" + _boundary + (newLine ? Environment.NewLine : ""), stream);
-        }
-
-        public virtual void AddXmlRequest(XmlDocument xmlDocument)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void AddFile(string filePath)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected UTF8Encoding _utf8NoBOMEncoding = new UTF8Encoding(false);
-        protected virtual void Write(String s, MemoryStream stream)
-        {
-            byte[] newText = _utf8NoBOMEncoding.GetBytes(s);
-            stream.Write(newText, 0, newText.Length);
-        }
-
-        public virtual HttpWebRequest SendRequest(CancelableStream stream)
-        {
-            _request.ContentLength = _requestBodyTop.Length + stream.Length + _requestBodyBottom.Length;
-            _request.AllowWriteStreamBuffering = false;
-            _requestStream = _request.GetRequestStream();
-            _requestStream.Write(_requestBodyTop.ToArray(), 0, (int)_requestBodyTop.Length);
-            StreamHelper.Transfer(stream, _requestStream, 8192, true);
-            _requestStream.Write(_requestBodyBottom.ToArray(), 0, (int)_requestBodyBottom.Length);
-            _requestStream.Close();
-            return _request;
         }
     }
 }

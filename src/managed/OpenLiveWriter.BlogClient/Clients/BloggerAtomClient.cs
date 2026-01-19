@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -554,11 +555,66 @@ namespace OpenLiveWriter.BlogClient.Clients
             GDataCredentials.FromCredentials(transientCredentials).EnsureLoggedIn(transientCredentials.Username, transientCredentials.Password, GDataCredentials.PICASAWEB_SERVICE_NAME, false);
 
             string albumUrl = GetBlogImagesAlbum(albumName);
-            using (var response = RedirectHelper.GetResponse(albumUrl, new RedirectHelper.RequestFactory(new UploadFileRequestFactory(this, filename, "POST").Create)))
+            using (var response = UploadFileToPicasa(albumUrl, filename, "POST"))
             {
                 using (Stream s = response.GetResponseStream())
                     ParseMediaEntry(s, out srcUrl, out editUri);
             }
+        }
+
+        /// <summary>
+        /// Uploads a file to Picasa using HttpClient.
+        /// </summary>
+        private HttpResponseMessageWrapper UploadFileToPicasa(string uri, string filename, string method)
+        {
+            byte[] fileBytes;
+            using (var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                fileBytes = new byte[fs.Length];
+                fs.Read(fileBytes, 0, fileBytes.Length);
+            }
+
+            string slug;
+            try
+            {
+                slug = Path.GetFileNameWithoutExtension(filename);
+            }
+            catch (ArgumentException)
+            {
+                slug = "Image";
+            }
+
+            return RedirectHelper.GetResponse(
+                uri,
+                new HttpMethod(method),
+                request =>
+                {
+                    PicasaAuthorizationFilterForMessage(request);
+                    request.Headers.TryAddWithoutValidation("Slug", slug);
+                },
+                () =>
+                {
+                    var content = new ByteArrayContent(fileBytes);
+                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                        MimeHelper.GetContentType(Path.GetExtension(filename)));
+                    return content;
+                });
+        }
+
+        /// <summary>
+        /// Applies Picasa authorization to an HttpRequestMessage.
+        /// </summary>
+        private void PicasaAuthorizationFilterForMessage(System.Net.Http.HttpRequestMessage request)
+        {
+            TransientCredentials transientCredentials = Login();
+            GDataCredentials cred = GDataCredentials.FromCredentials(transientCredentials);
+            string auth = cred.GetCredentialsIfValid(transientCredentials.Username, transientCredentials.Password, GDataCredentials.PICASAWEB_SERVICE_NAME);
+            if (auth != null)
+            {
+                request.Headers.TryAddWithoutValidation("Authorization", auth);
+            }
+            request.Headers.Accept.Clear();
+            request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("*/*"));
         }
 
         private void UpdateImage(string editUri, string filename, out string srcUrl, out string newEditUri)
@@ -569,7 +625,7 @@ namespace OpenLiveWriter.BlogClient.Clients
                 bool conflict = false;
                 try
                 {
-                    response = RedirectHelper.GetResponse(editUri, new RedirectHelper.RequestFactory(new UploadFileRequestFactory(this, filename, "PUT").Create));
+                    response = UploadFileToPicasa(editUri, filename, "PUT");
                 }
                 catch (WebException we)
                 {
@@ -581,6 +637,21 @@ namespace OpenLiveWriter.BlogClient.Clients
                         var errResponse = (HttpWebResponse)we.Response;
                         using (Stream s = errResponse.GetResponseStream())
                             ParseMediaEntry(s, out srcUrl, out newEditUri);
+                        editUri = newEditUri;
+                        continue;
+                    }
+                    else
+                        throw;
+                }
+                catch (System.Net.Http.HttpRequestException hre)
+                {
+                    if (retry > 1 && hre.StatusCode == HttpStatusCode.Conflict)
+                    {
+                        // Conflict means we need to get the current version
+                        // Try a GET to get the current edit URI
+                        Uri currentUri = new Uri(editUri);
+                        XmlDocument currentDoc = xmlRestRequestHelper.Get(ref currentUri, RequestFilter);
+                        ParseMediaEntry(new MemoryStream(Encoding.UTF8.GetBytes(currentDoc.OuterXml)), out srcUrl, out newEditUri);
                         editUri = newEditUri;
                         continue;
                     }
@@ -622,50 +693,6 @@ namespace OpenLiveWriter.BlogClient.Clients
             }
 
             editUri = AtomEntry.GetLink(xmlDoc.SelectSingleNode("/atom:entry", _nsMgr) as XmlElement, _nsMgr, "edit-media", null, null, null);
-        }
-
-        private class UploadFileRequestFactory
-        {
-            private readonly BloggerAtomClient _parent;
-            private readonly string _filename;
-            private readonly string _method;
-
-            public UploadFileRequestFactory(BloggerAtomClient parent, string filename, string method)
-            {
-                _parent = parent;
-                _filename = filename;
-                _method = method;
-            }
-
-            public HttpWebRequest Create(string uri)
-            {
-                // TODO: choose rational timeout values
-                HttpWebRequest request = HttpRequestHelper.CreateHttpWebRequest(uri, false);
-
-                _parent.PicasaAuthorizationFilter(request);
-
-                request.ContentType = MimeHelper.GetContentType(Path.GetExtension(_filename));
-                try
-                {
-                    request.Headers.Add("Slug", Path.GetFileNameWithoutExtension(_filename));
-                }
-                catch (ArgumentException)
-                {
-                    request.Headers.Add("Slug", "Image");
-                }
-
-                request.Method = _method;
-
-                using (Stream s = request.GetRequestStream())
-                {
-                    using (Stream inS = new FileStream(_filename, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        StreamHelper.Transfer(inS, s);
-                    }
-                }
-
-                return request;
-            }
         }
 
         #endregion
@@ -868,12 +895,6 @@ namespace OpenLiveWriter.BlogClient.Clients
 
                 while (true)
                 {
-                    GoogleLoginRequestFactory glrf = new GoogleLoginRequestFactory(username,
-                        password,
-                        service,
-                        source,
-                        captchaToken,
-                        captchaValue);
                     if (captchaToken != null && captchaValue != null)
                     {
                         captchaToken = null;
@@ -883,7 +904,7 @@ namespace OpenLiveWriter.BlogClient.Clients
                     HttpResponseMessageWrapper response;
                     try
                     {
-                        response = RedirectHelper.GetResponse(uri, new RedirectHelper.RequestFactory(glrf.Create));
+                        response = SendGoogleLoginRequest(uri, username, password, service, source, captchaToken, captchaValue);
                     }
                     catch (Exception ex) when (ex is WebException || ex is System.Net.Http.HttpRequestException)
                     {
@@ -994,50 +1015,32 @@ namespace OpenLiveWriter.BlogClient.Clients
             }
         }
 
-        private class GoogleLoginRequestFactory
+        /// <summary>
+        /// Sends a Google login request using HttpClient.
+        /// </summary>
+        private HttpResponseMessageWrapper SendGoogleLoginRequest(string uri, string username, string password, string service, string source, string captchaToken, string captchaValue)
         {
-            private readonly string _username;
-            private readonly string _password;
-            private readonly string _service;
-            private readonly string _source;
-            private readonly string _captchaToken;
-            private readonly string _captchaValue;
+            FormData formData = new FormData(false,
+                "Email", username,
+                "Passwd", password,
+                "service", service,
+                "source", source);
 
-            public GoogleLoginRequestFactory(string username, string password, string service, string source, string captchaToken, string captchaValue)
+            if (captchaToken != null && captchaValue != null)
             {
-                _username = username;
-                _password = password;
-                _service = service;
-                _source = source;
-                _captchaToken = captchaToken;
-                _captchaValue = captchaValue;
+                formData.Add("logintoken", captchaToken);
+                formData.Add("logincaptcha", captchaValue);
             }
 
-            public HttpWebRequest Create(string uri)
-            {
-                FormData formData = new FormData(false,
-                    "Email", _username,
-                    "Passwd", _password,
-                    "service", _service,
-                    "source", _source);
-
-                if (_captchaToken != null && _captchaValue != null)
+            return RedirectHelper.GetResponse(
+                uri,
+                HttpMethod.Post,
+                null,
+                () =>
                 {
-                    formData.Add("logintoken", _captchaToken);
-                    formData.Add("logincaptcha", _captchaValue);
-                }
-
-                HttpWebRequest request = HttpRequestHelper.CreateHttpWebRequest(uri, true);
-                request.Method = "POST";
-                request.ContentType = "application/x-www-form-urlencoded";
-
-                using (Stream inStream = formData.ToStream())
-                using (Stream outStream = request.GetRequestStream())
-                    StreamHelper.Transfer(inStream, outStream);
-
-                return request;
-            }
-
+                    var content = new StringContent(formData.ToString(), Encoding.UTF8, "application/x-www-form-urlencoded");
+                    return content;
+                });
         }
 
         private void ShowError(MessageId messageId, params object[] args)

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Xml;
 using OpenLiveWriter.CoreServices;
@@ -15,7 +16,7 @@ using OpenLiveWriter.HtmlParser.Parser.FormAgent;
 namespace OpenLiveWriter.BlogClient.Clients
 {
     /// <summary>
-    /// Helper class for making REST-ful XML HTTP requests.
+    /// Helper class for making REST-ful XML HTTP requests using HttpClient.
     /// </summary>
     public class XmlRestRequestHelper
     {
@@ -67,8 +68,8 @@ namespace OpenLiveWriter.BlogClient.Clients
                     absUri += "&" + formData.ToString();
             }
 
-            RedirectHelper.SimpleRequest simpleRequest = new RedirectHelper.SimpleRequest(method, filter);
-            using (HttpResponseMessageWrapper response = RedirectHelper.GetResponse(absUri, new RedirectHelper.RequestFactory(simpleRequest.Create)))
+            using (HttpResponseMessageWrapper response = RedirectHelper.GetResponse(absUri, method,
+                filter != null ? request => HttpRequestHelper.ApplyLegacyFilter(request, filter, absUri) : null))
             {
                 uri = response.ResponseUri;
                 responseHeaders = response.Headers;
@@ -134,8 +135,57 @@ namespace OpenLiveWriter.BlogClient.Clients
             string absUri = UrlHelper.SafeToAbsoluteUri(uri);
             Debug.WriteLine("XML Request to " + absUri + ":\r\n" + doc.InnerXml);
 
-            SendFactory sf = new SendFactory(etag, method, filter, contentType, doc, encoding);
-            using (HttpResponseMessageWrapper response = RedirectHelper.GetResponse(absUri, new RedirectHelper.RequestFactory(sf.Create)))
+            // Select encoding
+            Encoding encodingToUse = new UTF8Encoding(false, false);
+            try
+            {
+                encodingToUse = StringHelper.GetEncoding(encoding, encodingToUse);
+            }
+            catch (Exception ex)
+            {
+                Trace.Fail("Error while getting transport encoding: " + ex.ToString());
+            }
+
+            // Create XML content (captured for content factory)
+            byte[] xmlBytes;
+            using (var ms = new MemoryStream())
+            {
+                using (var writer = new XmlTextWriter(ms, encodingToUse))
+                {
+                    writer.Formatting = Formatting.Indented;
+                    writer.Indentation = 1;
+                    writer.IndentChar = ' ';
+                    writer.WriteStartDocument();
+                    doc.DocumentElement.WriteTo(writer);
+                    writer.Flush();
+                }
+                xmlBytes = ms.ToArray();
+            }
+
+            if (ApplicationDiagnostics.VerboseLogging)
+                Trace.WriteLine(
+                    string.Format(CultureInfo.InvariantCulture, "XML REST request:\r\n{0} {1}\r\n{2}\r\n{3}",
+                        method, absUri, !string.IsNullOrEmpty(etag) ? "If-match: " + etag : "(no etag)", doc.OuterXml));
+
+            using (HttpResponseMessageWrapper response = RedirectHelper.GetResponse(
+                absUri,
+                new HttpMethod(method),
+                request =>
+                {
+                    if (!string.IsNullOrEmpty(etag))
+                        request.Headers.TryAddWithoutValidation("If-match", etag);
+
+                    // Apply legacy filter
+                    if (filter != null)
+                        HttpRequestHelper.ApplyLegacyFilter(request, filter, absUri);
+                },
+                () =>
+                {
+                    var content = new ByteArrayContent(xmlBytes);
+                    if (!string.IsNullOrEmpty(contentType))
+                        content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
+                    return content;
+                }))
             {
                 responseHeaders = response.Headers;
                 uri = response.ResponseUri;
@@ -147,118 +197,6 @@ namespace OpenLiveWriter.BlogClient.Clients
                 {
                     XmlDocument xmlDocResponse = ParseXmlResponse(response);
                     return xmlDocResponse;
-                }
-            }
-        }
-
-        private struct SendFactory
-        {
-            private readonly string _etag;
-            private readonly string _method;
-            private readonly HttpRequestFilter _filter;
-            private readonly string _contentType;
-            private readonly XmlDocument _doc;
-            private readonly Encoding _encodingToUse;
-
-            public SendFactory(string etag, string method, HttpRequestFilter filter, string contentType, XmlDocument doc, string encoding)
-            {
-                _etag = etag;
-                _method = method;
-                _filter = filter;
-                _contentType = contentType;
-                _doc = doc;
-
-                //select the encoding
-                _encodingToUse = new UTF8Encoding(false, false);
-                try
-                {
-                    _encodingToUse = StringHelper.GetEncoding(encoding, _encodingToUse);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Fail("Error while getting transport encoding: " + ex.ToString());
-                }
-            }
-
-            public HttpWebRequest Create(string uri)
-            {
-                HttpWebRequest request = HttpRequestHelper.CreateHttpWebRequest(uri, true);
-                request.Method = _method;
-                //			    request.KeepAlive = true;
-                //			    request.Pipelined = true;
-                if (_etag != null && _etag != "")
-                    request.Headers["If-match"] = _etag;
-                if (_contentType != null)
-                    request.ContentType = _contentType;
-                if (_filter != null)
-                    _filter(request);
-
-                if (ApplicationDiagnostics.VerboseLogging)
-                    Trace.WriteLine(
-                        string.Format(CultureInfo.InvariantCulture, "XML REST request:\r\n{0} {1}\r\n{2}\r\n{3}",
-                            _method, uri, (_etag != null && _etag != "") ? "If-match: " + _etag : "(no etag)", _doc.OuterXml));
-
-                using (Stream s = request.GetRequestStream())
-                {
-                    XmlTextWriter writer = new XmlTextWriter(s, _encodingToUse);
-                    writer.Formatting = Formatting.Indented;
-                    writer.Indentation = 1;
-                    writer.IndentChar = ' ';
-                    writer.WriteStartDocument();
-                    _doc.DocumentElement.WriteTo(writer);
-                    writer.Close();
-                }
-
-                return request;
-            }
-        }
-
-        public class MultipartMimeSendFactory
-        {
-            private readonly string _filename;
-            private readonly XmlDocument _xmlDoc;
-            private readonly Encoding _encoding;
-            private readonly HttpRequestFilter _filter;
-            private readonly MultipartMimeRequestHelper _multipartMimeRequestHelper;
-            public MultipartMimeSendFactory(HttpRequestFilter filter, XmlDocument xmlRequest, string filename, string encoding, MultipartMimeRequestHelper multipartMimeRequestHelper)
-            {
-                if (xmlRequest == null)
-                    throw new ArgumentNullException();
-
-                // Add boundary to params
-                _filename = filename;
-                _xmlDoc = xmlRequest;
-                _filter = filter;
-                _multipartMimeRequestHelper = multipartMimeRequestHelper;
-
-                //select the encoding
-                _encoding = new UTF8Encoding(false, false);
-                try
-                {
-                    _encoding = StringHelper.GetEncoding(encoding, _encoding);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Fail("Error while getting transport encoding: " + ex.ToString());
-                }
-            }
-
-            public HttpWebRequest Create(string uri)
-            {
-                HttpWebRequest req = HttpRequestHelper.CreateHttpWebRequest(uri, true);
-                _multipartMimeRequestHelper.Init(req);
-
-                if (_filter != null)
-                    _filter(req);
-
-                _multipartMimeRequestHelper.Open();
-                _multipartMimeRequestHelper.AddXmlRequest(_xmlDoc);
-                _multipartMimeRequestHelper.AddFile(_filename);
-                _multipartMimeRequestHelper.Close();
-
-                using (CancelableStream stream = new CancelableStream(new FileStream(_filename, FileMode.Open, FileAccess.Read, FileShare.Read)))
-                {
-                    return _multipartMimeRequestHelper.SendRequest(stream);
                 }
             }
         }

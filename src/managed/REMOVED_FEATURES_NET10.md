@@ -66,47 +66,61 @@ These files are excluded from compilation (`<Compile Remove="..."/>`) due to inc
 |------|---------|--------|
 | `RegistryCodec.cs` | `SYSLIB0011` | BinaryFormatter read-only fallback |
 | `HttpRequestHelper.cs` | `SYSLIB0009` | WSSE auth for SixApart/TypePad blogs |
-| `HttpRequestHelper.cs` | `SYSLIB0014` | WebRequest factory for legacy blog clients |
+| `HttpRequestHelper.cs` | `SYSLIB0014` | WebRequest factory for legacy filter adapter |
 | `GenericAtomClient.cs` | `SYSLIB0009` | Google login auth |
 
-**Migration Progress:**
-- ✅ `WebRequestWithCache.cs` - Fully migrated to HttpClient
-- ✅ `AsyncWebRequestWithCache.cs` - Fully migrated to HttpClient
-- ✅ `ContentTypeHelper.cs` - Updated to use HttpResponseMessage
-- ✅ `TistoryBlogClient.cs` - Fully migrated to HttpClientXmlRestRequestHelper
-- ✅ `YouTubeVideoService.cs` - Fully migrated to HttpClientService
-- ✅ `YoutubeVideoPublisher.cs` - Partially migrated (DELETE, IsVideoCompleted use HttpClient)
-- ✅ `LiveJournalClient.cs` - FotobilderRequestManager fully migrated to HttpClient
-- ✅ `ResourceFileDownloader.cs` - Fully migrated to HttpClientService
-- ✅ `PluginHttpRequest.cs` - Fully migrated to HttpClientService
-- ✅ `HockeyAppProxy.cs` - Fully migrated to HttpClientService
-- ✅ `GDataCaptchaForm.cs` - Fully migrated to HttpClientService
-- ✅ `WebImageSource.cs` - Fully migrated to HttpClientService
-- ✅ `DestinationValidator.cs` - Migrated to use HttpRequestHelper.CheckUrlReachable
-- ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods
-- ✅ `HttpClientRedirectHelper.cs` - New HttpClient-based redirect helper (replaces RedirectHelper)
-- ✅ `HttpClientXmlRestRequestHelper.cs` - New HttpClient-based XML REST helper (replaces XmlRestRequestHelper)
-- ✅ `PostEditorMainControl.ValidateHtml` - Migrated to use HttpClient
-- ✅ `MultiThreadedPageDownloader.cs` - Re-enabled (namespace updated from Project31 to OpenLiveWriter)
-- ✅ `CloseTrackingHttpWebRequest.cs` - Rewritten without `RealProxy` using wrapper pattern for .NET 10 compatibility
+---
 
-**Remaining Legacy HttpWebRequest Usages:**
-- `RedirectHelper.cs` - Uses HttpWebRequest internally (SYSLIB0014 localized) to support legacy factories
-- `HttpRequestHelper.CreateHttpWebRequest` - Factory method used by request factories
-- Blog detection authenticated path (`BlogEditingTemplateDetector.cs`) - Uses `IBlogClient.SendAuthenticatedHttpRequest` interface
+## HttpClient Migration Status
 
-**Updated to Use HttpResponseMessageWrapper:**
-- ✅ `RedirectHelper.cs` - Returns `HttpResponseMessageWrapper` for unified response interface
-- ✅ `XmlRestRequestHelper.cs` - Updated to use `HttpResponseMessageWrapper`
-- ✅ `AtomClient.cs` - Updated to use `HttpResponseMessageWrapper`
-- ✅ `AtomMediaUploader.cs` - Updated to use `HttpResponseMessageWrapper`
-- ✅ `BloggerAtomClient.cs` - Updated to use `HttpResponseMessageWrapper`
-- ✅ `XmlRpcClient.cs` - Added `CallMethodWithHttpClient()` method and `Action<HttpRequestMessage>` constructor
-- ✅ `YouTubeUploadRequestHelper` - Added `CreateMultipartContent()` for HttpClient uploads
+All HTTP requests have been migrated to `HttpClient`. The legacy `HttpWebRequest` pattern is only used internally for the `HttpRequestFilter` adapter.
 
-SYSLIB0014 suppressions are localized to `HttpRequestHelper.cs` and `RedirectHelper.cs` for legacy factory support.
+### Fully Migrated Components
 
-**For New Code:**
-- Use `HttpClientRedirectHelper` instead of `RedirectHelper`
-- Use `HttpClientXmlRestRequestHelper` instead of `XmlRestRequestHelper`
-- Use `HttpRequestHelper.HttpClient` or the new HttpClient-based methods instead of `CreateHttpWebRequest`
+- ✅ `WebRequestWithCache.cs` - Uses HttpClientService
+- ✅ `AsyncWebRequestWithCache.cs` - Uses HttpClientService
+- ✅ `ContentTypeHelper.cs` - Uses HttpResponseMessage
+- ✅ `TistoryBlogClient.cs` - Uses HttpClientXmlRestRequestHelper
+- ✅ `YouTubeVideoService.cs` - Uses HttpClientService
+- ✅ `YoutubeVideoPublisher.cs` - Uses HttpClientService
+- ✅ `LiveJournalClient.cs` - FotobilderRequestManager uses HttpClientService
+- ✅ `ResourceFileDownloader.cs` - Uses HttpClientService
+- ✅ `PluginHttpRequest.cs` - Uses HttpClientService
+- ✅ `HockeyAppProxy.cs` - Uses HttpClientService
+- ✅ `GDataCaptchaForm.cs` - Uses HttpClientService
+- ✅ `WebImageSource.cs` - Uses HttpClientService
+- ✅ `DestinationValidator.cs` - Uses HttpRequestHelper.CheckUrlReachable
+- ✅ `HttpRequestHelper.cs` - Added HttpClient-based methods, legacy filter adapter
+- ✅ `HttpClientRedirectHelper.cs` - New HttpClient-based redirect helper
+- ✅ `HttpClientXmlRestRequestHelper.cs` - New HttpClient-based XML REST helper
+- ✅ `PostEditorMainControl.ValidateHtml` - Uses HttpClient
+- ✅ `CloseTrackingHttpWebRequest.cs` - Rewritten for .NET 10 compatibility
+- ✅ `RedirectHelper.cs` - Fully HttpClient-based, returns HttpResponseMessageWrapper
+- ✅ `XmlRestRequestHelper.cs` - Fully HttpClient-based with legacy filter adapter
+- ✅ `AtomClient.cs` - Uses HttpClient via RedirectHelper
+- ✅ `AtomMediaUploader.cs` - Uses HttpClient via RedirectHelper
+- ✅ `BloggerAtomClient.cs` - Uses HttpClient via RedirectHelper
+- ✅ `XmlRpcClient.cs` - Added HttpClient support with Action<HttpRequestMessage> constructor
+
+### Legacy HttpRequestFilter Pattern
+
+The `HttpRequestFilter` delegate (`Action<HttpWebRequest>`) is part of the public API and is used throughout the codebase for authentication. Rather than changing this interface, we provide:
+
+1. `HttpRequestHelper.ApplyLegacyFilter()` - Adapts legacy filters to `HttpRequestMessage`
+2. A temporary `HttpWebRequest` is created to capture filter settings, then applied to `HttpRequestMessage`
+
+This allows existing authentication code to work unchanged while using HttpClient internally.
+
+### SYSLIB0014 Suppressions
+
+Suppressions are localized to `HttpRequestHelper.cs` only:
+- `CreateHttpWebRequest()` - Factory method for rare cases needing direct HttpWebRequest
+- `ApplyLegacyFilter()` - Creates temporary HttpWebRequest to capture filter settings
+
+### For New Code
+
+- Use `HttpClientService.DefaultClient` for direct HttpClient access
+- Use `HttpClientRedirectHelper` for redirect-following requests
+- Use `HttpClientXmlRestRequestHelper` for XML REST requests
+- Use `HttpRequestHelper.HttpClient` property for configured HttpClient instance
+- Avoid `CreateHttpWebRequest()` - it exists only for backward compatibility

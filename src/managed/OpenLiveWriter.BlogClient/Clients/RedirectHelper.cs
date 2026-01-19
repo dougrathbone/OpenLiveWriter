@@ -2,67 +2,89 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
-using System.Collections.Specialized;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Threading.Tasks;
+using System.Text;
+using System.Xml;
 using OpenLiveWriter.CoreServices;
 using OpenLiveWriter.Extensibility.BlogClient;
 
 namespace OpenLiveWriter.BlogClient.Clients
 {
     /// <summary>
-    /// Helper class for following HTTP redirects.
-    /// Uses HttpWebRequest internally to support legacy request factories.
+    /// Helper class for following HTTP redirects using HttpClient.
     /// </summary>
     public class RedirectHelper
     {
         private const int MaxRedirects = 50;
 
-        public delegate HttpWebRequest RequestFactory(string uri);
+        /// <summary>
+        /// Delegate for configuring an HTTP request.
+        /// </summary>
+        public delegate void RequestConfigurator(HttpRequestMessage request);
 
         /// <summary>
-        /// Sends a request following redirects. Returns an HttpResponseMessageWrapper
-        /// that provides HttpWebResponse-like properties for backward compatibility.
+        /// Sends a request following redirects using HttpClient.
         /// </summary>
-        /// <remarks>
-        /// This method uses HttpWebRequest internally to support legacy request factories
-        /// that write content to the request stream. The SYSLIB0014 suppression is localized here.
-        /// </remarks>
-        #pragma warning disable SYSLIB0014 // WebRequest is obsolete
-        public static HttpResponseMessageWrapper GetResponse(string initialUri, RequestFactory requestFactory)
+        /// <param name="initialUri">The initial URI to request</param>
+        /// <param name="method">The HTTP method</param>
+        /// <param name="configureRequest">Optional callback to configure headers</param>
+        /// <param name="createContent">Optional callback to create content (called for each redirect)</param>
+        public static HttpResponseMessageWrapper GetResponse(
+            string initialUri,
+            HttpMethod method,
+            RequestConfigurator configureRequest = null,
+            Func<HttpContent> createContent = null)
         {
             string uri = initialUri;
             for (int i = 0; i < MaxRedirects; i++)
             {
-                HttpWebRequest request = requestFactory(uri);
-                request.AllowAutoRedirect = false;
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                using var request = new HttpRequestMessage(method, uri);
+
+                // Apply header configuration
+                configureRequest?.Invoke(request);
+
+                // Set content if provided
+                if (createContent != null)
+                {
+                    request.Content = createContent();
+                }
+
+                var response = HttpClientService.DefaultClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
 
                 int statusCode = (int)response.StatusCode;
                 if (statusCode >= 300 && statusCode < 400)
                 {
-                    string redirectedLocation = response.Headers["Location"];
+                    string redirectedLocation = response.Headers.Location?.ToString();
                     if (string.IsNullOrEmpty(redirectedLocation))
                     {
-                        response.Close();
+                        response.Dispose();
                         throw new BlogClientInvalidServerResponseException(initialUri,
                             "An invalid redirect was returned (Location header was expected but not found)", string.Empty);
                     }
                     uri = MergeUris(uri, redirectedLocation);
-                    response.Close();
+                    response.Dispose();
                     continue;
                 }
 
-                // Wrap the HttpWebResponse in our wrapper for unified interface
                 return new HttpResponseMessageWrapper(response);
             }
 
             throw new BlogClientInvalidServerResponseException(initialUri,
                 $"Allowed number of redirects ({MaxRedirects}) was exceeded", string.Empty);
         }
-        #pragma warning restore SYSLIB0014
+
+        /// <summary>
+        /// Convenience overload for simple requests (GET, DELETE, etc.).
+        /// </summary>
+        public static HttpResponseMessageWrapper GetResponse(
+            string uri,
+            string method,
+            RequestConfigurator configureRequest = null)
+        {
+            return GetResponse(uri, new HttpMethod(method), configureRequest, null);
+        }
 
         private static string MergeUris(string uri, string newUri)
         {
@@ -85,104 +107,92 @@ namespace OpenLiveWriter.BlogClient.Clients
             return newUri;
         }
 
+        #region Content Helpers
+
         /// <summary>
-        /// Simple request factory for basic GET/DELETE/etc requests.
+        /// Creates XML content from an XmlDocument.
         /// </summary>
-        public class SimpleRequest
+        public static HttpContent CreateXmlContent(XmlDocument doc, string contentType, Encoding encoding)
         {
-            private readonly string _method;
-            private readonly HttpRequestFilter _filter;
-
-            public SimpleRequest(string method, HttpRequestFilter filter)
+            using var ms = new MemoryStream();
+            using (var writer = new XmlTextWriter(ms, encoding))
             {
-                _method = method;
-                _filter = filter;
+                writer.Formatting = Formatting.Indented;
+                writer.Indentation = 1;
+                writer.IndentChar = ' ';
+                writer.WriteStartDocument();
+                doc.DocumentElement.WriteTo(writer);
+                writer.Flush();
             }
 
-            public HttpWebRequest Create(string uri)
+            var content = new ByteArrayContent(ms.ToArray());
+            if (!string.IsNullOrEmpty(contentType))
             {
-                HttpWebRequest request = HttpRequestHelper.CreateHttpWebRequest(uri, false);
-                request.Method = _method;
-                if (_filter != null)
-                    _filter(request);
-                return request;
+                content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
             }
+            return content;
         }
+
+        /// <summary>
+        /// Creates form URL-encoded content.
+        /// </summary>
+        public static HttpContent CreateFormContent(params (string name, string value)[] fields)
+        {
+            var sb = new StringBuilder();
+            foreach (var (name, value) in fields)
+            {
+                if (sb.Length > 0) sb.Append('&');
+                sb.Append(Uri.EscapeDataString(name));
+                sb.Append('=');
+                sb.Append(Uri.EscapeDataString(value ?? ""));
+            }
+            return new StringContent(sb.ToString(), Encoding.UTF8, "application/x-www-form-urlencoded");
+        }
+
+        #endregion
     }
 
     /// <summary>
     /// Wrapper that provides a unified interface for HTTP responses.
-    /// Supports both HttpWebResponse (legacy) and HttpResponseMessage (modern).
     /// </summary>
     public class HttpResponseMessageWrapper : IDisposable
     {
-        private readonly HttpWebResponse _webResponse;
-        private readonly HttpResponseMessage _httpResponse;
+        private readonly HttpResponseMessage _response;
         private WebHeaderCollection _headers;
         private Stream _responseStream;
 
-        /// <summary>
-        /// Creates a wrapper from an HttpWebResponse (legacy path).
-        /// </summary>
-        public HttpResponseMessageWrapper(HttpWebResponse response)
+        public HttpResponseMessageWrapper(HttpResponseMessage response)
         {
-            _webResponse = response ?? throw new ArgumentNullException(nameof(response));
+            _response = response ?? throw new ArgumentNullException(nameof(response));
         }
 
-        /// <summary>
-        /// Creates a wrapper from an HttpResponseMessage (modern path).
-        /// </summary>
-        public HttpResponseMessageWrapper(HttpResponseMessage response, Uri responseUri = null)
-        {
-            _httpResponse = response ?? throw new ArgumentNullException(nameof(response));
-        }
+        public Uri ResponseUri => _response.RequestMessage?.RequestUri;
 
-        /// <summary>
-        /// Gets the final URI after following redirects.
-        /// </summary>
-        public Uri ResponseUri => _webResponse?.ResponseUri ?? _httpResponse?.RequestMessage?.RequestUri;
+        public HttpStatusCode StatusCode => _response.StatusCode;
 
-        /// <summary>
-        /// Gets the HTTP status code.
-        /// </summary>
-        public HttpStatusCode StatusCode => _webResponse?.StatusCode ?? _httpResponse.StatusCode;
+        public string StatusDescription => _response.ReasonPhrase ?? StatusCode.ToString();
 
-        /// <summary>
-        /// Gets the status description (reason phrase).
-        /// </summary>
-        public string StatusDescription => _webResponse?.StatusDescription ?? _httpResponse?.ReasonPhrase ?? StatusCode.ToString();
-
-        /// <summary>
-        /// Gets the response headers as a WebHeaderCollection for backward compatibility.
-        /// </summary>
         public WebHeaderCollection Headers
         {
             get
             {
                 if (_headers == null)
                 {
-                    if (_webResponse != null)
+                    _headers = new WebHeaderCollection();
+                    foreach (var header in _response.Headers)
                     {
-                        _headers = _webResponse.Headers;
+                        foreach (var value in header.Value)
+                        {
+                            _headers.Add(header.Key, value);
+                        }
                     }
-                    else
+                    if (_response.Content != null)
                     {
-                        _headers = new WebHeaderCollection();
-                        foreach (var header in _httpResponse.Headers)
+                        foreach (var header in _response.Content.Headers)
                         {
                             foreach (var value in header.Value)
                             {
                                 _headers.Add(header.Key, value);
-                            }
-                        }
-                        if (_httpResponse.Content != null)
-                        {
-                            foreach (var header in _httpResponse.Content.Headers)
-                            {
-                                foreach (var value in header.Value)
-                                {
-                                    _headers.Add(header.Key, value);
-                                }
                             }
                         }
                     }
@@ -191,38 +201,21 @@ namespace OpenLiveWriter.BlogClient.Clients
             }
         }
 
-        /// <summary>
-        /// Gets the response stream.
-        /// </summary>
         public Stream GetResponseStream()
         {
             if (_responseStream == null)
             {
-                if (_webResponse != null)
-                {
-                    _responseStream = _webResponse.GetResponseStream();
-                }
-                else
-                {
-                    _responseStream = _httpResponse.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
-                }
+                _responseStream = _response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
             }
             return _responseStream;
         }
 
-        /// <summary>
-        /// Closes the response and releases resources.
-        /// </summary>
-        public void Close()
-        {
-            Dispose();
-        }
+        public void Close() => Dispose();
 
         public void Dispose()
         {
             _responseStream?.Dispose();
-            _webResponse?.Close();
-            _httpResponse?.Dispose();
+            _response?.Dispose();
         }
     }
 }
