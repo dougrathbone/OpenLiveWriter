@@ -130,10 +130,15 @@ namespace OpenLiveWriter.WebView2Shim
         
         private async void OnUseParagraphTagsChanged(object sender, EventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} OnUseParagraphTagsChanged fired, UseParagraphTags={WebView2Document.UseParagraphTags}");
             // Re-apply the paragraph separator setting when changed in Options
             if (_isInitialized && _webView?.CoreWebView2 != null)
             {
                 await ApplyParagraphSeparatorSetting();
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} OnUseParagraphTagsChanged - NOT applying (initialized={_isInitialized}, webView null={_webView?.CoreWebView2 == null})");
             }
         }
 
@@ -411,6 +416,30 @@ namespace OpenLiveWriter.WebView2Shim
                             }
                         });
                         
+                        // Use MutationObserver to convert <div> to <p> when useParagraphTags is true
+                        // Chromium's defaultParagraphSeparator doesn't work, so we post-process
+                        var observer = new MutationObserver(function(mutations) {
+                            if (window.olwUseParagraphTags === false) return;
+                            mutations.forEach(function(mutation) {
+                                mutation.addedNodes.forEach(function(node) {
+                                    if (node.nodeName === 'DIV' && node.parentElement === bodyEl) {
+                                        // Convert div to p
+                                        var p = document.createElement('p');
+                                        p.innerHTML = node.innerHTML;
+                                        node.parentElement.replaceChild(p, node);
+                                        // Move cursor to end of new p
+                                        var sel = window.getSelection();
+                                        var range = document.createRange();
+                                        range.selectNodeContents(p);
+                                        range.collapse(false);
+                                        sel.removeAllRanges();
+                                        sel.addRange(range);
+                                    }
+                                });
+                            });
+                        });
+                        observer.observe(bodyEl, { childList: true });
+                        
                         // Sync initial content
                         syncContent();
                         syncSelectionState();
@@ -432,11 +461,12 @@ namespace OpenLiveWriter.WebView2Shim
         {
             try
             {
-                // Use <p> tags if UseParagraphTags is true, otherwise use <div> (Chromium default)
-                var separator = WebView2Document.UseParagraphTags ? "p" : "div";
-                var script = $"document.execCommand('defaultParagraphSeparator', false, '{separator}');";
+                // Set JS variable that the Enter key handler uses
+                // Chromium's defaultParagraphSeparator command doesn't work reliably
+                var usePTags = WebView2Document.UseParagraphTags ? "true" : "false";
+                var script = $"window.olwUseParagraphTags = {usePTags};";
                 await _webView.CoreWebView2.ExecuteScriptAsync(script);
-                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} Set defaultParagraphSeparator to '{separator}'");
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] #{_instanceId} Set olwUseParagraphTags to {usePTags}");
             }
             catch (Exception ex)
             {
