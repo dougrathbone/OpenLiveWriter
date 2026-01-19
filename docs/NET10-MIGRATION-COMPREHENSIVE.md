@@ -50,7 +50,7 @@ This document outlines a comprehensive plan to migrate Open Live Writer from **.
 | Microsoft.Web.WebView2 | 1.0.2903.40 | ✅ Yes | Core dependency |
 | Newtonsoft.Json | 13.0.3 | ✅ Yes | Can migrate to System.Text.Json |
 | Google.Apis.* | 1.39.0 | ⚠️ Update Required | Need v1.60+ for .NET 10 |
-| squirrel.windows | 1.4.4 | ❌ No | **BLOCKER** - Need alternative |
+| squirrel.windows | 1.4.4 | ❌ No | **Migrate to Velopack** (see Section 3.1) |
 | DeltaCompressionDotNet | 1.1.0 | ❌ Unknown | Test required |
 | NUnit | 3.4.1 | ✅ Yes | Update to 4.x recommended |
 | YamlDotNet | 6.1.1 | ✅ Yes | Update to 13.x recommended |
@@ -125,17 +125,206 @@ This document outlines a comprehensive plan to migrate Open Live Writer from **.
 
 ## 3. Technical Challenges
 
-### 3.1 CRITICAL: Squirrel.Windows Update System
+### 3.1 Squirrel.Windows → Velopack Migration
 
 **Problem**: Squirrel.Windows 1.4.4 does not support .NET 10.
 
-**Options**:
-1. **Clowd.Squirrel** - Fork with .NET 6+ support
-2. **Velopack** - Modern successor to Squirrel
-3. **MSIX packaging** - Windows native
-4. **ClickOnce** - Built into .NET SDK
+**Solution**: Migrate to **Velopack** - the actively maintained successor to Squirrel.
 
-**Recommendation**: Evaluate **Velopack** (actively maintained, similar API to Squirrel)
+#### Why Velopack?
+
+| Feature | Squirrel.Windows | Velopack |
+|---------|-----------------|----------|
+| .NET 10 Support | ❌ No | ✅ Yes |
+| Active Maintenance | ❌ Abandoned | ✅ Active |
+| Delta Updates | ✅ Yes | ✅ Yes (faster) |
+| Cross-Platform | ❌ Windows only | ✅ Win/Mac/Linux |
+| Auto-Migration | N/A | ✅ From Squirrel |
+| API Similarity | - | ~90% compatible |
+
+#### Current Squirrel Usage in OLW
+
+**Files to modify:**
+1. `OpenLiveWriter\ApplicationMain.cs` - Event handlers (install/uninstall/update)
+2. `OpenLiveWriter.PostEditor\Updates\UpdateManager.cs` - Background update check
+3. `OpenLiveWriter\packages.config` - Package reference
+
+**Current implementation (~70 lines of Squirrel code):**
+
+```csharp
+// ApplicationMain.cs - Current Squirrel code
+using Squirrel;
+
+private static void RegisterSquirrelEventHandlers(string downloadUrl)
+{
+    using (var mgr = new Squirrel.UpdateManager(downloadUrl))
+    {
+        SquirrelAwareApp.HandleEvents(
+            onInitialInstall: v => InitialInstall(mgr),
+            onFirstRun: () => FirstRun(mgr),
+            onAppUpdate: v => OnAppUpdate(mgr),
+            onAppUninstall: v => OnAppUninstall(mgr));
+    }
+}
+
+// UpdateManager.cs - Current update check
+using (var manager = new Squirrel.UpdateManager(downloadUrl))
+{
+    var update = await manager.CheckForUpdate();
+    await manager.UpdateApp();
+}
+```
+
+#### Velopack Migration Code
+
+**Step 1: Replace NuGet package**
+```xml
+<!-- Remove -->
+<package id="squirrel.windows" version="1.4.4" />
+
+<!-- Add -->
+<PackageReference Include="Velopack" Version="0.0.1298" />
+```
+
+**Step 2: Update ApplicationMain.cs**
+```csharp
+// NEW: Velopack implementation
+using Velopack;
+
+public static void Main(string[] args)
+{
+    // Velopack MUST be first line in Main()
+    VelopackApp.Build()
+        .WithFirstRun(v => FirstRun())
+        .WithAfterInstallFastCallback(v => InitialInstall())
+        .WithAfterUpdateFastCallback(v => OnAppUpdate())
+        .WithBeforeUninstallFastCallback(v => OnAppUninstall())
+        .Run();
+    
+    // Rest of existing Main() code...
+    Application.EnableVisualStyles();
+    // ...
+}
+
+private static void InitialInstall()
+{
+    // Create shortcuts, file associations
+    var locator = VelopackLocator.GetDefault(null);
+    var mgr = new UpdateManager(locator);
+    mgr.CreateShortcutForThisExe(ShortcutLocation.StartMenu | ShortcutLocation.Desktop);
+    
+    SetAssociation(".wpost", "OPEN_LIVE_WRITER", 
+        locator.CurrentlyInstalledVersion?.TargetFullPath ?? Application.ExecutablePath, 
+        "Open Live Writer post");
+}
+
+private static void OnAppUninstall()
+{
+    // Clean up registry and data
+    string OLWRegKey = @"SOFTWARE\OpenLiveWriter";
+    Registry.CurrentUser.DeleteSubKeyTree(OLWRegKey, false);
+    
+    try
+    {
+        Directory.Delete(ApplicationEnvironment.LocalApplicationDataDirectory, true);
+        Directory.Delete(ApplicationEnvironment.ApplicationDataDirectory, true);
+    }
+    catch { /* Ignore cleanup errors */ }
+}
+```
+
+**Step 3: Update UpdateManager.cs**
+```csharp
+// NEW: Velopack update check
+using Velopack;
+using Velopack.Sources;
+
+public class UpdateManager
+{
+    public static async Task CheckForUpdatesAsync(bool forceCheck = false)
+    {
+        if (!forceCheck && !UpdateSettings.AutoUpdate)
+            return;
+            
+        var downloadUrl = UpdateSettings.CheckForBetaUpdates ?
+            UpdateSettings.BetaUpdateDownloadUrl : UpdateSettings.UpdateDownloadUrl;
+
+        try
+        {
+            var source = new SimpleWebSource(downloadUrl);
+            var mgr = new Velopack.UpdateManager(source);
+            
+            // Check for updates
+            var newVersion = await mgr.CheckForUpdatesAsync();
+            if (newVersion == null)
+            {
+                Trace.WriteLine("No updates available.");
+                return;
+            }
+            
+            // Verify update is newer (not older)
+            var currentVersion = mgr.CurrentVersion;
+            if (newVersion.TargetFullRelease.Version <= currentVersion)
+            {
+                Trace.WriteLine($"Update {newVersion.TargetFullRelease.Version} is not newer than {currentVersion}");
+                return;
+            }
+            
+            // Download and apply
+            await mgr.DownloadUpdatesAsync(newVersion);
+            Trace.WriteLine($"Update downloaded: {newVersion.TargetFullRelease.Version}");
+            
+            // Will apply on next restart
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Update check failed: {ex.Message}");
+        }
+    }
+}
+```
+
+**Step 4: Update build/packaging**
+```powershell
+# Install Velopack CLI
+dotnet tool install -g vpk
+
+# Package the app (replaces Squirrel packaging)
+vpk pack `
+    --packId "OpenLiveWriter" `
+    --packVersion "0.7.0" `
+    --packDir "./src/managed/bin/Release/x64/Writer" `
+    --mainExe "OpenLiveWriter.exe" `
+    --outputDir "./Releases"
+
+# Generate delta updates
+vpk delta `
+    --baseDir "./Releases/previous" `
+    --targetDir "./Releases/current"
+```
+
+#### Automatic Migration from Squirrel
+
+**Good news**: Velopack automatically migrates existing Squirrel installations!
+
+When an existing Squirrel user updates to the new Velopack version:
+1. Velopack detects Squirrel installation artifacts
+2. Shortcuts are updated to point to new location
+3. Registry entries are migrated
+4. Old Squirrel files are cleaned up
+5. User continues receiving updates via Velopack
+
+**No user action required** - migration is seamless.
+
+#### Testing the Migration
+
+1. Create test VM with current Squirrel-based OLW installed
+2. Build new Velopack version with same app ID
+3. Publish update to test channel
+4. Verify existing install updates correctly
+5. Verify shortcuts, file associations still work
+6. Verify clean install works
+7. Verify uninstall cleans up properly
 
 ### 3.2 HIGH: UI Ribbon COM Interop
 
@@ -556,26 +745,90 @@ Get-Process OpenLiveWriter | Select WorkingSet64
 
 ## 9. Phase 5: Deployment
 
-### 9.1 Update System Migration
+### 9.1 Velopack Deployment (Replaces Squirrel)
 
-**If using Velopack:**
+**Velopack is now the definitive choice** for OLW's update system. See Section 3.1 for full migration code.
 
-```csharp
-// Replace Squirrel code
-// Old:
-using (var mgr = new UpdateManager("https://..."))
-{
-    await mgr.UpdateApp();
-}
+#### 9.1.1 Build Pipeline Changes
 
-// New (Velopack):
-var um = new UpdateManager("https://...");
-var update = await um.CheckForUpdatesAsync();
-if (update != null)
-{
-    await um.DownloadUpdatesAsync(update);
-    um.ApplyUpdatesAndRestart();
-}
+```powershell
+# build-release.ps1 - Updated for Velopack
+
+# 1. Build the application
+dotnet publish src/managed/OpenLiveWriter/OpenLiveWriter.csproj `
+    -c Release `
+    -r win-x64 `
+    --self-contained true `
+    -o ./publish
+
+# 2. Install Velopack CLI (if not already)
+dotnet tool install -g vpk
+
+# 3. Package with Velopack
+vpk pack `
+    --packId "OpenLiveWriter" `
+    --packVersion $env:OLW_VERSION `
+    --packDir "./publish" `
+    --mainExe "OpenLiveWriter.exe" `
+    --icon "./src/managed/OpenLiveWriter.CoreServices/Images/ApplicationIcon.ico" `
+    --packTitle "Open Live Writer" `
+    --packAuthors "Open Live Writer Contributors" `
+    --outputDir "./Releases"
+
+# 4. Generate delta updates (for existing users)
+vpk delta `
+    --basePackage "./Releases/previous/OpenLiveWriter-$env:PREV_VERSION-full.nupkg" `
+    --newPackage "./Releases/OpenLiveWriter-$env:OLW_VERSION-full.nupkg" `
+    --outputDir "./Releases"
+```
+
+#### 9.1.2 Release Artifacts
+
+Velopack generates these files in `./Releases/`:
+
+| File | Purpose |
+|------|---------|
+| `OpenLiveWriter-0.7.0-full.nupkg` | Full install package |
+| `OpenLiveWriter-0.7.0-delta.nupkg` | Delta update (smaller) |
+| `OpenLiveWriter-0.7.0-win-Setup.exe` | Standalone installer |
+| `RELEASES` | Version manifest |
+
+#### 9.1.3 Update Server Requirements
+
+Same as Squirrel - just static file hosting:
+- Azure Blob Storage (current)
+- GitHub Releases
+- Amazon S3
+- Any HTTP server
+
+**Update URL format**: `https://olw.blob.core.windows.net/stable/Releases/`
+
+#### 9.1.4 CI/CD Integration (AppVeyor)
+
+```yaml
+# appveyor.yml updates
+build_script:
+  - ps: .\build.ps1 Release x64
+
+after_build:
+  - ps: |
+      dotnet tool install -g vpk
+      vpk pack --packId OpenLiveWriter --packVersion $env:APPVEYOR_BUILD_VERSION `
+        --packDir ./src/managed/bin/Release/x64/Writer `
+        --mainExe OpenLiveWriter.exe --outputDir ./Releases
+
+artifacts:
+  - path: Releases\*.nupkg
+  - path: Releases\*-Setup.exe
+  - path: Releases\RELEASES
+
+deploy:
+  - provider: AzureBlob
+    storage_account_name: olw
+    storage_access_key:
+      secure: <encrypted>
+    container: stable
+    folder: Releases
 ```
 
 ### 9.2 Installer Changes
@@ -613,7 +866,8 @@ vpk pack --packId OpenLiveWriter --packVersion 0.7.0 \
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Squirrel incompatibility | High | Critical | Evaluate alternatives early |
+| ~~Squirrel incompatibility~~ | ~~High~~ | ~~Critical~~ | ✅ **RESOLVED**: Migrate to Velopack (Section 3.1) |
+| Velopack migration issues | Low | Medium | Test on VM with existing Squirrel install |
 | COM interop breaks | Medium | High | Extensive testing, keep fallbacks |
 | Third-party plugin breaks | Medium | Medium | Document breaking changes |
 | Performance regression | Low | Medium | Benchmark before/after |
