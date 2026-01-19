@@ -3,7 +3,8 @@ $ErrorActionPreference = "Stop";
 
 # Build configuration:
 # - Builds x64 (64-bit) only - x86/32-bit is no longer supported
-# - To override C++ toolset: /p:PlatformToolset=v142 (VS2019), v143 (VS2022), v144 (VS2026)
+# - C++ toolset auto-detected from installed VS version (VS2019=v142, VS2022=v143, VS2026=v180)
+# - Required VS components: see .vsconfig file in repo root
 
 @"
 
