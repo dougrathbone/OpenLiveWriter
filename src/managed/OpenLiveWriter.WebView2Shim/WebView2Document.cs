@@ -77,7 +77,25 @@ namespace OpenLiveWriter.WebView2Shim
         /// Global setting for paragraph separator. When true, uses &lt;p&gt; tags (default).
         /// When false, uses &lt;div&gt; tags (modern browser default).
         /// </summary>
-        public static bool UseParagraphTags { get; set; } = true;
+        private static bool _useParagraphTags = true;
+        public static bool UseParagraphTags
+        {
+            get => _useParagraphTags;
+            set
+            {
+                if (_useParagraphTags != value)
+                {
+                    _useParagraphTags = value;
+                    UseParagraphTagsChanged?.Invoke(null, EventArgs.Empty);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Event fired when UseParagraphTags setting changes. Editors should listen to this
+        /// and re-apply the defaultParagraphSeparator command.
+        /// </summary>
+        public static event EventHandler UseParagraphTagsChanged;
         
         public string designMode
         {

@@ -103,6 +103,15 @@ namespace OpenLiveWriter.WebView2Shim
         /// Fired when the editor has finished loading and is ready for editing.
         /// </summary>
         public event EventHandler ReadyForEditing;
+        
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                WebView2Document.UseParagraphTagsChanged -= OnUseParagraphTagsChanged;
+            }
+            base.Dispose(disposing);
+        }
 
         public WebView2HtmlEditorControl()
         {
@@ -112,7 +121,20 @@ namespace OpenLiveWriter.WebView2Shim
             InitializeComponent();
             // Create command source immediately so it's never null
             _commandSource = new WebView2HtmlEditorCommandSource(this, null);
+            
+            // Subscribe to paragraph setting changes to apply immediately
+            WebView2Document.UseParagraphTagsChanged += OnUseParagraphTagsChanged;
+            
             InitializeWebView();
+        }
+        
+        private async void OnUseParagraphTagsChanged(object sender, EventArgs e)
+        {
+            // Re-apply the paragraph separator setting when changed in Options
+            if (_isInitialized && _webView?.CoreWebView2 != null)
+            {
+                await ApplyParagraphSeparatorSetting();
+            }
         }
 
         private void InitializeComponent()
