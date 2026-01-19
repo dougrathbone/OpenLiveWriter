@@ -176,5 +176,103 @@ namespace OpenLiveWriter.UnitTest.PostEditor
             Assert.IsTrue(typeof(BlogClientIOException).IsSubclassOf(typeof(BlogClientException)));
             Assert.IsTrue(typeof(BlogClientOperationCancelledException).IsSubclassOf(typeof(BlogClientException)));
         }
+
+        /// <summary>
+        /// Tests that BlogClientInvalidServerResponseException is caught by a BlogClientException handler.
+        /// This is important for LazyHomepageDownloader which catches BlogClientException.
+        /// </summary>
+        [Test]
+        public void TestBlogClientInvalidServerResponseIsCaughtByBlogClientExceptionHandler()
+        {
+            // Arrange
+            bool blogClientExceptionCaught = false;
+            bool generalExceptionCaught = false;
+            var serverException = new BlogClientInvalidServerResponseException(
+                "blogger.getUsersBlogs",
+                "Invalid response document returned from XmlRpc server",
+                null);
+
+            // Act - simulate LazyHomepageDownloader exception handling pattern
+            try
+            {
+                throw serverException;
+            }
+            catch (BlogClientException)
+            {
+                blogClientExceptionCaught = true;
+            }
+            catch (Exception)
+            {
+                generalExceptionCaught = true;
+            }
+
+            // Assert
+            Assert.IsTrue(blogClientExceptionCaught, 
+                "BlogClientInvalidServerResponseException should be caught by BlogClientException handler");
+            Assert.IsFalse(generalExceptionCaught, 
+                "General exception handler should not be reached");
+        }
+
+        /// <summary>
+        /// Tests that BlogClientAuthenticationException is also caught by BlogClientException handler.
+        /// </summary>
+        [Test]
+        public void TestBlogClientAuthenticationExceptionIsCaughtByBlogClientExceptionHandler()
+        {
+            // Arrange
+            bool blogClientExceptionCaught = false;
+            var authException = new BlogClientAuthenticationException("401", "Unauthorized");
+
+            // Act
+            try
+            {
+                throw authException;
+            }
+            catch (BlogClientException)
+            {
+                blogClientExceptionCaught = true;
+            }
+
+            // Assert
+            Assert.IsTrue(blogClientExceptionCaught, 
+                "BlogClientAuthenticationException should be caught by BlogClientException handler");
+        }
+
+        /// <summary>
+        /// Verifies that Trace.WriteLine properly logs BlogClientException messages.
+        /// </summary>
+        [Test]
+        public void TestTraceWriteLineLogsBlogClientExceptionMessage()
+        {
+            // Arrange
+            var traceOutput = new StringWriter();
+            var listener = new TextWriterTraceListener(traceOutput);
+            Trace.Listeners.Add(listener);
+
+            try
+            {
+                var exception = new BlogClientInvalidServerResponseException(
+                    "blogger.getUsersBlogs",
+                    "Invalid response document returned from XmlRpc server",
+                    null);
+
+                // Act - simulate LazyHomepageDownloader logging
+                string logMessage = "LazyHomepageDownloader: Blog client error during homepage download (non-fatal): " + exception.Message;
+                Trace.WriteLine(logMessage);
+                Trace.Flush();
+
+                // Assert
+                string output = traceOutput.ToString();
+                Assert.IsTrue(output.Contains("LazyHomepageDownloader"), 
+                    "Trace output should contain the component name");
+                Assert.IsTrue(output.Contains("non-fatal"), 
+                    "Trace output should indicate the error is non-fatal");
+            }
+            finally
+            {
+                Trace.Listeners.Remove(listener);
+                listener.Dispose();
+            }
+        }
     }
 }
