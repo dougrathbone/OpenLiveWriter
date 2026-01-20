@@ -1412,7 +1412,8 @@ namespace OpenLiveWriter.PostEditor
             }
             catch (Exception ex)
             {
-                Trace.Fail("Unexpected exception firing post list changed event: " + ex.ToString());
+                // Log without assertion dialog - post list changed events are non-critical
+                Trace.WriteLine("FirePostListChangedEvent: Unexpected exception (non-fatal): " + ex.ToString());
             }
         }
 

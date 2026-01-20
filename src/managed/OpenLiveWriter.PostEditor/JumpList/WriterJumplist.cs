@@ -76,7 +76,9 @@ namespace OpenLiveWriter.PostEditor.JumpList
             }
             catch (Exception e)
             {
-                Trace.Fail(e.ToString());
+                // Log JumpList errors without assertion dialogs - these are non-critical errors
+                // that occur when file type registration is incomplete or recent documents tracking is off
+                Trace.WriteLine("WriterJumpList.Invalidate: JumpList refresh failed (non-fatal): " + e.ToString());
                 if (e is InvalidOperationException || e is UnauthorizedAccessException || e is COMException)
                     return;
 
