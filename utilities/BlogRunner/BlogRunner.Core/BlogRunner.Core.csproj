@@ -44,23 +44,23 @@
     <Reference Include="System.Xml" />
     <Reference Include="OpenLiveWriter.BlogClient, Version=3.0.0.1, Culture=neutral, PublicKeyToken=5f0eb3cf65eb27e9">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\src\managed\bin\Debug\i386\Writer\OpenLiveWriter.BlogClient.dll</HintPath>
+      <HintPath>..\..\..\src\managed\bin\Debug\x64\Writer\OpenLiveWriter.BlogClient.dll</HintPath>
     </Reference>
     <Reference Include="OpenLiveWriter.CoreServices, Version=3.0.0.1, Culture=neutral, PublicKeyToken=5f0eb3cf65eb27e9">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\src\managed\bin\Debug\i386\Writer\OpenLiveWriter.CoreServices.dll</HintPath>
+      <HintPath>..\..\..\src\managed\bin\Debug\x64\Writer\OpenLiveWriter.CoreServices.dll</HintPath>
     </Reference>
     <Reference Include="OpenLiveWriter.Extensibility, Version=3.0.0.1, Culture=neutral, PublicKeyToken=5f0eb3cf65eb27e9">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\src\managed\bin\Debug\i386\Writer\OpenLiveWriter.Extensibility.dll</HintPath>
+      <HintPath>..\..\..\src\managed\bin\Debug\x64\Writer\OpenLiveWriter.Extensibility.dll</HintPath>
     </Reference>
     <Reference Include="OpenLiveWriter.HtmlParser, Version=3.0.0.1, Culture=neutral, PublicKeyToken=5f0eb3cf65eb27e9">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\src\managed\bin\Debug\i386\Writer\OpenLiveWriter.HtmlParser.dll</HintPath>
+      <HintPath>..\..\..\src\managed\bin\Debug\x64\Writer\OpenLiveWriter.HtmlParser.dll</HintPath>
     </Reference>
     <Reference Include="OpenLiveWriter.PostEditor, Version=3.0.0.1, Culture=neutral, PublicKeyToken=5f0eb3cf65eb27e9">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\src\managed\bin\Debug\i386\Writer\OpenLiveWriter.PostEditor.dll</HintPath>
+      <HintPath>..\..\..\src\managed\bin\Debug\x64\Writer\OpenLiveWriter.PostEditor.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

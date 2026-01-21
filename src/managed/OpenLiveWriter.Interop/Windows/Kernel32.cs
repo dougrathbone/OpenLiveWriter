@@ -65,8 +65,8 @@ namespace OpenLiveWriter.Interop.Windows
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool SetProcessWorkingSetSize(
             IntPtr hProcess,
-            int dwMinimumWorkingSetSize,
-            int dwMaximumWorkingSetSize
+            IntPtr dwMinimumWorkingSetSize,
+            IntPtr dwMaximumWorkingSetSize
             );
 
         [DllImport("kernel32.dll")]

@@ -35,43 +35,60 @@ namespace OpenLiveWriter.BlogClient.Detection
 
         public bool ValidateService()
         {
+            Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() called - clientType: {_clientType}, postApiUrl: {_postApiUrl}");
             try
             {
                 using (new BlogClientUIContextSilentMode()) //suppress prompting for password if an error occurs
                 {
                     // get a list of the user's blogs
+                    Debug.WriteLine("[OLW-DEBUG] BlogAccountDetector.ValidateService() - Creating blog client");
                     IBlogClient client = BlogClientManager.CreateClient(_clientType, _postApiUrl, _credentials);
+                    Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() - Client created: {client?.GetType().Name}");
+                    
+                    Debug.WriteLine("[OLW-DEBUG] BlogAccountDetector.ValidateService() - Calling GetUsersBlogs()");
                     _usersBlogs = client.GetUsersBlogs();
+                    Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() - GetUsersBlogs returned {_usersBlogs?.Length ?? 0} blogs");
 
                     // we can't continue if there are no blogs
                     if (_usersBlogs.Length == 0)
                         throw new NoAccountsOnServerException();
 
                     // success
+                    Debug.WriteLine("[OLW-DEBUG] BlogAccountDetector.ValidateService() - Success!");
                     return true;
                 }
             }
             catch (BlogClientAuthenticationException ex)
             {
+                Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() - BlogClientAuthenticationException: {ex.Message}");
                 ReportError(ex, MessageId.WeblogAuthenticationError);
                 return false;
             }
             catch (BlogClientPostUrlNotFoundException ex)
             {
+                Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() - BlogClientPostUrlNotFoundException: {ex.Message}");
                 ReportError(ex, MessageId.WeblogUrlNotFound, _postApiUrl);
                 return false;
             }
             catch (NoAccountsOnServerException ex)
             {
+                Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() - NoAccountsOnServerException: {ex.Message}");
                 ReportError(ex, MessageId.WeblogNoAccountsOnServer);
                 return false;
             }
             catch (BlogClientOperationCancelledException)
             {
+                Debug.WriteLine("[OLW-DEBUG] BlogAccountDetector.ValidateService() - BlogClientOperationCancelledException");
                 return false;
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() - Exception: {ex.GetType().Name}: {ex.Message}");
+                Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() - Stack: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Debug.WriteLine($"[OLW-DEBUG] BlogAccountDetector.ValidateService() - InnerException: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                }
                 ReportError(ex, MessageId.WeblogConnectionError, ex.Message);
                 return false;
             }

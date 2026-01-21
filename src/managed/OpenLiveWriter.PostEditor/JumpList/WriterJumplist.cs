@@ -78,10 +78,16 @@ namespace OpenLiveWriter.PostEditor.JumpList
             {
                 // Log JumpList errors without assertion dialogs - these are non-critical errors
                 // that occur when file type registration is incomplete or recent documents tracking is off
+                // UnauthorizedAccessException occurs when Windows "Recent documents tracking" is disabled
+                // This is a user privacy setting, not an error - silently ignore these expected cases
                 Trace.WriteLine("WriterJumpList.Invalidate: JumpList refresh failed (non-fatal): " + e.ToString());
                 if (e is InvalidOperationException || e is UnauthorizedAccessException || e is COMException)
+                {
+                    Trace.WriteLine("[OLW-DEBUG] JumpList update skipped: " + e.Message);
                     return;
+                }
 
+                Trace.Fail(e.ToString());
                 throw;
             }
         }

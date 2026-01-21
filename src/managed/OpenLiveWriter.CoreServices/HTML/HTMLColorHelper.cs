@@ -142,10 +142,9 @@ namespace OpenLiveWriter.CoreServices
                 }
                 else
                 {
-                    if (ApplicationDiagnostics.AutomationMode)
-                        Trace.WriteLine("File " + url + " not found");
-                    else
-                        Trace.Fail("File " + url + " not found");
+                    // Missing background image files are common (e.g., old blog templates with dead image links)
+                    // Don't fail, just log and return null - caller will use default color
+                    Trace.WriteLine("File " + url + " not found");
                     return null;
                 }
             }

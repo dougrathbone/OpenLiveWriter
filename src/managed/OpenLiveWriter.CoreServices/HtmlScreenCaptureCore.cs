@@ -62,83 +62,34 @@ namespace OpenLiveWriter.CoreServices
             return _elementCaptureProperties[id];
         }
 
+        /// <summary>
+        /// Captures HTML content as a bitmap.
+        /// </summary>
+        /// <remarks>
+        /// STUBBED OUT: This feature relied on MSHTML/IE browser control for rendering HTML and capturing screenshots.
+        /// TODO: Re-implement using WebView2.CapturePreviewAsync() when WebView2 migration is complete.
+        /// WebView2 provides CapturePreviewAsync(Stream, CoreWebView2CapturePreviewImageFormat) for this purpose.
+        /// </remarks>
         public Bitmap CaptureHtml(int timeoutMs)
         {
-            if (timeoutMs <= 0)
-                throw new ArgumentException("You must specify a timeout value greater than 0", "timeoutMs");
-
-            // set the timeout
-            _timeoutMs = timeoutMs;
-
-            ConditionVariable signal = new ConditionVariable();
-
-            // open a new form on a background, STA thread
-            Thread formThread = ThreadHelper.NewThread(new ThreadStart(delegate { ThreadMain(signal, _ids); }), "BrowserScreenCaptureForm", true, true, true);
-            formThread.Start();
-
-            // wait for it to complete or timeout
-            using (WaitCursor waitCursor = ShowWaitCursor ? new WaitCursor() : null)
-            {
-                signal.WaitForSignal(30000);  // this should actually return very quickly
-                if (formThread.Join(_timeoutMs))
-                {
-                    // throw an exception if one occurred
-                    if (_exception != null)
-                        throw _exception;
-
-                    // return the captured bitmap
-                    return (Bitmap)Bitmap.FromStream(StreamHelper.AsStream(_capturedBitmap));
-                }
-                else
-                {
-                    // timed out, make sure we tell the form to close if
-                    // it hasn't already
-                    _applicationContext.CloseFormAndExit();
-
-                    // return null
-                    return null;
-                }
-            }
+            // Return null - screenshot capture is not available without MSHTML
+            // Callers should handle null gracefully (show placeholder or skip preview)
+            System.Diagnostics.Trace.WriteLine("[HtmlScreenCaptureCore] CaptureHtml stubbed out - MSHTML dependency removed. Will be re-implemented with WebView2.");
+            return null;
         }
 
+        /// <summary>
+        /// Takes a snapshot of an IViewObject.
+        /// </summary>
+        /// <remarks>
+        /// STUBBED OUT: This feature relied on COM IViewObject interface which is MSHTML-specific.
+        /// TODO: Re-implement using WebView2.CapturePreviewAsync() when WebView2 migration is complete.
+        /// </remarks>
         public static Bitmap TakeSnapshot(IViewObject obj, int width, int height)
         {
-            // draw the view on a Bitmap
-            IntPtr hBitmapDC = IntPtr.Zero;
-            IntPtr hBitmap = IntPtr.Zero;
-            IntPtr hPreviousObject = IntPtr.Zero;
-            Bitmap bitmap = null;
-            try
-            {
-                // create GDI objects used for drawing
-                hBitmapDC = Gdi32.CreateCompatibleDC(User32.GetDC(IntPtr.Zero));
-                hBitmap = Gdi32.CreateCompatibleBitmap(User32.GetDC(IntPtr.Zero), width, height);
-                hPreviousObject = Gdi32.SelectObject(hBitmapDC, hBitmap);
-
-                RECT sourceRect = new RECT();
-                sourceRect.right = width;
-                sourceRect.bottom = height;
-
-                // draw the bitmap
-                obj.Draw(DVASPECT.CONTENT, 1, IntPtr.Zero, IntPtr.Zero, User32.GetDC(IntPtr.Zero),
-                    hBitmapDC, ref sourceRect, IntPtr.Zero, IntPtr.Zero, 0);
-
-                // convert to a managed bitmap
-                bitmap = Bitmap.FromHbitmap(hBitmap);
-            }
-            finally
-            {
-                // restore previous object
-                Gdi32.SelectObject(hBitmapDC, hPreviousObject);
-
-                if (hBitmapDC != IntPtr.Zero)
-                    Gdi32.DeleteDC(hBitmapDC);
-
-                if (hBitmap != IntPtr.Zero)
-                    Gdi32.DeleteObject(hBitmap);
-            }
-
-            return bitmap;
+            // Return null - snapshot capture is not available without MSHTML
+            System.Diagnostics.Trace.WriteLine("[HtmlScreenCaptureCore] TakeSnapshot stubbed out - MSHTML dependency removed. Will be re-implemented with WebView2.");
+            return null;
         }
 
         [STAThread]
@@ -240,10 +191,12 @@ namespace OpenLiveWriter.CoreServices
         private string _htmlUrl;
         private string _htmlContent;
         private int _contentWidth;
+#pragma warning disable CS0649 // Field is never assigned to - stubbed out methods don't use these
         private int _timeoutMs;
 
         // successfully captured bitmap
         private byte[] _capturedBitmap;
+#pragma warning restore CS0649
         private Dictionary<string, ElementCaptureProperties> _elementCaptureProperties = new Dictionary<string, ElementCaptureProperties>();
 
         // error that occurred during processing

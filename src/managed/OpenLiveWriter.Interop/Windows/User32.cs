@@ -292,6 +292,46 @@ namespace OpenLiveWriter.Interop.Windows
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern int SetWindowLong(IntPtr hWnd, int nIndex, UInt32 dwNewLong);
 
+        #region x64-safe GetWindowLongPtr/SetWindowLongPtr
+
+        // 64-bit versions - use on x64
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
+        private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        // 32-bit versions - use on x86 (GetWindowLongPtr doesn't exist on 32-bit)
+        [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
+        private static extern IntPtr GetWindowLong32(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+        private static extern IntPtr SetWindowLong32(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        /// <summary>
+        /// x64-safe wrapper for GetWindowLongPtr. Use this instead of GetWindowLong
+        /// when retrieving pointer values like WNDPROC, HINSTANCE, HWNDPARENT.
+        /// </summary>
+        public static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex)
+        {
+            return IntPtr.Size == 8
+                ? GetWindowLongPtr64(hWnd, nIndex)
+                : GetWindowLong32(hWnd, nIndex);
+        }
+
+        /// <summary>
+        /// x64-safe wrapper for SetWindowLongPtr. Use this instead of SetWindowLong
+        /// when setting pointer values like WNDPROC, HINSTANCE, HWNDPARENT.
+        /// </summary>
+        public static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong)
+        {
+            return IntPtr.Size == 8
+                ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong)
+                : SetWindowLong32(hWnd, nIndex, dwNewLong);
+        }
+
+        #endregion
+
         [DllImport("user32.dll", SetLastError = true)]
         public static extern int GetWindowTextLength(IntPtr hWnd);
 
@@ -424,8 +464,24 @@ namespace OpenLiveWriter.Interop.Windows
         [DllImport("User32.dll")]
         public static extern uint RegisterClipboardFormat(string lpszFormat);
 
+        // Legacy 32-bit SetWindowProc - DO NOT USE for x64
         [DllImport("user32.dll", EntryPoint = "SetWindowLong", CharSet = CharSet.Unicode)]
-        public static extern int SetWindowProc(IntPtr hWnd, int nIndex, WndProcDelegate lpWndProc);
+        private static extern IntPtr SetWindowProc32(IntPtr hWnd, int nIndex, WndProcDelegate lpWndProc);
+
+        // 64-bit SetWindowProc
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SetWindowProc64(IntPtr hWnd, int nIndex, WndProcDelegate lpWndProc);
+
+        /// <summary>
+        /// x64-safe wrapper for setting a window procedure.
+        /// Returns the previous window procedure as IntPtr.
+        /// </summary>
+        public static IntPtr SetWindowProc(IntPtr hWnd, int nIndex, WndProcDelegate lpWndProc)
+        {
+            return IntPtr.Size == 8
+                ? SetWindowProc64(hWnd, nIndex, lpWndProc)
+                : SetWindowProc32(hWnd, nIndex, lpWndProc);
+        }
 
         // SetWindowLong - Conventional declaration with integer value parameter
         [DllImport("user32.dll", EntryPoint = "SetWindowLong", CharSet = CharSet.Unicode)]
@@ -809,14 +865,14 @@ namespace OpenLiveWriter.Interop.Windows
         public UInt32 message;
 
         /// <summary>
-        /// First message parameter
+        /// First message parameter (WPARAM - pointer-sized on x64)
         /// </summary>
-        public UInt32 wParam;
+        public IntPtr wParam;
 
         /// <summary>
-        /// Second message parameter
+        /// Second message parameter (LPARAM - pointer-sized on x64)
         /// </summary>
-        public Int32 lParam;
+        public IntPtr lParam;
 
         /// <summary>
         /// The time the message was posted

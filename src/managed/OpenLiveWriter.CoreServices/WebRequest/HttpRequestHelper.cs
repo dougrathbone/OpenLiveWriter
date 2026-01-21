@@ -46,6 +46,16 @@ namespace OpenLiveWriter.CoreServices
             {
                 if (_initialized) return;
 
+                // Configure legacy WebRequest settings for backward compatibility
+                // SYSLIB0014: ServicePointManager is obsolete but needed for legacy WebRequest code
+                #pragma warning disable SYSLIB0014
+                // This is necessary to avoid problems connecting to Blogger server from behind a proxy.
+                ServicePointManager.Expect100Continue = false;
+
+                // Enable TLS 1.2 for modern HTTPS connections (required for most servers in 2024+)
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
+                #pragma warning restore SYSLIB0014
+
                 try
                 {
                     // Register WSSE authentication module for blog clients that require it
@@ -317,14 +327,24 @@ namespace OpenLiveWriter.CoreServices
 
         public static HttpWebResponse SendRequest(string requestUri, HttpRequestFilter filter)
         {
+            Debug.WriteLine($"[OLW-DEBUG] HttpRequestHelper.SendRequest() - requestUri: {requestUri}");
+            #pragma warning disable SYSLIB0014 // ServicePointManager is obsolete but used for debug logging
+            Debug.WriteLine($"[OLW-DEBUG] HttpRequestHelper.SendRequest() - SecurityProtocol: {ServicePointManager.SecurityProtocol}");
+            #pragma warning restore SYSLIB0014
+            
             HttpWebRequest request = CreateHttpWebRequest(requestUri, true, null, null);
+            Debug.WriteLine($"[OLW-DEBUG] HttpRequestHelper.SendRequest() - Request created, Method: {request.Method}");
+            
             if (filter != null)
                 filter(request);
 
             // get the response
             try
             {
+                Debug.WriteLine("[OLW-DEBUG] HttpRequestHelper.SendRequest() - Calling GetResponse()");
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                Debug.WriteLine($"[OLW-DEBUG] HttpRequestHelper.SendRequest() - Got response, StatusCode: {response.StatusCode}");
+                
                 //hack: For some reason, disabling auto-redirects also disables throwing WebExceptions for 300 status codes,
                 //so if we detect a non-2xx error code here, throw a web exception.
                 int statusCode = (int)response.StatusCode;
@@ -334,6 +354,20 @@ namespace OpenLiveWriter.CoreServices
             }
             catch (WebException e)
             {
+                Debug.WriteLine($"[OLW-DEBUG] HttpRequestHelper.SendRequest() - WebException: {e.Status} - {e.Message}");
+                if (e.InnerException != null)
+                {
+                    Debug.WriteLine($"[OLW-DEBUG] HttpRequestHelper.SendRequest() - InnerException: {e.InnerException.GetType().Name} - {e.InnerException.Message}");
+                }
+                if (e.Response != null)
+                {
+                    var httpResp = e.Response as HttpWebResponse;
+                    if (httpResp != null)
+                    {
+                        Debug.WriteLine($"[OLW-DEBUG] HttpRequestHelper.SendRequest() - Response StatusCode: {httpResp.StatusCode}");
+                    }
+                }
+                
                 if (e.Status == WebExceptionStatus.Timeout)
                 {
                     //throw a typed exception that lets callers know that the response timed out after the request was sent

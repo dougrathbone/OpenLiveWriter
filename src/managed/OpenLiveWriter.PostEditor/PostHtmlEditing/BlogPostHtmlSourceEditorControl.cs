@@ -19,6 +19,7 @@ using OpenLiveWriter.ApplicationFramework;
 using OpenLiveWriter.HtmlParser.Parser;
 using OpenLiveWriter.Localization;
 using OpenLiveWriter.SpellChecker;
+using OpenLiveWriter.WebView2Shim;
 
 namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 {
@@ -27,6 +28,8 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
         private Panel panelSourceEditor;
         private TextBox textBoxTitle;
         private HtmlSourceEditorControl sourceControl;
+        private WebView2SourceEditorControl webView2SourceEditor;
+        private readonly bool _useCodeMirror;
         private readonly IBlogPostSpellCheckingContext spellingContext;
         private IBlogPostImageEditingContext editingContext;
 
@@ -36,14 +39,31 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             this.editingContext = editingContext;
             InitializeComponent();
 
+            // Always create sourceControl for its functionality
             sourceControl = new HtmlSourceEditorControl(spellingContext.SpellingChecker, commandManager, editingContext);
             sourceControl.EditorControl.TextChanged += new EventHandler(EditorControl_TextChanged);
             sourceControl.EditorControl.GotFocus += new EventHandler(EditorControl_GotFocus);
-            BorderControl borderControl = new BorderControl();
-            borderControl.SuppressBottomBorder = true;
-            borderControl.Control = sourceControl.EditorControl;
-            borderControl.Dock = DockStyle.Fill;
-            panelSourceEditor.Controls.Add(borderControl);
+
+            // Use CodeMirror 5 by default, fallback to TextBox with OLW_USE_TEXTBOX_SOURCE=1
+            _useCodeMirror = Environment.GetEnvironmentVariable("OLW_USE_TEXTBOX_SOURCE") != "1";
+            Debug.WriteLine($"[OLW-DEBUG] Source editor: {(_useCodeMirror ? "CodeMirror 5 (WebView2)" : "TextBox")}");
+
+            if (_useCodeMirror)
+            {
+                webView2SourceEditor = new WebView2SourceEditorControl();
+                webView2SourceEditor.Dock = DockStyle.Fill;
+                webView2SourceEditor.TextChanged += new EventHandler(EditorControl_TextChanged);
+                webView2SourceEditor.GotFocus += new EventHandler(EditorControl_GotFocus);
+                panelSourceEditor.Controls.Add(webView2SourceEditor);
+            }
+            else
+            {
+                BorderControl borderControl = new BorderControl();
+                borderControl.SuppressBottomBorder = true;
+                borderControl.Control = sourceControl.EditorControl;
+                borderControl.Dock = DockStyle.Fill;
+                panelSourceEditor.Controls.Add(borderControl);
+            }
 
             ColorizedResources.Instance.RegisterControlForBackColorUpdates(this);
 
@@ -70,6 +90,8 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
             {
                 if (sourceControl != null)
                     sourceControl.Dispose();
+                if (webView2SourceEditor != null)
+                    webView2SourceEditor.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -173,6 +195,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public void LoadHtmlFragment(string title, string postBodyHtml, string baseUrl, BlogEditingTemplate editingTemplate)
         {
+            // Debug.WriteLine($"[OLW-DEBUG] SourceEditor.LoadHtmlFragment - title: '{title}', ContainsTitle: {editingTemplate.ContainsTitle}");
             const int SPACE_BETWEEN_TITLE_AND_BODY = 4;
             if (editingTemplate.ContainsTitle)
             {
@@ -181,6 +204,7 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
                 panelSourceEditor.Top = textBoxTitle.Bottom + SPACE_BETWEEN_TITLE_AND_BODY;
                 panelSourceEditor.Height = Height - panelSourceEditor.Top;
                 textBoxTitle.Text = title;
+                // Debug.WriteLine($"[OLW-DEBUG] SourceEditor - title textbox set to: '{title}'");
             }
             else
             {
@@ -188,13 +212,27 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
                 textBoxTitle.Visible = false;
                 panelSourceEditor.Top = textBoxTitle.Top;
                 panelSourceEditor.Height = Height - panelSourceEditor.Top;
+                // Debug.WriteLine($"[OLW-DEBUG] SourceEditor - title textbox HIDDEN (ContainsTitle=false)");
             }
 
             //make the post body HTML look pretty
             postBodyHtml = ApplyPostBodyFormatting(postBodyHtml);
 
+            // Always load into sourceControl for its functionality
             sourceControl.LoadHtmlFragment(postBodyHtml);
-            sourceControl.Focus();
+            
+            // Debug.WriteLine($"[OLW-DEBUG] SourceEditor.LoadHtmlFragment - _useCodeMirror={_useCodeMirror}, webView2SourceEditor null={webView2SourceEditor == null}");
+            if (_useCodeMirror)
+            {
+                // Also load into CodeMirror for display
+                // Debug.WriteLine($"[OLW-DEBUG] SourceEditor: Calling SetContent with {postBodyHtml?.Length ?? 0} chars of body HTML");
+                webView2SourceEditor.SetContent(postBodyHtml);
+                webView2SourceEditor.Focus();
+            }
+            else
+            {
+                sourceControl.Focus();
+            }
         }
 
         public string GetEditedTitleHtml()
@@ -205,11 +243,19 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
         public string GetEditedHtml(bool preferWellFormed)
         {
             bool formatHTML = PostEditorPreferences.Instance.FormatHTML;
+            if (_useCodeMirror)
+            {
+                return webView2SourceEditor.GetContent();
+            }
             return sourceControl.GetEditedHtml(formatHTML);
         }
 
         public string GetEditedHtmlFast()
         {
+            if (_useCodeMirror)
+            {
+                return webView2SourceEditor.GetContent();
+            }
             return sourceControl.GetEditedHtmlFast();
         }
 
@@ -220,7 +266,14 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         void IBlogPostHtmlEditor.Focus()
         {
-            sourceControl.Focus();
+            if (_useCodeMirror)
+            {
+                webView2SourceEditor.Focus();
+            }
+            else
+            {
+                sourceControl.Focus();
+            }
         }
 
         public void FocusTitle()
@@ -230,11 +283,22 @@ namespace OpenLiveWriter.PostEditor.PostHtmlEditing
 
         public void FocusBody()
         {
-            sourceControl.Focus();
+            if (_useCodeMirror)
+            {
+                webView2SourceEditor.Focus();
+            }
+            else
+            {
+                sourceControl.Focus();
+            }
         }
 
         public bool DocumentHasFocus()
         {
+            if (_useCodeMirror)
+            {
+                return webView2SourceEditor.Focused || webView2SourceEditor.ContainsFocus;
+            }
             return sourceControl.HasFocus;
         }
 

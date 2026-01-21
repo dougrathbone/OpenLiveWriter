@@ -1497,8 +1497,8 @@ namespace OpenLiveWriter.Mshtml
             MSG message = new MSG();
             message.hwnd = msg.HWnd;
             message.message = (uint)msg.Msg;
-            message.wParam = (uint)msg.WParam.ToInt32();
-            message.lParam = msg.LParam.ToInt32();
+            message.wParam = msg.WParam;
+            message.lParam = msg.LParam;
             message.time = 0;
             message.pt = new POINT();
 

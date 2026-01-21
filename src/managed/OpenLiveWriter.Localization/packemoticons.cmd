@@ -1,6 +1,6 @@
 @echo off
 set emoLocPath=%inetroot%\client\writer\src\managed\OpenLiveWriter.localization\Emoticons
-set emoExe=%inetroot%\target\debug\i386\Writer\EmoticonGenerator.exe
+set emoExe=%inetroot%\target\debug\x64\Writer\EmoticonGenerator.exe
 pushd %inetroot%\client\writer\utilities\emoticongenerator
 rem Build emoticongenerator
 call build /c

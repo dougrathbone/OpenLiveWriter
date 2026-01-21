@@ -71,9 +71,8 @@ namespace OpenLiveWriter.CoreServices
                     // determine the number of file descriptors
                     Int32 count = Marshal.ReadInt32(pCount);
 
-                    // get a pointer to the descriptors
-                    IntPtr pDescriptors =
-                        new IntPtr(globalMem.Memory.ToInt32() + Marshal.SizeOf(count));
+                    // get a pointer to the descriptors (x64-safe pointer arithmetic)
+                    IntPtr pDescriptors = IntPtr.Add(globalMem.Memory, Marshal.SizeOf(count));
 
                     // allocate the array of structures that will be returned
                     FileDescriptor[] descriptors = new FileDescriptor[count];
@@ -87,9 +86,9 @@ namespace OpenLiveWriter.CoreServices
                     // iterate through the memory block copying the FILEDESCRIPTOR structures
                     for (int i = 0; i < count; i++)
                     {
-                        // determine the addresses of the various data elements
-                        IntPtr pAddr = new IntPtr(pDescriptors.ToInt32() + (i * totalSize));
-                        IntPtr pFileNameAddr = new IntPtr(pAddr.ToInt32() + headerSize);
+                        // determine the addresses of the various data elements (x64-safe)
+                        IntPtr pAddr = IntPtr.Add(pDescriptors, i * totalSize);
+                        IntPtr pFileNameAddr = IntPtr.Add(pAddr, headerSize);
 
                         // copy the header
                         descriptors[i].header = (FILEDESCRIPTOR_HEADER)

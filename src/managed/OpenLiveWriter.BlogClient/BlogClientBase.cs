@@ -66,13 +66,16 @@ namespace OpenLiveWriter.BlogClient
         /// <returns></returns>
         protected virtual TransientCredentials Login()
         {
+            Debug.WriteLine("[OLW-DEBUG] BlogClientBase.Login() called");
             TransientCredentials transientCredential = Credentials.TransientCredentials as TransientCredentials;
             if (transientCredential == null)
             {
+                Debug.WriteLine("[OLW-DEBUG] BlogClientBase.Login() - No cached credentials, calling CreateAuthenticatedCredential");
                 transientCredential = CreateAuthenticatedCredential();
                 Debug.Assert(transientCredential != null, "Transient credential should never be null, throw an exception instead");
                 Credentials.TransientCredentials = transientCredential;
             }
+            Debug.WriteLine("[OLW-DEBUG] BlogClientBase.Login() completed");
             return transientCredential;
         }
 
@@ -90,8 +93,10 @@ namespace OpenLiveWriter.BlogClient
         /// <returns></returns>
         protected virtual TransientCredentials CreateAuthenticatedCredential()
         {
+            Debug.WriteLine("[OLW-DEBUG] CreateAuthenticatedCredential() called");
             string username = Credentials.Username;
             string password = Credentials.Password;
+            Debug.WriteLine($"[OLW-DEBUG] CreateAuthenticatedCredential() - Username: {username}, HasPassword: {!string.IsNullOrEmpty(password)}");
 
             //create and store the transient credential since some blog clients rely on it being set to
             //when making requests during validation (like SharePoint and Spaces)
@@ -101,8 +106,18 @@ namespace OpenLiveWriter.BlogClient
             try
             {
                 bool promptForPassword = RequiresPassword && (password == null || password == String.Empty);
-                Exception verificationException = promptForPassword ? null : VerifyCredentialsReturnException(tc);
+                Debug.WriteLine($"[OLW-DEBUG] CreateAuthenticatedCredential() - RequiresPassword: {RequiresPassword}, promptForPassword: {promptForPassword}");
+                
+                Exception verificationException = null;
+                if (!promptForPassword)
+                {
+                    Debug.WriteLine("[OLW-DEBUG] CreateAuthenticatedCredential() - Calling VerifyCredentialsReturnException");
+                    verificationException = VerifyCredentialsReturnException(tc);
+                    Debug.WriteLine($"[OLW-DEBUG] CreateAuthenticatedCredential() - VerifyCredentialsReturnException returned: {verificationException?.GetType().Name ?? "null"} - {verificationException?.Message ?? "success"}");
+                }
+                
                 bool verified = !promptForPassword && verificationException == null;
+                Debug.WriteLine($"[OLW-DEBUG] CreateAuthenticatedCredential() - verified: {verified}");
                 while (!verified)
                 {
                     //if we're in silent mode where prompting isn't allowed, so throw the verification exception

@@ -108,7 +108,8 @@ namespace OpenLiveWriter.CoreServices
         {
             using (Process p = Process.GetCurrentProcess())
             {
-                return Kernel32.SetProcessWorkingSetSize(p.Handle, -1, -1);
+                // Use (IntPtr)(-1) for x64 compatibility - special value to empty working set
+                return Kernel32.SetProcessWorkingSetSize(p.Handle, (IntPtr)(-1), (IntPtr)(-1));
             }
         }
 

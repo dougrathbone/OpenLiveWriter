@@ -669,11 +669,13 @@ namespace OpenLiveWriter.BlogClient.Detection
             writer.Flush();
             templateStream.Seek(0, SeekOrigin.Begin);
 
-            //read the stream into a lightweight HTML.  Note that we use from LightWeightHTMLDocument.FromIHTMLDocument2
-            //instead of LightWeightHTMLDocument.FromStream because from stream improperly shoves a saveFrom declaration
-            //above the docType (bug 289357)
-            IHTMLDocument2 doc = HTMLDocumentHelper.StreamToHTMLDoc(templateStream, templateUrl, true);
-            LightWeightHTMLDocument ldoc = LightWeightHTMLDocument.FromIHTMLDocument2(doc, templateUrl, true, false);
+            // Read the stream into a lightweight HTML document using string-based approach (WebView2-compatible)
+            // Note: We use HTMLDocumentHelper.StreamToHTMLString instead of StreamToHTMLDoc to avoid MSHTML dependency
+            string htmlContent = HTMLDocumentHelper.StreamToHTMLString(templateStream, templateUrl);
+            LightWeightHTMLDocument ldoc = LightWeightHTMLDocument.FromString(htmlContent, templateUrl, true);
+            
+            // Update frames and styles using HTML-based extraction
+            ldoc.UpdateBasedUponHTMLContent(htmlContent, templateUrl);
 
             PageDownloadContext downloadContext = new PageDownloadContext(0);
             ApplyCredentials(downloadContext, templateUrl);

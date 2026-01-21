@@ -39,6 +39,9 @@
     <!-- Spell checking -->
     <PackageVersion Include="PlatformSpellCheck" Version="1.0.0" />
     
+    <!-- WebView2 - Modern Chromium-based HTML editor control -->
+    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    
     <!-- Testing - Updated for .NET 10 -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="NUnit" Version="4.2.2" />
