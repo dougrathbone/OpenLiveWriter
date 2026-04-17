@@ -1,15 +1,15 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenLiveWriter.CoreServices.HTML;
 
 namespace OpenLiveWriter.UnitTest.CoreServices
 {
-    [TestFixture]
+    [TestClass]
     public class LightWeightHTMLThinner2Test
     {
-        [Test]
+        [TestMethod]
         public void StrictMode_PreservesBrClearAttribute()
         {
             string input = "<p>Hello</p><br clear=\"all\" /><p>World</p>";
@@ -18,7 +18,7 @@ namespace OpenLiveWriter.UnitTest.CoreServices
                 "BR clear attribute should be preserved in strict mode. Got: " + result);
         }
 
-        [Test]
+        [TestMethod]
         public void NonStrictMode_PreservesBrClearAttribute()
         {
             string input = "<p>Hello</p><br clear=\"all\" /><p>World</p>";
