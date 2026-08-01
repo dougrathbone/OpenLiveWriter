@@ -1,0 +1,132 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - 'win-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SOLUTION_PATH: src/managed/writer.Windows.slnf
+  OLW_CONFIG: Release
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  release:
+    name: Build and publish Windows release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Velopack CLI
+        # vpk version must match the Velopack NuGet package (Directory.Packages.props)
+        run: dotnet tool install -g vpk --version 0.0.1251
+
+      - name: Install SignClient
+        run: nuget install SignClient -Version 0.9.0 -SolutionDir ${{ github.workspace }} -Verbosity quiet -ExcludeVersion
+
+      - name: Generate version info
+        run: |
+          $v = (Get-Content version.txt -Raw).Trim()
+          Set-Content src/managed/GlobalAssemblyVersionInfo.cs `
+            "[assembly: System.Reflection.AssemblyVersion(`"$v`")]", `
+            "[assembly: System.Reflection.AssemblyFileVersion(`"$v`")]"
+
+      - name: Generate GoogleBloggerv3Secrets.json
+        env:
+          OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+          OLW_BLOGGER_CLIENT_SECRET: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
+        run: |
+          $json = @{
+            installed = @{
+              client_id = "$env:OLW_BLOGGER_CLIENT_ID"
+              project_id = "open-live-writer"
+              auth_uri = "https://accounts.google.com/o/oauth2/auth"
+              token_uri = "https://oauth2.googleapis.com/token"
+              auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+              client_secret = "$env:OLW_BLOGGER_CLIENT_SECRET"
+              redirect_uris = @("http://localhost")
+            }
+          } | ConvertTo-Json -Depth 5
+          Set-Content src/managed/OpenLiveWriter.BlogClient/Clients/GoogleBloggerv3Secrets.json $json
+
+      - name: Generate Markets.xml
+        run: |
+          dotnet build src/managed/MarketXmlGenerator/MarketXmlGenerator.csproj -c Release --nologo -v minimal
+          dotnet run --project src/managed/MarketXmlGenerator/MarketXmlGenerator.csproj -c Release --no-build -- intl/markets src/managed/OpenLiveWriter.CoreServices/Marketization/Markets.xml
+          Copy-Item intl/markets/Master.xml src/managed/OpenLiveWriter.CoreServices/Marketization/Master.xml
+
+      - name: Restore NuGet packages
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Build solution
+        run: |
+          dotnet msbuild ${{ env.SOLUTION_PATH }} `
+            /nologo `
+            /maxcpucount `
+            /verbosity:minimal `
+            /p:Configuration=${{ env.OLW_CONFIG }} `
+            /p:PlatformToolset=v143
+
+      - name: Package with Velopack (signed)
+        if: env.SIGN_CLIENT_SECRET != ''
+        shell: cmd
+        env:
+          SIGN_CLIENT_SECRET: ${{ secrets.SignClientSecret }}
+          SIGN_CLIENT_USER: ${{ secrets.SignClientUser }}
+        run: |
+          call getversion.cmd
+          vpk pack ^
+            --packId OpenLiveWriter ^
+            --packVersion %dottedVersion% ^
+            --packTitle "Open Live Writer" ^
+            --packDir src\managed\OpenLiveWriter\bin\%OLW_CONFIG% ^
+            --mainExe OpenLiveWriter.exe ^
+            --icon src\managed\OpenLiveWriter.PostEditor\Images\Writer.ico ^
+            --channel stable ^
+            --outputDir Releases ^
+            --shortcuts Desktop,StartMenuRoot ^
+            --skipVeloAppCheck ^
+            --signTemplate "dotnet %GITHUB_WORKSPACE%\packages\SignClient\tools\netcoreapp2.0\SignClient.dll sign -c %GITHUB_WORKSPACE%\SignClient\appsettings.json -i {{file}} -r %SIGN_CLIENT_USER% -s %SIGN_CLIENT_SECRET% -n ""Open Live Writer"" -d ""Open Live Writer"" -u ""http://openlivewriter.com"""
+
+      - name: Package with Velopack (unsigned)
+        if: env.SIGN_CLIENT_SECRET == ''
+        shell: cmd
+        env:
+          SIGN_CLIENT_SECRET: ${{ secrets.SignClientSecret }}
+        run: |
+          call getversion.cmd
+          vpk pack ^
+            --packId OpenLiveWriter ^
+            --packVersion %dottedVersion% ^
+            --packTitle "Open Live Writer" ^
+            --packDir src\managed\OpenLiveWriter\bin\%OLW_CONFIG% ^
+            --mainExe OpenLiveWriter.exe ^
+            --icon src\managed\OpenLiveWriter.PostEditor\Images\Writer.ico ^
+            --channel stable ^
+            --outputDir Releases ^
+            --shortcuts Desktop,StartMenuRoot ^
+            --skipVeloAppCheck
+
+      - name: Rename setup for download consistency
+        shell: cmd
+        run: |
+          move /y Releases\OpenLiveWriter-stable-Setup.exe Releases\OpenLiveWriterSetup.exe
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          gh release create "$tag" --title "Open Live Writer $tag" --generate-notes --prerelease || gh release view "$tag"
+          gh release upload "$tag" Releases/* --clobber
