@@ -49,7 +49,7 @@ namespace OpenLiveWriter.Ribbon.Managed.Rendering
 
         // Ribbon panel colors - Neutral gray to match original
         // Content area is pure white (matches native ribbon)
-        public Color RibbonBackground { get; set; } = Color.FromArgb(255, 255, 255);
+        public Color RibbonBackground { get; set; } = Color.FromArgb(245, 246, 247);
         // Border - subtle gray
         public Color RibbonBorder { get; set; } = Color.FromArgb(171, 171, 171);
 
@@ -121,7 +121,7 @@ namespace OpenLiveWriter.Ribbon.Managed.Rendering
         /// Default opaque background color for groups when GroupBackground is transparent.
         /// Matches the selected tab / content area white to ensure seamless blending.
         /// </summary>
-        public static readonly Color DefaultOpaqueGroupBackground = Color.FromArgb(255, 255, 255);
+        public static readonly Color DefaultOpaqueGroupBackground = Color.FromArgb(245, 246, 247);
 
         /// <summary>
         /// Gets the group background color, guaranteed to be opaque.

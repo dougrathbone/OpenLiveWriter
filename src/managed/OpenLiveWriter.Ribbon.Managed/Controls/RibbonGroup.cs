@@ -273,7 +273,7 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
 
             if (SizeDefinition == "FourButtons" && _controls.Count >= 4)
             {
-                return GetStackedMediumButtonsWidth();
+                return GetFourButtonsGridWidth();
             }
 
             if (SizeDefinition == "SevenSmallButtons" && _controls.Count >= 7)
@@ -638,6 +638,55 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
         }
 
         /// <summary>
+        /// Measures the width needed for a medium (icon + text) button based on
+        /// the labels of the stacked small buttons in this group.
+        /// </summary>
+        private int MeasureMediumButtonWidth()
+        {
+            var buttonWidth = 48; // minimum width for medium buttons with text
+            using (var g = CreateGraphics())
+            {
+                for (var i = 1; i < _controls.Count && i <= 2; i++)
+                {
+                    var label = _controls[i].CommandLabel;
+                    if (!string.IsNullOrEmpty(label))
+                    {
+                        var textWidth = TextRenderer.MeasureText(g, label, SystemFonts.MenuFont).Width;
+                        buttonWidth = Math.Max(buttonWidth, 2 + 16 + 2 + textWidth + 2);
+                    }
+                }
+            }
+            return buttonWidth;
+        }
+
+        /// <summary>
+        /// Width for the "FourButtons" SizeDefinition: a 2x2 grid of medium
+        /// buttons (native Editing group layout), so two columns of the
+        /// stacked medium button width.
+        /// </summary>
+        private int GetFourButtonsGridWidth()
+        {
+            var buttonWidth = 48; // minimum width for medium buttons with text
+            using (var g = CreateGraphics())
+            {
+                foreach (var control in _controls)
+                {
+                    var label = control.CommandLabel;
+                    if (!string.IsNullOrEmpty(label))
+                    {
+                        var textWidth = TextRenderer.MeasureText(g, label, SystemFonts.MenuFont).Width;
+                        buttonWidth = Math.Max(buttonWidth, 2 + 16 + 2 + textWidth + 2);
+                    }
+                }
+
+                var width = (buttonWidth * 2) + (PADDING * 2) + LayoutConstants.GroupSeparatorMargin;
+                var labelWidth = (int)g.MeasureString(_label ?? "", _labelControl.Font).Width + PADDING * 2;
+                width = Math.Max(width, labelWidth);
+                return Math.Max(width, MIN_WIDTH);
+            }
+        }
+
+        /// <summary>
         /// Calculate the preferred width for N large buttons arranged horizontally.
         /// Used by ThreeLargeButtons (Insert group) and TwoLargeButtons (Plugins group).
         /// </summary>
@@ -688,13 +737,18 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
         }
 
         /// <summary>
+        /// Column pitch for the SevenSmallButtons layout (~24px logical),
+        /// matching the native ribbon's small-button column width.
+        /// </summary>
+        private static int SevenSmallButtonsCellSize => OpenLiveWriter.CoreServices.DisplayHelper.ScaleXCeil(24);
+
+        /// <summary>
         /// Calculate the preferred width for the "SevenSmallButtons" SizeDefinition.
         /// Layout: 7 small icon-only buttons in 2 rows (3 top, 4 bottom) matching native ribbon.
-        /// Uses compact 20px buttons packed tight with no gaps.
         /// </summary>
         private int GetSevenSmallButtonsWidth()
         {
-            var btnSize = (int)(LayoutConstants.SmallButtonSize * 16.0 / 22.0); // compact button size for paragraph toolbar
+            var btnSize = SevenSmallButtonsCellSize;
             var numColumns = 4;
             // Include the group separator margin on the right so the bottom row's
             // fourth button does not overhang the separator (the layout places
@@ -745,8 +799,8 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
                 x += buttonWidth + LayoutConstants.ControlSpacing;
             }
 
-            // Small buttons column width
-            x += LayoutConstants.SmallButtonSize + PADDING;
+            // Small buttons column width (medium buttons with icon + text)
+            x += MeasureMediumButtonWidth() + PADDING + LayoutConstants.GroupSeparatorMargin;
 
             // Ensure label fits
             using (var g = CreateGraphics())
@@ -878,7 +932,7 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
 
             if (SizeDefinition == "FourButtons" && _controls.Count >= 4)
             {
-                LayoutStackedMediumButtons(availableHeight, 4, maxButtonHeight: 20);
+                LayoutFourButtonsGrid(availableHeight);
                 return;
             }
 
@@ -1301,6 +1355,35 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
         }
 
         /// <summary>
+        /// Layout for the "FourButtons" SizeDefinition: four medium buttons in a
+        /// 2x2 grid (native Editing group: CheckSpelling, WordCount, Find,
+        /// SelectAll), instead of a single stacked column.
+        /// </summary>
+        private void LayoutFourButtonsGrid(int availableHeight)
+        {
+            var x = PADDING;
+            var y = PADDING;
+
+            var cellWidth = Math.Max(48, (_contentPanel.Width - PADDING * 2) / 2);
+            var buttonGap = 1;
+            var buttonHeight = Math.Max(14, (availableHeight - buttonGap) / 2);
+
+            var i = 0;
+            foreach (var control in _controls)
+            {
+                if (!control.Visible) continue;
+                if (i >= 4) break;
+
+                var column = i % 2;
+                var row = i / 2;
+                control.CurrentSize = RibbonGroupSize.Medium;
+                control.Size = new Size(cellWidth, buttonHeight);
+                control.Location = new Point(x + column * cellWidth, y + row * (buttonHeight + buttonGap));
+                i++;
+            }
+        }
+
+        /// <summary>
         /// Layout for N large buttons arranged horizontally side by side.
         /// Each button has full height with a 32x32 icon at top and text below.
         /// Used by ThreeLargeButtons (Insert) and TwoLargeButtons (Plugins).
@@ -1363,7 +1446,10 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
         {
             var x = PADDING;
             var y = PADDING;
-            var smallButtonSize = (int)(LayoutConstants.SmallButtonSize * 16.0 / 22.0); // compact size for paragraph toolbar
+            // Column pitch matching the native ribbon's SevenSmallButtons
+            // (~24px logical per column). The previous compact 16px pitch made
+            // the group too narrow, so the fourth button overhung the separator.
+            var smallButtonSize = SevenSmallButtonsCellSize;
 
             // 2 rows, center vertically
             var totalHeight = smallButtonSize * 2;
@@ -1453,8 +1539,11 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
                 x += largeButton.Width + 1;
             }
             
-            // Controls 1 and 2: Small buttons stacked vertically on the right
+            // Controls 1 and 2: Small buttons stacked vertically on the right.
+            // Rendered as medium buttons (icon + text) to match the native
+            // ribbon's Cut/Copy buttons.
             var smallButtonSize = LayoutConstants.SmallButtonSize;
+            var smallButtonWidth = MeasureMediumButtonWidth();
             var totalSmallHeight = smallButtonSize * 2 + 1;
             var smallStartY = y + (availableHeight - totalSmallHeight) / 2;
 
@@ -1462,8 +1551,8 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
             if (_controls.Count > 1)
             {
                 var smallButton1 = _controls[1];
-                smallButton1.CurrentSize = RibbonGroupSize.Small;
-                smallButton1.Size = new Size(smallButtonSize, smallButtonSize);
+                smallButton1.CurrentSize = RibbonGroupSize.Medium;
+                smallButton1.Size = new Size(smallButtonWidth, smallButtonSize);
                 smallButton1.Location = new Point(x, smallStartY);
                 smallButton1.BringToFront();
             }
@@ -1472,8 +1561,8 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
             if (_controls.Count > 2)
             {
                 var smallButton2 = _controls[2];
-                smallButton2.CurrentSize = RibbonGroupSize.Small;
-                smallButton2.Size = new Size(smallButtonSize, smallButtonSize);
+                smallButton2.CurrentSize = RibbonGroupSize.Medium;
+                smallButton2.Size = new Size(smallButtonWidth, smallButtonSize);
                 smallButton2.Location = new Point(x, smallStartY + smallButtonSize + 1);
                 smallButton2.BringToFront();
             }

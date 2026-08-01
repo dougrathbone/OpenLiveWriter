@@ -192,7 +192,7 @@ namespace OpenLiveWriter.Ribbon.Managed.Configuration
 
             // HTML Styles Group - SizeDefinition="OneInRibbonGallery"
             // Match native ribbon: MaxColumns="7", ItemHeight="36", ItemWidth="64", MaxRows="3"
-            var htmlStylesGroup = CreateGroup(CommandId.SemanticHtmlGroup, "Style", "HS");
+            var htmlStylesGroup = CreateGroup(CommandId.SemanticHtmlGroup, "HTML styles", "HS");
             htmlStylesGroup.SizeDefinition = "OneInRibbonGallery";
             htmlStylesGroup.Controls.Add(new GalleryConfig 
             { 

@@ -243,12 +243,29 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
             }
         }
 
+        private static readonly System.Collections.Generic.HashSet<string> _paintLogged = new System.Collections.Generic.HashSet<string>();
+
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
 
             var g = e.Graphics;
             var image = CurrentSize == RibbonGroupSize.Large ? CommandLargeImage : CommandSmallImage;
+
+            if (image != null && _paintLogged.Add(CommandId.ToString() + CurrentSize))
+            {
+                var bmp = image as System.Drawing.Bitmap;
+                string px = "";
+                if (bmp != null && bmp.Width >= 16 && bmp.Height >= 16)
+                {
+                    foreach (var pt in new[] { (8, 8), (4, 9), (5, 10), (6, 9) })
+                    {
+                        var c = bmp.GetPixel(pt.Item1, pt.Item2);
+                        px += $" ({pt.Item1},{pt.Item2})=A{c.A}R{c.R}G{c.G}B{c.B}";
+                    }
+                }
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] ColorPicker paint {CommandId}: size={CurrentSize} img={image.Width}x{image.Height} fmt={image.PixelFormat}{px}");
+            }
 
             // Draw as split button with color indicator
             RibbonRenderer.Instance.DrawButton(g, ClientRectangle, CommandLabel, image,
