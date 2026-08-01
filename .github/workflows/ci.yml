@@ -92,13 +92,17 @@ jobs:
 
       - name: Package with Velopack (signed)
         # vpk signs the app binaries and the Setup.exe via SignClient when the
-        # secrets are available (not the case for fork PRs).
+        # secrets are available (not the case for fork PRs). Releases/ is
+        # cleaned first: the PostBuild.CreateInstaller project already packed
+        # this version during the solution build, and vpk refuses to pack an
+        # equal-or-greater version.
         if: env.SIGN_CLIENT_SECRET != ''
         shell: cmd
         env:
           SIGN_CLIENT_SECRET: ${{ secrets.SignClientSecret }}
           SIGN_CLIENT_USER: ${{ secrets.SignClientUser }}
         run: |
+          if exist Releases rd /s /q Releases
           call getversion.cmd
           vpk pack ^
             --packId OpenLiveWriter ^
@@ -114,11 +118,15 @@ jobs:
             --signTemplate "dotnet %GITHUB_WORKSPACE%\packages\SignClient\tools\netcoreapp2.0\SignClient.dll sign -c %GITHUB_WORKSPACE%\SignClient\appsettings.json -i {{file}} -r %SIGN_CLIENT_USER% -s %SIGN_CLIENT_SECRET% -n ""Open Live Writer"" -d ""Open Live Writer"" -u ""http://openlivewriter.com"""
 
       - name: Package with Velopack (unsigned)
+        # Releases/ is cleaned first: the PostBuild.CreateInstaller project
+        # already packed this version during the solution build, and vpk
+        # refuses to pack an equal-or-greater version.
         if: env.SIGN_CLIENT_SECRET == ''
         shell: cmd
         env:
           SIGN_CLIENT_SECRET: ${{ secrets.SignClientSecret }}
         run: |
+          if exist Releases rd /s /q Releases
           call getversion.cmd
           vpk pack ^
             --packId OpenLiveWriter ^

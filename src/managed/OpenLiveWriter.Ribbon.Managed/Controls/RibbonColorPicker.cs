@@ -238,7 +238,9 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
                     Size = new Size(80, 22);
                     break;
                 case RibbonGroupSize.Small:
-                    Size = new Size(24, 24);
+                    // Wide enough for a left-aligned 16px icon plus the
+                    // dropdown arrow to its right (native ribbon look).
+                    Size = new Size(30, 24);
                     break;
             }
         }
@@ -282,13 +284,43 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
                 System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] ColorPicker paint {CommandId}: size={CurrentSize} img={image.Width}x{image.Height} fmt={image.PixelFormat}{px} sel={_selectedColor}");
             }
 
-            // Draw as split button with color indicator
-            RibbonRenderer.Instance.DrawButton(g, ClientRectangle, CommandLabel, image,
+            // Draw the button frame, background, and dropdown arrow, but let
+            // this control place the icon itself so the arrow sits to the
+            // right of the icon (like the native ribbon) instead of
+            // overlapping it.
+            RibbonRenderer.Instance.DrawButton(g, ClientRectangle, CommandLabel, null,
                 Enabled && CommandEnabled, _isHovered, _isPressed, false,
                 RibbonButtonType.SplitButton, CurrentSize);
 
+            if (image != null)
+            {
+                var iconBounds = GetIconBounds();
+                if (Enabled && CommandEnabled)
+                    RibbonRenderer.Instance.DrawScaledImage(g, image, iconBounds);
+                else
+                    RibbonRenderer.Instance.DrawDisabledImage(g, image, iconBounds);
+            }
+
             // Draw color indicator
             DrawColorIndicator(g);
+        }
+
+        /// <summary>
+        /// Bounds of the icon inside the button. Small buttons left-align the
+        /// icon so the dropdown arrow at the right edge does not overlap it.
+        /// </summary>
+        private Rectangle GetIconBounds()
+        {
+            int imageSize = CurrentSize == RibbonGroupSize.Large
+                ? LayoutConstants.LargeImageSizeUnscaled
+                : LayoutConstants.SmallImageSizeUnscaled;
+            int imageX = CurrentSize == RibbonGroupSize.Small
+                ? 2
+                : (Width - imageSize) / 2;
+            int imageY = CurrentSize == RibbonGroupSize.Large
+                ? LayoutConstants.LargeButtonIconTopPadding
+                : (Height - imageSize) / 2;
+            return new Rectangle(imageX, imageY, imageSize, imageSize);
         }
 
         private bool _colorInitialized;
@@ -298,15 +330,9 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
             // Draw the indicator over the bottom rows of the icon, exactly
             // where the baked color bar in the icon art sits (like the native
             // ribbon), not as a separate bar below the icon.
-            int imageSize = CurrentSize == RibbonGroupSize.Large
-                ? LayoutConstants.LargeImageSizeUnscaled
-                : LayoutConstants.SmallImageSizeUnscaled;
-            int imageX = (Width - imageSize) / 2;
-            int imageY = CurrentSize == RibbonGroupSize.Large
-                ? LayoutConstants.LargeButtonIconTopPadding
-                : (Height - imageSize) / 2;
-            int barHeight = Math.Max(3, imageSize / 4);
-            var indicatorBounds = new Rectangle(imageX, imageY + imageSize - barHeight, imageSize, barHeight);
+            var iconBounds = GetIconBounds();
+            int barHeight = Math.Max(3, iconBounds.Height / 4);
+            var indicatorBounds = new Rectangle(iconBounds.X, iconBounds.Bottom - barHeight, iconBounds.Width, barHeight);
 
             using (var brush = new SolidBrush(_selectedColor))
             {
