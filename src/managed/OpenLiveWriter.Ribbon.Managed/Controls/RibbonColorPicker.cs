@@ -249,6 +249,21 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
         {
             base.OnPaint(e);
 
+            // Initialize the indicator color from the source command's current
+            // color on first paint (the command is the source of truth).
+            if (!_colorInitialized)
+            {
+                _colorInitialized = true;
+                if (CommandManager?.GetCommand(CommandId) is BridgedCommand bridged &&
+                    bridged.SourceSelectedColor.HasValue)
+                {
+                    // Fully transparent (A=0) means "automatic" (theme default),
+                    // so show the automatic color instead of painting nothing.
+                    var c = bridged.SourceSelectedColor.Value;
+                    _selectedColor = c.A == 0 ? _automaticColor : c;
+                }
+            }
+
             var g = e.Graphics;
             var image = CurrentSize == RibbonGroupSize.Large ? CommandLargeImage : CommandSmallImage;
 
@@ -264,7 +279,7 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
                         px += $" ({pt.Item1},{pt.Item2})=A{c.A}R{c.R}G{c.G}B{c.B}";
                     }
                 }
-                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] ColorPicker paint {CommandId}: size={CurrentSize} img={image.Width}x{image.Height} fmt={image.PixelFormat}{px}");
+                System.Diagnostics.Debug.WriteLine($"[OLW-DEBUG] ColorPicker paint {CommandId}: size={CurrentSize} img={image.Width}x{image.Height} fmt={image.PixelFormat}{px} sel={_selectedColor}");
             }
 
             // Draw as split button with color indicator
@@ -276,35 +291,26 @@ namespace OpenLiveWriter.Ribbon.Managed.Controls
             DrawColorIndicator(g);
         }
 
+        private bool _colorInitialized;
+
         private void DrawColorIndicator(Graphics g)
         {
-            Rectangle indicatorBounds;
-
-            if (CurrentSize == RibbonGroupSize.Large)
-            {
-                // At bottom of button
-                indicatorBounds = new Rectangle(10, Height - 22, Width - 20, 6);
-            }
-            else if (CurrentSize == RibbonGroupSize.Medium)
-            {
-                // To the left of dropdown arrow
-                indicatorBounds = new Rectangle(4, Height - 6, 16, 4);
-            }
-            else
-            {
-                // Small indicator at bottom
-                indicatorBounds = new Rectangle(4, Height - 5, 16, 3);
-            }
+            // Draw the indicator over the bottom rows of the icon, exactly
+            // where the baked color bar in the icon art sits (like the native
+            // ribbon), not as a separate bar below the icon.
+            int imageSize = CurrentSize == RibbonGroupSize.Large
+                ? LayoutConstants.LargeImageSizeUnscaled
+                : LayoutConstants.SmallImageSizeUnscaled;
+            int imageX = (Width - imageSize) / 2;
+            int imageY = CurrentSize == RibbonGroupSize.Large
+                ? LayoutConstants.LargeButtonIconTopPadding
+                : (Height - imageSize) / 2;
+            int barHeight = Math.Max(3, imageSize / 4);
+            var indicatorBounds = new Rectangle(imageX, imageY + imageSize - barHeight, imageSize, barHeight);
 
             using (var brush = new SolidBrush(_selectedColor))
             {
                 g.FillRectangle(brush, indicatorBounds);
-            }
-
-            using (var pen = new Pen(Color.FromArgb(128, 0, 0, 0)))
-            {
-                g.DrawRectangle(pen, indicatorBounds.X, indicatorBounds.Y,
-                    indicatorBounds.Width - 1, indicatorBounds.Height - 1);
             }
         }
 

@@ -169,6 +169,32 @@ namespace OpenLiveWriter.Ribbon.Managed.Commands
             set => _selectedColor = value;
         }
 
+        /// <summary>
+        /// Gets the source command's current selected color (for color picker
+        /// commands), reflected lazily from the source command's SelectedColor
+        /// property. Null when the source command has no such property.
+        /// </summary>
+        public Color? SourceSelectedColor
+        {
+            get
+            {
+                if (!_sourceSelectedColorLoaded)
+                {
+                    _sourceSelectedColorLoaded = true;
+                    try
+                    {
+                        var prop = _sourceCommand?.GetType().GetProperty("SelectedColor");
+                        if (prop?.GetValue(_sourceCommand) is Color c)
+                            _sourceSelectedColor = c;
+                    }
+                    catch { }
+                }
+                return _sourceSelectedColor;
+            }
+        }
+        private Color? _sourceSelectedColor;
+        private bool _sourceSelectedColorLoaded;
+
         public bool Enabled
         {
             get => _enabled;
