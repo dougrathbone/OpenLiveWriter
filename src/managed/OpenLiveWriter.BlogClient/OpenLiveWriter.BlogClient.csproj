@@ -52,18 +52,28 @@
     <ProjectReference Include="..\OpenLiveWriter.Localization\OpenLiveWriter.Localization.csproj" />
   </ItemGroup>
 
-  <!-- Generate Blogger API client secrets at build time.
-       OlwBloggerClientId and OlwBloggerClientSecret come from environment variables on CI,
-       or default to placeholder values for local development builds. -->
+  <!-- Generate Blogger API client secrets at build time, before resources
+       are embedded. AppVeyor set OlwBloggerClientId / OlwBloggerClientSecret
+       as environment variables (MSBuild imports env vars as properties of the
+       same name). GitHub Actions uses OLW_BLOGGER_CLIENT_ID / SECRET. An empty
+       pre-written secrets file used to win over this target and ship a blank
+       client_id, which Google reports as "Missing required parameter: client_id". -->
   <PropertyGroup>
     <BloggerClientSecretsJson>$(MSBuildProjectDirectory)\Clients\GoogleBloggerv3Secrets.json</BloggerClientSecretsJson>
-    <OlwBloggerClientId Condition="'$(OlwBloggerClientId)'==''">PASTE_YOUR_CLIENT_ID_HERE</OlwBloggerClientId>
-    <OlwBloggerClientSecret Condition="'$(OlwBloggerClientSecret)'==''">PASTE_YOUR_CLIENT_SECRET_HERE</OlwBloggerClientSecret>
+    <OlwBloggerClientId Condition="'$(OlwBloggerClientId)' == '' And '$(OLW_BLOGGER_CLIENT_ID)' != ''">$(OLW_BLOGGER_CLIENT_ID)</OlwBloggerClientId>
+    <OlwBloggerClientSecret Condition="'$(OlwBloggerClientSecret)' == '' And '$(OLW_BLOGGER_CLIENT_SECRET)' != ''">$(OLW_BLOGGER_CLIENT_SECRET)</OlwBloggerClientSecret>
+    <OlwBloggerClientId Condition="'$(OlwBloggerClientId)' == ''">PASTE_YOUR_CLIENT_ID_HERE</OlwBloggerClientId>
+    <OlwBloggerClientSecret Condition="'$(OlwBloggerClientSecret)' == ''">PASTE_YOUR_CLIENT_SECRET_HERE</OlwBloggerClientSecret>
   </PropertyGroup>
 
-  <Target Name="GenerateBloggerClientSecrets" BeforeTargets="CoreCompile"
-          Inputs="$(MSBuildProjectFullPath)" Outputs="$(BloggerClientSecretsJson)">
-    <WriteLinesToFile File="$(BloggerClientSecretsJson)"
+  <Target Name="GenerateBloggerClientSecrets" BeforeTargets="PrepareForBuild">
+    <!-- Only synthesize the file when it is missing. A developer-authored
+         GoogleBloggerv3Secrets.json (see the Connecting to Blogger doc) and a
+         CI-written file with real credentials must not be overwritten with
+         placeholders. Never write an empty client_id: the defaults above are
+         placeholders, not blank strings. -->
+    <WriteLinesToFile Condition="!Exists('$(BloggerClientSecretsJson)')"
+                     File="$(BloggerClientSecretsJson)"
                      Lines="{ &quot;installed&quot;: { &quot;client_id&quot;: &quot;$(OlwBloggerClientId)&quot;, &quot;client_secret&quot;: &quot;$(OlwBloggerClientSecret)&quot; } }"
                      Overwrite="true" />
   </Target>

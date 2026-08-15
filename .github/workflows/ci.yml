@@ -14,6 +14,14 @@ env:
   SOLUTION_PATH: src/managed/writer.Windows.slnf
   OLW_CONFIG: Release
   DOTNET_VERSION: '10.0.x'
+  # MSBuild imports env vars as properties of the same name. AppVeyor used
+  # OlwBloggerClientId; GitHub Actions secrets are OLW_BLOGGER_CLIENT_ID.
+  # Both names are set so either generator (prepare-build or the csproj
+  # target) sees the credentials.
+  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OlwBloggerClientSecret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
+  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OLW_BLOGGER_CLIENT_SECRET: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
 jobs:
   build:
@@ -85,6 +93,17 @@ jobs:
           }
           dotnet run scripts/AssertReleaseBuild.cs -- "src/managed/OpenLiveWriter/bin/$env:OLW_CONFIG/OpenLiveWriter.dll"
           if ($LASTEXITCODE -ne 0) { throw "Refusing to package: the built app is not a Release build." }
+
+      - name: Verify Blogger OAuth client id is embedded
+        # The installer is what testers Sign In with. An empty client_id is
+        # issue #1088 ("Missing required parameter: client_id"). Fork PRs do
+        # not receive repo secrets, so skip there; official builds must bake
+        # in real credentials or we refuse to package.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        run: |
+          dotnet run scripts/AssertBloggerClientSecrets.cs -- "src/managed/OpenLiveWriter.BlogClient/bin/$env:OLW_CONFIG/OpenLiveWriter.BlogClient.dll" --require-real
+          if ($LASTEXITCODE -ne 0) { throw "Refusing to package: Blogger OAuth client_id is missing or still the placeholder." }
 
       - name: Package with Velopack
         # Unsigned. This used to branch on SignClient secrets and call the .NET

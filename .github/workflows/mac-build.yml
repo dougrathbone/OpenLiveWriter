@@ -15,6 +15,10 @@ on:
 env:
   OLW_CONFIG: Release
   OLW_RID: osx-arm64
+  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OlwBloggerClientSecret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
+  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OLW_BLOGGER_CLIENT_SECRET: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
 jobs:
   mac-build:
@@ -27,10 +31,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Prepare build
+        uses: ./.github/actions/prepare-build
         with:
           dotnet-version: '10.0.x'
+          blogger-client-id: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+          blogger-client-secret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
+          generate-markets: 'false'
 
       - name: Cache NuGet packages
         uses: actions/cache@v4

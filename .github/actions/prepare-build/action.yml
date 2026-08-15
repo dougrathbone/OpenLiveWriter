@@ -1,8 +1,8 @@
 name: Prepare Open Live Writer build
 description: >
-  Installs the SDK and produces the generated, gitignored files the Windows
-  build needs, then restores. Shared by every Windows job so the setup does not
-  drift between them.
+  Installs the SDK and produces the generated, gitignored files the build
+  needs, then restores. Shared by Windows and macOS jobs so the setup does
+  not drift between them.
 
 inputs:
   dotnet-version:
@@ -21,6 +21,10 @@ inputs:
     description: Blogger OAuth client secret.
     required: false
     default: ''
+  generate-markets:
+    description: Generate Markets.xml / Master.xml (Windows CoreServices). Skip on macOS.
+    required: false
+    default: 'true'
 
 runs:
   using: composite
@@ -32,26 +36,38 @@ runs:
 
     - name: Generate GoogleBloggerv3Secrets.json
       # Embedded by BlogClient and gitignored, because it holds OAuth
-      # credentials. Synthesized from CI secrets; empty strings when unset.
+      # credentials. Write the file only when both secrets are present:
+      # an empty write used to skip MSBuild's placeholder generation and
+      # ship a blank client_id, which Google reports as
+      # "Missing required parameter: client_id" (issue #1088).
       shell: pwsh
       env:
         OLW_BLOGGER_CLIENT_ID: ${{ inputs.blogger-client-id }}
         OLW_BLOGGER_CLIENT_SECRET: ${{ inputs.blogger-client-secret }}
       run: |
+        $id = "$env:OLW_BLOGGER_CLIENT_ID".Trim()
+        $secret = "$env:OLW_BLOGGER_CLIENT_SECRET".Trim()
+        $path = "src/managed/OpenLiveWriter.BlogClient/Clients/GoogleBloggerv3Secrets.json"
+        if (-not $id -or -not $secret) {
+          Write-Host "Blogger OAuth secrets are not set; not writing $path (MSBuild will generate placeholders if BlogClient builds)."
+          exit 0
+        }
         $json = @{
           installed = @{
-            client_id = "$env:OLW_BLOGGER_CLIENT_ID"
+            client_id = $id
             project_id = "open-live-writer"
             auth_uri = "https://accounts.google.com/o/oauth2/auth"
             token_uri = "https://oauth2.googleapis.com/token"
             auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-            client_secret = "$env:OLW_BLOGGER_CLIENT_SECRET"
+            client_secret = $secret
             redirect_uris = @("http://localhost")
           }
         } | ConvertTo-Json -Depth 5
-        Set-Content src/managed/OpenLiveWriter.BlogClient/Clients/GoogleBloggerv3Secrets.json $json
+        Set-Content -Path $path -Value $json -Encoding utf8
+        Write-Host "Wrote Blogger OAuth client secrets to $path (client_id length $($id.Length))."
 
     - name: Generate Markets.xml
+      if: ${{ inputs.generate-markets != 'false' }}
       # CoreServices embeds Marketization/Markets.xml (generated from
       # intl/markets by MarketXmlGenerator) and Marketization/Master.xml
       # (copied from intl/markets). Both are gitignored.

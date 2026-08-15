@@ -34,6 +34,10 @@ env:
   SOLUTION_PATH: src/managed/writer.Windows.slnf
   OLW_CONFIG: Release
   DOTNET_VERSION: '10.0.x'
+  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OlwBloggerClientSecret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
+  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OLW_BLOGGER_CLIENT_SECRET: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
 jobs:
   prepare:
@@ -152,6 +156,12 @@ jobs:
           dotnet run scripts/AssertReleaseBuild.cs -- "src/managed/OpenLiveWriter/bin/$env:OLW_CONFIG/OpenLiveWriter.dll"
           if ($LASTEXITCODE -ne 0) { throw "Refusing to package: the built app is not a Release build." }
 
+      - name: Verify Blogger OAuth client id is embedded
+        shell: pwsh
+        run: |
+          dotnet run scripts/AssertBloggerClientSecrets.cs -- "src/managed/OpenLiveWriter.BlogClient/bin/$env:OLW_CONFIG/OpenLiveWriter.BlogClient.dll" --require-real
+          if ($LASTEXITCODE -ne 0) { throw "Refusing to package: Blogger OAuth client_id is missing or still the placeholder." }
+
       - name: Confirm the binaries carry the stamped version
         shell: pwsh
         run: |
@@ -201,10 +211,13 @@ jobs:
       - name: Stamp version.txt for this build
         run: printf '%s\n' "${{ needs.prepare.outputs.full }}" > version.txt
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Prepare build
+        uses: ./.github/actions/prepare-build
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+          blogger-client-id: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+          blogger-client-secret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
+          generate-markets: 'false'
 
       - name: Build (macOS solution filter)
         run: dotnet build src/managed/writer.macOS.slnf --nologo -v minimal

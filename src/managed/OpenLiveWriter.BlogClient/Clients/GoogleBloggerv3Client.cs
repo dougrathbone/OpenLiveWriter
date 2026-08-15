@@ -54,11 +54,45 @@ namespace OpenLiveWriter.BlogClient.Clients
             // This async task will either find cached credentials in the IDataStore provided, or it will pop open a 
             // browser window and prompt the user for permissions and then write those permissions to the IDataStore.
             return GoogleWebAuthorizationBroker.AuthorizeAsync(
-                GoogleClientSecrets.Load(ClientSecretsStream).Secrets,
+                LoadClientSecrets(ClientSecretsStream),
                 GoogleAPIScopes,
                 blogId,
                 taskCancellationToken,
                 GetCredentialsDataStoreForBlog(blogId));
+        }
+
+        /// <summary>
+        /// Parse the Google installed-app client secrets JSON. An empty
+        /// client_id is what ships when CI writes GoogleBloggerv3Secrets.json
+        /// from unset secrets, and Google then fails Sign In with
+        /// "Missing required parameter: client_id".
+        /// </summary>
+        public static ClientSecrets LoadClientSecrets(Stream stream)
+        {
+            if (stream == null)
+                throw new InvalidOperationException("GoogleBloggerv3Secrets.json was not embedded in OpenLiveWriter.BlogClient.");
+
+            ClientSecrets secrets;
+            try
+            {
+                secrets = GoogleClientSecrets.Load(stream)?.Secrets;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    "GoogleBloggerv3Secrets.json could not be parsed as Google installed-app OAuth client secrets.",
+                    ex);
+            }
+
+            if (secrets == null || string.IsNullOrWhiteSpace(secrets.ClientId))
+            {
+                throw new InvalidOperationException(
+                    "Google Blogger OAuth client_id is missing from the embedded GoogleBloggerv3Secrets.json. " +
+                    "CI must set the OLW_BLOGGER_CLIENT_ID and OLW_BLOGGER_CLIENT_SECRET (or OlwBloggerClientId / OlwBloggerClientSecret) secrets. " +
+                    "For a local build, see docs/Connecting to Blogger From a Local Build.md.");
+            }
+
+            return secrets;
         }
 
         private static Stream ClientSecretsStream
