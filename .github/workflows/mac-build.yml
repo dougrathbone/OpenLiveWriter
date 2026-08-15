@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare build
         uses: ./.github/actions/prepare-build
@@ -40,7 +40,7 @@ jobs:
           generate-markets: 'false'
 
       - name: Cache NuGet packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('src/managed/Directory.Packages.props') }}
@@ -68,7 +68,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: TestResults-macOS-${{ github.run_number }}
           path: artifacts/test-results/
@@ -91,7 +91,7 @@ jobs:
       # run the suites on every push and PR.
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: OpenLiveWriter-macOS-arm64-${{ github.run_number }}
           # The .pkg installer plus the update-feed assets vpk emits.

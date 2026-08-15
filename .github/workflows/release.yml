@@ -51,7 +51,7 @@ jobs:
       tag: ${{ steps.v.outputs.tag }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # A tag needs real history behind it, and we push a commit back.
           fetch-depth: 0
@@ -104,7 +104,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Stamp version.txt for this build
         # On a dry run nothing was committed, so write the computed version
@@ -140,7 +140,7 @@ jobs:
           --no-build --nologo -v minimal -c ${{ env.OLW_CONFIG }}
 
       - name: Setup MSBuild for the native ribbon DLL
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Build native ribbon resource DLL
         shell: pwsh
@@ -192,7 +192,7 @@ jobs:
         run: move /y Releases\OpenLiveWriter-stable-Setup.exe Releases\OpenLiveWriterSetup.exe
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-release
           path: Releases/
@@ -206,7 +206,7 @@ jobs:
       OLW_RID: osx-arm64
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Stamp version.txt for this build
         run: printf '%s\n' "${{ needs.prepare.outputs.full }}" > version.txt
@@ -265,7 +265,7 @@ jobs:
           ls artifacts/mac-arm64/Releases
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos-release
           # The whole Releases folder: the .pkg installer plus RELEASES-osx,
@@ -280,12 +280,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare.outputs.tag }}
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: dist
 

@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare build
         uses: ./.github/actions/prepare-build
@@ -77,7 +77,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: TestResults-${{ env.OLW_CONFIG }}-${{ github.run_number }}
           path: artifacts/test-results/
@@ -133,14 +133,14 @@ jobs:
             --skipVeloAppCheck
 
       - name: Upload installer artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: OpenLiveWriter-Installer-${{ github.run_number }}
           path: Releases/
           if-no-files-found: warn
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: OpenLiveWriter-Binaries-${{ github.run_number }}
           path: src/managed/OpenLiveWriter/bin/${{ env.OLW_CONFIG }}/
@@ -152,7 +152,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare build
         uses: ./.github/actions/prepare-build
@@ -191,7 +191,7 @@ jobs:
 
       - name: Upload test results (Debug)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: TestResults-Debug-${{ github.run_number }}
           path: artifacts/test-results/

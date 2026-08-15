@@ -1,0 +1,12 @@
+<Project>
+  <!-- Microsoft.Web.WebView2's buildTransitive targets always add the WPF
+       assembly, even for WinForms-only projects. That DLL references
+       WindowsBase 5.0.0.0, which conflicts with the net10.0 WindowsBase
+       4.0.0.0 facade and floods the build with MSB3277. This product uses
+       Microsoft.Web.WebView2.WinForms, not WPF. -->
+  <Target Name="RemoveUnusedWebView2Wpf" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)" Condition="'%(Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
+    </ItemGroup>
+  </Target>
+</Project>
