@@ -14,13 +14,13 @@ env:
   SOLUTION_PATH: src/managed/writer.Windows.slnf
   OLW_CONFIG: Release
   DOTNET_VERSION: '10.0.x'
-  # MSBuild imports env vars as properties of the same name. AppVeyor used
-  # OlwBloggerClientId; GitHub Actions secrets are OLW_BLOGGER_CLIENT_ID.
-  # Both names are set so either generator (prepare-build or the csproj
-  # target) sees the credentials.
-  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  # MSBuild imports env vars as properties of the same name. The client id is
+  # the AppVeyor installed-app client (already public in appveyor.yml); a
+  # GitHub secret overrides it if we rotate. The matching secret still comes
+  # only from OLW_BLOGGER_CLIENT_SECRET.
+  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID || '597389294595-271ukaucs8ghmc6c6cnhrbef2c02g5qa.apps.googleusercontent.com' }}
   OlwBloggerClientSecret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
-  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID || '597389294595-271ukaucs8ghmc6c6cnhrbef2c02g5qa.apps.googleusercontent.com' }}
   OLW_BLOGGER_CLIENT_SECRET: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
           solution: ${{ env.SOLUTION_PATH }}
-          blogger-client-id: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+          blogger-client-id: ${{ env.OLW_BLOGGER_CLIENT_ID }}
           blogger-client-secret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
       - name: Install Velopack CLI
@@ -159,7 +159,7 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
           solution: ${{ env.SOLUTION_PATH }}
-          blogger-client-id: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+          blogger-client-id: ${{ env.OLW_BLOGGER_CLIENT_ID }}
           blogger-client-secret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
       - name: Build solution (Debug)

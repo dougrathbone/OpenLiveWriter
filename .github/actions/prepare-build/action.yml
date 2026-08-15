@@ -14,9 +14,11 @@ inputs:
     required: false
     default: ''
   blogger-client-id:
-    description: Blogger OAuth client id. Empty in forks; Blogger auth is then unusable in that build.
+    description: >
+      Blogger OAuth installed-app client id. Defaults to the same client
+      AppVeyor used; override with the OLW_BLOGGER_CLIENT_ID secret to rotate.
     required: false
-    default: ''
+    default: '597389294595-271ukaucs8ghmc6c6cnhrbef2c02g5qa.apps.googleusercontent.com'
   blogger-client-secret:
     description: Blogger OAuth client secret.
     required: false
@@ -47,6 +49,9 @@ runs:
       run: |
         $id = "$env:OLW_BLOGGER_CLIENT_ID".Trim()
         $secret = "$env:OLW_BLOGGER_CLIENT_SECRET".Trim()
+        if (-not $id) {
+          $id = "597389294595-271ukaucs8ghmc6c6cnhrbef2c02g5qa.apps.googleusercontent.com"
+        }
         $path = "src/managed/OpenLiveWriter.BlogClient/Clients/GoogleBloggerv3Secrets.json"
         if (-not $id -or -not $secret) {
           Write-Host "Blogger OAuth secrets are not set; not writing $path (MSBuild will generate placeholders if BlogClient builds)."

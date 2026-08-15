@@ -34,9 +34,10 @@ env:
   SOLUTION_PATH: src/managed/writer.Windows.slnf
   OLW_CONFIG: Release
   DOTNET_VERSION: '10.0.x'
-  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  # Same installed-app client AppVeyor shipped; override with the GitHub secret to rotate.
+  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID || '597389294595-271ukaucs8ghmc6c6cnhrbef2c02g5qa.apps.googleusercontent.com' }}
   OlwBloggerClientSecret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
-  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID || '597389294595-271ukaucs8ghmc6c6cnhrbef2c02g5qa.apps.googleusercontent.com' }}
   OLW_BLOGGER_CLIENT_SECRET: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
 jobs:
@@ -117,7 +118,7 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
           solution: ${{ env.SOLUTION_PATH }}
-          blogger-client-id: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+          blogger-client-id: ${{ env.OLW_BLOGGER_CLIENT_ID }}
           blogger-client-secret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
       - name: Install Velopack CLI
@@ -215,7 +216,7 @@ jobs:
         uses: ./.github/actions/prepare-build
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          blogger-client-id: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+          blogger-client-id: ${{ env.OLW_BLOGGER_CLIENT_ID }}
           blogger-client-secret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
           generate-markets: 'false'
 

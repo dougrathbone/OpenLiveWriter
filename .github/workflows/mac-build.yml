@@ -15,9 +15,10 @@ on:
 env:
   OLW_CONFIG: Release
   OLW_RID: osx-arm64
-  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  # Same installed-app client AppVeyor shipped; override with the GitHub secret to rotate.
+  OlwBloggerClientId: ${{ secrets.OLW_BLOGGER_CLIENT_ID || '597389294595-271ukaucs8ghmc6c6cnhrbef2c02g5qa.apps.googleusercontent.com' }}
   OlwBloggerClientSecret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
-  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+  OLW_BLOGGER_CLIENT_ID: ${{ secrets.OLW_BLOGGER_CLIENT_ID || '597389294595-271ukaucs8ghmc6c6cnhrbef2c02g5qa.apps.googleusercontent.com' }}
   OLW_BLOGGER_CLIENT_SECRET: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
 
 jobs:
@@ -35,7 +36,7 @@ jobs:
         uses: ./.github/actions/prepare-build
         with:
           dotnet-version: '10.0.x'
-          blogger-client-id: ${{ secrets.OLW_BLOGGER_CLIENT_ID }}
+          blogger-client-id: ${{ env.OLW_BLOGGER_CLIENT_ID }}
           blogger-client-secret: ${{ secrets.OLW_BLOGGER_CLIENT_SECRET }}
           generate-markets: 'false'
 
