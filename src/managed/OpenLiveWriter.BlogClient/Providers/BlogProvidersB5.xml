@@ -70,6 +70,7 @@
       <fileUploadNameFormat xpp:if="version lt 12.0.1489.0207">{FileName}</fileUploadNameFormat>
       <invalidPostIdFaultCodePattern>^404$</invalidPostIdFaultCodePattern>
       <postDateFormat>yyyyMMdd'T'HH':'mm':'ss'Z'</postDateFormat>
+      <useLocalTime>Yes</useLocalTime>
       <supportsMultipleCategories>Yes</supportsMultipleCategories>
       <supportsPostAsDraft>Yes</supportsPostAsDraft>
       <futurePublishDateWarning>No</futurePublishDateWarning>
@@ -282,6 +283,7 @@
       <fileUploadNameFormat xpp:if="version lt 12.0.1489.0207">{FileName}</fileUploadNameFormat>
       <invalidPostIdFaultCodePattern>^404$</invalidPostIdFaultCodePattern>
       <postDateFormat>yyyyMMdd'T'HH':'mm':'ss'Z'</postDateFormat>
+      <useLocalTime>Yes</useLocalTime>
       <supportsMultipleCategories>Yes</supportsMultipleCategories>
       <supportsPostAsDraft>Yes</supportsPostAsDraft>
       <futurePublishDateWarning>No</futurePublishDateWarning>
@@ -328,6 +330,7 @@
       <fileUploadNameFormat xpp:if="version lt 12.0.1489.0207">{FileName}</fileUploadNameFormat>
       <invalidPostIdFaultCodePattern>^404$</invalidPostIdFaultCodePattern>
       <postDateFormat>yyyyMMdd'T'HH':'mm':'ss'Z'</postDateFormat>
+      <useLocalTime>Yes</useLocalTime>
       <supportsMultipleCategories>Yes</supportsMultipleCategories>
       <supportsPostAsDraft>Yes</supportsPostAsDraft>
       <futurePublishDateWarning>No</futurePublishDateWarning>
