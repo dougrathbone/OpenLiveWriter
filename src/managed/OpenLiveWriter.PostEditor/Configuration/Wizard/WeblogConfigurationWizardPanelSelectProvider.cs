@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
 using OpenLiveWriter.BlogClient.Detection;
@@ -70,8 +71,7 @@ namespace OpenLiveWriter.PostEditor.Configuration.Wizard
 
             // Load up the combo and select the first item
             //adding marketization--only show providers for this market
-            HashSet marketSupportedIds = new HashSet();
-            marketSupportedIds.AddAll(
+            HashSet<string> marketSupportedIds = new HashSet<string>(
                 StringHelper.Split(
                     MarketizationOptions.GetFeatureParameter(MarketizationOptions.Feature.BlogProviders, "supported"), ";"));
             foreach (IBlogProvider provider in BlogProviderManager.Providers)
