@@ -22,12 +22,8 @@
 
   <!-- Exclude legacy/obsolete files that use unavailable .NET Framework APIs -->
   <ItemGroup>
-    <Compile Remove="HTML\WebPageDownloader.cs" />
-    <Compile Remove="HTML\AsyncPageDownload.cs" />
-    <!-- InternetShortCut.cs re-enabled - simple COM interop -->
     <!-- MultiThreadedPageDownloader.cs re-enabled - namespace updated from Project31 to OpenLiveWriter -->
     <!-- CloseTrackingHttpWebRequest.cs re-enabled - rewritten without RealProxy for .NET 10 -->
-    <Compile Remove="DataObject\SearchReferrerChain.cs" />
     <Compile Remove="ComponentRootDesigner.cs" />
     <Compile Remove="Diagnostics\UnexpectedErrorMessageDesigner.cs" />
   </ItemGroup>
