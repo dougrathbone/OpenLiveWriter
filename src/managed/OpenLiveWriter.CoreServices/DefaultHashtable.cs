@@ -61,16 +61,6 @@ namespace OpenLiveWriter.CoreServices
             return new LinkedList();
         }
 
-        public static object HashSetDefault(object key)
-        {
-            return new HashSet();
-        }
-
-        public static object TreeSetDefault(object key)
-        {
-            return new TreeSet();
-        }
-
         public static object HashtableDefault(object key)
         {
             return new Hashtable();

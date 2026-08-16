@@ -167,7 +167,21 @@ namespace OpenLiveWriter.Mshtml
             AddCommand(IDM.UNLINK);
             AddCommand(IDM.UNORDERLIST);
             AddCommand(IDM.VIEWSOURCE);
+
+            // IDM.ZOOMPERCENT (50) has the same numeric value as IDM.JUSTIFYFULL.
+            // MSHTML disambiguates the two by command group at Exec time, but this
+            // dictionary is keyed by IDM value alone, so registering it under 50
+            // throws ArgumentException (issue #1083). Store it under a synthetic
+            // key that cannot collide with a real IDM; the command still executes
+            // with the real IDM value.
+            Add(ZoomPercentKey, new MshtmlCommandFromCoreSet(IDM.ZOOMPERCENT, commandTarget, false));
         }
+
+        /// <summary>
+        /// Dictionary key under which the IDM.ZOOMPERCENT command is stored
+        /// (see the constructor for why the real IDM value cannot be the key).
+        /// </summary>
+        public const uint ZoomPercentKey = 0xFFFF0001;
 
         /// <summary>
         /// Helper method to add a command to the standard command set
@@ -813,7 +827,7 @@ namespace OpenLiveWriter.Mshtml
         public const uint REDO = 29;
         public const uint UNDO = 43;
         public const uint SELECTALL = 31;
-        //		public const uint ZOOMPERCENT =            50 ;
+        public const uint ZOOMPERCENT = 50;
         //		public const uint GETZOOM =                68 ;
         //		public const uint STOP =                   2138 ;
         public const uint COPY = 15;

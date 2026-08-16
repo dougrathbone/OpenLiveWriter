@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for details.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -40,7 +41,7 @@ namespace OpenLiveWriter.CoreServices
         public object ProcessLocalResourceSafelyAndRefresh(string name, string url, string contentType, ResourceFileProcessor processor, int delayMs)
         {
             Assembly assembly = Assembly.GetCallingAssembly();
-            lock (_downloadedResources.SyncRoot)
+            lock (_downloadedResources)
             {
                 if (!_downloadedResources.Contains(url))
                 {
@@ -52,7 +53,7 @@ namespace OpenLiveWriter.CoreServices
         }
         private const int REQUIREDFRESHNESSDAYS = 1;
         private const int TIMEOUTMS = 10000;
-        private readonly static HashSet _downloadedResources = new HashSet();
+        private readonly static HashSet<string> _downloadedResources = new HashSet<string>();
 
         private class DelayUpdateHelper
         {
